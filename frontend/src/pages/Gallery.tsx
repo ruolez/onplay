@@ -323,7 +323,7 @@ export default function Gallery() {
               >
                 {item.thumbnail_path ? (
                   <img
-                    src={`http://localhost:9090${item.thumbnail_path}?t=${loadTime}`}
+                    src={`${item.thumbnail_path}?t=${loadTime}`}
                     alt={item.filename}
                     className="w-full h-full object-cover"
                   />
@@ -449,7 +449,7 @@ export default function Gallery() {
                 >
                   {item.thumbnail_path ? (
                     <img
-                      src={`http://localhost:9090${item.thumbnail_path}?t=${loadTime}`}
+                      src={`${item.thumbnail_path}?t=${loadTime}`}
                       alt={item.filename}
                       className="w-full h-full object-cover"
                     />

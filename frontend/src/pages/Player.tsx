@@ -89,9 +89,7 @@ export default function Player() {
   }
 
   const bestVariant = media.variants.sort((a, b) => b.bitrate - a.bitrate)[0];
-  const playerSrc = bestVariant
-    ? `http://localhost:9090${bestVariant.path}`
-    : "";
+  const playerSrc = bestVariant ? bestVariant.path : "";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -113,7 +111,7 @@ export default function Player() {
               src={playerSrc}
               poster={
                 media.thumbnail_path
-                  ? `http://localhost:9090${media.thumbnail_path}?t=${thumbnailTimestamp}`
+                  ? `${media.thumbnail_path}?t=${thumbnailTimestamp}`
                   : undefined
               }
               onPlay={() => trackEvent("play")}
