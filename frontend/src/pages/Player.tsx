@@ -92,20 +92,21 @@ export default function Player() {
   const playerSrc = bestVariant ? bestVariant.path : "";
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 max-w-7xl">
       {/* Back button */}
       <button
         onClick={() => navigate("/")}
-        className="mb-6 flex items-center space-x-2 text-white/70 hover:text-white transition-colors"
+        className="mb-4 sm:mb-6 flex items-center space-x-2 text-white/70 hover:text-white transition-colors min-h-[44px] -ml-2 px-2"
+        aria-label="Go back"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Back</span>
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {/* Player section */}
         <div className="lg:col-span-2">
-          <div className="mb-6">
+          <div className="mb-4 sm:mb-6">
             <VideoPlayer
               ref={playerRef}
               src={playerSrc}
@@ -131,11 +132,11 @@ export default function Player() {
 
           {/* Thumbnail capture button */}
           {media.media_type === "video" && (
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <button
                 onClick={handleSetThumbnail}
                 disabled={thumbnailSaving}
-                className="flex items-center space-x-2 px-4 py-2 theme-btn-secondary rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center space-x-2 px-4 py-3 theme-btn-secondary rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] w-full sm:w-auto text-sm sm:text-base"
               >
                 <Image className="w-4 h-4" />
                 <span>
@@ -144,7 +145,7 @@ export default function Player() {
                     : "Set Current Frame as Thumbnail"}
                 </span>
               </button>
-              <p className="text-sm theme-text-muted mt-2">
+              <p className="text-xs sm:text-sm theme-text-muted mt-2">
                 Pause the video at your desired moment and click this button to
                 set it as the thumbnail
               </p>
@@ -152,12 +153,12 @@ export default function Player() {
           )}
 
           {/* Media info */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h1 className="text-2xl font-bold text-white mb-4">
+          <div className="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/10">
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4 break-words">
               {media.filename}
             </h1>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
               <div>
                 <p className="text-white/60">Type</p>
                 <p className="text-white font-medium capitalize">
@@ -192,15 +193,15 @@ export default function Player() {
 
             {/* Available qualities */}
             {media.variants.length > 0 && (
-              <div className="mt-6">
-                <p className="text-white/60 text-sm mb-2">
+              <div className="mt-4 sm:mt-6">
+                <p className="text-white/60 text-xs sm:text-sm mb-2">
                   Available Qualities:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {media.variants.map((variant) => (
                     <span
                       key={variant.quality}
-                      className="px-3 py-1 bg-purple-600/30 text-purple-200 rounded-full text-sm border border-purple-500/50"
+                      className="px-2 sm:px-3 py-1 bg-purple-600/30 text-purple-200 rounded-full text-xs sm:text-sm border border-purple-500/50"
                     >
                       {variant.quality}
                     </span>
@@ -212,9 +213,9 @@ export default function Player() {
         </div>
 
         {/* Analytics sidebar */}
-        <div className="space-y-6">
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/10">
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4 flex items-center space-x-2">
               <TrendingUp className="w-5 h-5" />
               <span>Analytics</span>
             </h2>

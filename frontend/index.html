@@ -3,19 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes"
+    />
     <meta
       name="description"
       content="OnPlay - Professional media streaming platform with adaptive HLS playback and analytics"
     />
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="OnPlay" />
+    <meta name="theme-color" content="#0a0a0a" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="OnPlay - Stream Your Media" />
     <meta
       property="og:description"
       content="Professional media streaming platform with adaptive HLS playback"
     />
     <meta property="og:site_name" content="onplay.site" />
+    <meta property="og:type" content="website" />
+
     <title>OnPlay - Stream Your Media</title>
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+
+    <!-- Safe area insets for notched devices -->
+    <style>
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top, 0px);
+        --safe-area-inset-right: env(safe-area-inset-right, 0px);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-area-inset-left: env(safe-area-inset-left, 0px);
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

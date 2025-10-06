@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { Palette } from "lucide-react";
 import { useTheme, type ThemeType } from "../contexts/ThemeContext";
 
@@ -14,27 +15,59 @@ const themes: { value: ThemeType; label: string }[] = [
 
 export default function ThemeSelector() {
   const { theme, setTheme } = useTheme();
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const handleThemeSelect = (value: ThemeType) => {
+    setTheme(value);
+    setIsOpen(false);
+  };
 
   return (
-    <div className="relative group">
-      <button className="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all theme-button">
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all theme-button min-h-[44px]"
+        aria-label="Select theme"
+        aria-expanded={isOpen}
+      >
         <Palette className="w-5 h-5" />
         <span className="hidden sm:inline">Theme</span>
       </button>
 
-      <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all theme-dropdown z-[9999]">
-        {themes.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => setTheme(t.value)}
-            className={`w-full text-left px-4 py-2 first:rounded-t-lg last:rounded-b-lg transition-colors theme-dropdown-item ${
-              theme === t.value ? "theme-dropdown-item-active" : ""
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl theme-dropdown z-[9999]">
+          {themes.map((t) => (
+            <button
+              key={t.value}
+              onClick={() => handleThemeSelect(t.value)}
+              className={`w-full text-left px-4 py-3 first:rounded-t-lg last:rounded-b-lg transition-colors theme-dropdown-item min-h-[44px] ${
+                theme === t.value ? "theme-dropdown-item-active" : ""
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -46,19 +46,19 @@ export default function Stats() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-4xl font-bold theme-text-primary flex items-center space-x-3">
-          <BarChart3 className="w-10 h-10" />
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold theme-text-primary flex items-center space-x-2 sm:space-x-3">
+          <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10" />
           <span>Statistics</span>
         </h1>
 
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 w-full sm:w-auto">
           {[7, 30, 90].map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
-              className={`px-4 py-2 rounded-lg font-medium ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base min-h-[44px] ${
                 days === d ? "theme-btn-primary" : "theme-btn-secondary"
               }`}
             >
@@ -69,16 +69,18 @@ export default function Stats() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div className="theme-stat-card-1 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="theme-text-secondary">Total Media</p>
-            <BarChart3 className="w-8 h-8 theme-icon-accent" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="theme-stat-card-1 rounded-lg sm:rounded-xl p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <p className="theme-text-secondary text-sm sm:text-base">
+              Total Media
+            </p>
+            <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 theme-icon-accent" />
           </div>
-          <p className="text-4xl font-bold theme-text-primary">
+          <p className="text-3xl sm:text-4xl font-bold theme-text-primary">
             {overview?.total_media || 0}
           </p>
-          <div className="mt-2 text-sm theme-text-muted">
+          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
             {overview?.total_videos || 0} videos, {overview?.total_audio || 0}{" "}
             audio
           </div>
@@ -264,7 +266,8 @@ export default function Stats() {
             <span>Top Sources</span>
           </h2>
 
-          {analytics?.bandwidth_by_ip && analytics.bandwidth_by_ip.length > 0 ? (
+          {analytics?.bandwidth_by_ip &&
+          analytics.bandwidth_by_ip.length > 0 ? (
             <div className="space-y-3">
               {analytics.bandwidth_by_ip
                 .slice(0, 5)
@@ -296,7 +299,8 @@ export default function Stats() {
                           {item.hostname || item.ip}
                         </p>
                         <p className="theme-text-muted text-sm">
-                          {formatFileSize(item.bandwidth_bytes)} • {item.requests || item.plays || 0} requests
+                          {formatFileSize(item.bandwidth_bytes)} •{" "}
+                          {item.requests || item.plays || 0} requests
                         </p>
                       </div>
                     </div>

@@ -204,18 +204,18 @@ export default function Gallery() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Controls */}
-      <div className="mb-8 space-y-4">
+      <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
         {/* Search Bar */}
         <div className="relative max-w-2xl">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 theme-text-muted" />
+          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 theme-text-muted" />
           <input
             type="text"
             placeholder="Search media..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-xl theme-input focus:outline-none focus:ring-2 focus:ring-offset-2"
+            className="w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 rounded-xl theme-input focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base"
             style={{
               background: "var(--input-bg)",
               color: "var(--text-primary)",
@@ -231,7 +231,7 @@ export default function Gallery() {
               <button
                 key={tag.id}
                 onClick={() => toggleTagFilter(tag.id)}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[36px] ${
                   selectedTags.includes(tag.id)
                     ? "theme-btn-primary"
                     : "theme-btn-secondary"
@@ -243,7 +243,7 @@ export default function Gallery() {
             {selectedTags.length > 0 && (
               <button
                 onClick={() => setSelectedTags([])}
-                className="px-3 py-1 rounded-full text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors"
+                className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors min-h-[36px]"
               >
                 Clear filters
               </button>
@@ -252,13 +252,13 @@ export default function Gallery() {
         )}
 
         {/* Filters and View Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="flex space-x-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex space-x-2 sm:space-x-4 overflow-x-auto">
             {["all", "video", "audio"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f as any)}
-                className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-all text-sm sm:text-base whitespace-nowrap min-h-[40px] ${
                   filter === f ? "theme-btn-primary" : "theme-btn-secondary"
                 }`}
               >
@@ -268,26 +268,28 @@ export default function Gallery() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 justify-end">
             <button
               onClick={() => toggleViewMode("grid")}
-              className={`p-2 rounded-lg transition-all ${
+              className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
                 viewMode === "grid"
                   ? "theme-btn-primary"
                   : "theme-btn-secondary"
               }`}
               title="Grid view"
+              aria-label="Grid view"
             >
               <Grid3x3 className="w-5 h-5" />
             </button>
             <button
               onClick={() => toggleViewMode("list")}
-              className={`p-2 rounded-lg transition-all ${
+              className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
                 viewMode === "list"
                   ? "theme-btn-primary"
                   : "theme-btn-secondary"
               }`}
               title="List view"
+              aria-label="List view"
             >
               <List className="w-5 h-5" />
             </button>
@@ -297,22 +299,22 @@ export default function Gallery() {
 
       {/* Media Grid/List */}
       {filteredMedia.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="theme-text-muted text-lg">
+        <div className="text-center py-12 sm:py-20">
+          <p className="theme-text-muted text-base sm:text-lg px-4">
             {searchQuery
               ? `No media found matching "${searchQuery}"`
               : "No media files found. Upload some files to get started!"}
           </p>
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
           {filteredMedia.map((item) => (
             <div
               key={item.id}
               onClick={() =>
                 item.status === "ready" && navigate(`/player/${item.id}`)
               }
-              className={`group relative theme-card rounded-xl overflow-hidden hover:scale-105 ${
+              className={`group relative theme-card rounded-lg sm:rounded-xl overflow-hidden transition-transform active:scale-95 sm:hover:scale-105 ${
                 item.status === "ready" ? "cursor-pointer" : "cursor-default"
               }`}
             >
@@ -326,6 +328,7 @@ export default function Gallery() {
                     src={`${item.thumbnail_path}?t=${loadTime}`}
                     alt={item.filename}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full">
@@ -357,15 +360,15 @@ export default function Gallery() {
               </div>
 
               {/* Info */}
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="theme-text-primary font-medium truncate flex-1">
+              <div className="p-2 sm:p-4">
+                <div className="flex items-start justify-between mb-1 sm:mb-2">
+                  <h3 className="theme-text-primary font-medium truncate flex-1 text-xs sm:text-sm">
                     {item.filename}
                   </h3>
-                  <div className="flex space-x-1 ml-2">
+                  <div className="hidden sm:flex space-x-1 ml-2">
                     <button
                       onClick={(e) => handleTagClick(e, item.id)}
-                      className="p-1 rounded hover:bg-white/10 transition-colors"
+                      className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                       title="Add tag"
                     >
                       <TagIcon className="w-4 h-4 theme-text-muted" />
@@ -374,14 +377,14 @@ export default function Gallery() {
                       onClick={(e) =>
                         handleRenameClick(e, item.id, item.filename)
                       }
-                      className="p-1 rounded hover:bg-white/10 transition-colors"
+                      className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                       title="Rename"
                     >
                       <Edit2 className="w-4 h-4 theme-text-muted" />
                     </button>
                     <button
                       onClick={(e) => handleDeleteClick(e, item.id)}
-                      className="p-1 rounded hover:bg-red-500/20 transition-colors"
+                      className="p-1.5 rounded hover:bg-red-500/20 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
@@ -389,33 +392,29 @@ export default function Gallery() {
                   </div>
                 </div>
 
-                <div className="space-y-1 text-sm theme-text-muted">
+                <div className="hidden sm:block space-y-1 text-xs sm:text-sm theme-text-muted">
                   {item.duration && (
                     <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4" />
+                      <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span>{formatDuration(item.duration)}</span>
                     </div>
                   )}
                   {item.file_size && (
                     <div className="flex items-center space-x-2">
-                      <HardDrive className="w-4 h-4" />
+                      <HardDrive className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span>{formatFileSize(item.file_size)}</span>
                     </div>
                   )}
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>{formatDate(item.created_at)}</span>
-                  </div>
                 </div>
 
                 {/* Tags */}
                 {item.tags.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
+                  <div className="mt-2 sm:mt-3 flex flex-wrap gap-1">
                     {item.tags.map((tag) => (
                       <span
                         key={tag.id}
                         onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
-                        className="px-2 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-xs theme-text-secondary cursor-pointer transition-colors"
+                        className="px-1.5 sm:px-2 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-xs theme-text-secondary cursor-pointer transition-colors"
                         title="Click to remove"
                       >
                         {tag.name} ×
@@ -428,23 +427,23 @@ export default function Gallery() {
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {filteredMedia.map((item) => (
             <div
               key={item.id}
               onClick={() =>
                 item.status === "ready" && navigate(`/player/${item.id}`)
               }
-              className={`theme-card rounded-xl p-4 transition-all ${
+              className={`theme-card rounded-lg sm:rounded-xl p-3 sm:p-4 transition-all ${
                 item.status === "ready"
-                  ? "cursor-pointer hover:scale-[1.02]"
+                  ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
                   : "cursor-default"
               }`}
             >
-              <div className="flex gap-4">
+              <div className="flex gap-3 sm:gap-4">
                 {/* Thumbnail */}
                 <div
-                  className="relative w-40 h-24 rounded-lg overflow-hidden flex-shrink-0"
+                  className="relative w-28 h-20 sm:w-40 sm:h-24 rounded-lg overflow-hidden flex-shrink-0"
                   style={{ background: "var(--card-bg)" }}
                 >
                   {item.thumbnail_path ? (
@@ -484,13 +483,13 @@ export default function Gallery() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="theme-text-primary font-medium text-lg truncate flex-1">
+                  <div className="flex items-start justify-between mb-1 sm:mb-2">
+                    <h3 className="theme-text-primary font-medium text-sm sm:text-base lg:text-lg truncate flex-1">
                       {item.filename}
                     </h3>
                   </div>
 
-                  <div className="flex flex-wrap gap-4 text-sm theme-text-muted mb-2">
+                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm theme-text-muted mb-2">
                     <div className="flex items-center space-x-1">
                       <span className="capitalize font-medium">
                         {item.media_type}
@@ -498,20 +497,16 @@ export default function Gallery() {
                     </div>
                     {item.duration && (
                       <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{formatDuration(item.duration)}</span>
                       </div>
                     )}
                     {item.file_size && (
-                      <div className="flex items-center space-x-1">
+                      <div className="hidden sm:flex items-center space-x-1">
                         <HardDrive className="w-4 h-4" />
                         <span>{formatFileSize(item.file_size)}</span>
                       </div>
                     )}
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(item.created_at)}</span>
-                    </div>
                   </div>
 
                   {/* Tags */}
@@ -521,7 +516,7 @@ export default function Gallery() {
                         <span
                           key={tag.id}
                           onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
-                          className="px-2 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-xs theme-text-secondary cursor-pointer transition-colors"
+                          className="px-1.5 sm:px-2 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-xs theme-text-secondary cursor-pointer transition-colors"
                           title="Click to remove"
                         >
                           {tag.name} ×
@@ -532,11 +527,12 @@ export default function Gallery() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex space-x-1 flex-shrink-0">
+                <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1 flex-shrink-0">
                   <button
                     onClick={(e) => handleTagClick(e, item.id)}
-                    className="p-2 rounded hover:bg-white/10 transition-colors"
+                    className="p-2 rounded hover:bg-white/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                     title="Add tag"
+                    aria-label="Add tag"
                   >
                     <TagIcon className="w-4 h-4 theme-text-muted" />
                   </button>
@@ -544,15 +540,17 @@ export default function Gallery() {
                     onClick={(e) =>
                       handleRenameClick(e, item.id, item.filename)
                     }
-                    className="p-2 rounded hover:bg-white/10 transition-colors"
+                    className="p-2 rounded hover:bg-white/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                     title="Rename"
+                    aria-label="Rename"
                   >
                     <Edit2 className="w-4 h-4 theme-text-muted" />
                   </button>
                   <button
                     onClick={(e) => handleDeleteClick(e, item.id)}
-                    className="p-2 rounded hover:bg-red-500/20 transition-colors"
+                    className="p-2 rounded hover:bg-red-500/20 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                     title="Delete"
+                    aria-label="Delete"
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
@@ -566,25 +564,26 @@ export default function Gallery() {
       {/* Delete Modal */}
       {deleteModal.show && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4"
           onClick={() => setDeleteModal({ show: false, id: null })}
         >
           <div
-            className="theme-card rounded-xl p-6 max-w-md w-full mx-4"
+            className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold theme-text-primary">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold theme-text-primary">
                 Delete Media
               </h2>
               <button
                 onClick={() => setDeleteModal({ show: false, id: null })}
-                className="theme-text-muted hover:theme-text-primary"
+                className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="theme-text-secondary mb-4">
+            <p className="theme-text-secondary mb-3 sm:mb-4 text-sm sm:text-base">
               Enter password to delete this media file. This action cannot be
               undone.
             </p>
@@ -597,22 +596,22 @@ export default function Gallery() {
               }}
               onKeyDown={(e) => e.key === "Enter" && handleDelete()}
               placeholder="Password"
-              className="theme-input w-full px-4 py-2 rounded-lg mb-2"
+              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-2 text-sm sm:text-base"
               autoFocus
             />
             {deleteError && (
-              <p className="text-red-500 text-sm mb-4">{deleteError}</p>
+              <p className="text-red-500 text-sm mb-3 sm:mb-4">{deleteError}</p>
             )}
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setDeleteModal({ show: false, id: null })}
-                className="flex-1 theme-btn-secondary px-4 py-2 rounded-lg font-medium"
+                className="flex-1 theme-btn-secondary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 px-4 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors"
+                className="flex-1 px-4 py-3 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors min-h-[48px] text-sm sm:text-base"
               >
                 Delete
               </button>
@@ -624,24 +623,25 @@ export default function Gallery() {
       {/* Rename Modal */}
       {renameModal.show && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4"
           onClick={() =>
             setRenameModal({ show: false, id: null, currentName: "" })
           }
         >
           <div
-            className="theme-card rounded-xl p-6 max-w-md w-full mx-4"
+            className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold theme-text-primary">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold theme-text-primary">
                 Rename Media
               </h2>
               <button
                 onClick={() =>
                   setRenameModal({ show: false, id: null, currentName: "" })
                 }
-                className="theme-text-muted hover:theme-text-primary"
+                className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -652,21 +652,21 @@ export default function Gallery() {
               onChange={(e) => setNewFilename(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRename()}
               placeholder="New filename"
-              className="theme-input w-full px-4 py-2 rounded-lg mb-4"
+              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-sm sm:text-base"
               autoFocus
             />
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() =>
                   setRenameModal({ show: false, id: null, currentName: "" })
                 }
-                className="flex-1 theme-btn-secondary px-4 py-2 rounded-lg font-medium"
+                className="flex-1 theme-btn-secondary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleRename}
-                className="flex-1 theme-btn-primary px-4 py-2 rounded-lg font-medium"
+                className="flex-1 theme-btn-primary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
               >
                 Rename
               </button>
@@ -678,18 +678,21 @@ export default function Gallery() {
       {/* Tag Modal */}
       {tagModal.show && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4"
           onClick={() => setTagModal({ show: false, mediaId: null })}
         >
           <div
-            className="theme-card rounded-xl p-6 max-w-md w-full mx-4"
+            className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold theme-text-primary">Add Tag</h2>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl font-bold theme-text-primary">
+                Add Tag
+              </h2>
               <button
                 onClick={() => setTagModal({ show: false, mediaId: null })}
-                className="theme-text-muted hover:theme-text-primary"
+                className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -700,12 +703,12 @@ export default function Gallery() {
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
               placeholder="Tag name"
-              className="theme-input w-full px-4 py-2 rounded-lg mb-4"
+              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-sm sm:text-base"
               autoFocus
             />
             {allTags.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm theme-text-muted mb-2">
+              <div className="mb-3 sm:mb-4">
+                <p className="text-xs sm:text-sm theme-text-muted mb-2">
                   Existing tags (click to use):
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -713,7 +716,7 @@ export default function Gallery() {
                     <button
                       key={tag.id}
                       onClick={() => setTagInput(tag.name)}
-                      className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors"
+                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors min-h-[36px]"
                     >
                       {tag.name}
                     </button>
@@ -721,16 +724,16 @@ export default function Gallery() {
                 </div>
               </div>
             )}
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setTagModal({ show: false, mediaId: null })}
-                className="flex-1 theme-btn-secondary px-4 py-2 rounded-lg font-medium"
+                className="flex-1 theme-btn-secondary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddTag}
-                className="flex-1 theme-btn-primary px-4 py-2 rounded-lg font-medium"
+                className="flex-1 theme-btn-primary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
               >
                 Add Tag
               </button>

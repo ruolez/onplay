@@ -127,14 +127,14 @@ export default function Upload() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-4xl font-bold theme-text-primary mb-8">
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
+      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold theme-text-primary mb-6 sm:mb-8">
         Upload Media
       </h1>
 
       {/* Drop zone */}
       <div
-        className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-all ${
+        className={`relative border-2 border-dashed rounded-lg sm:rounded-xl p-6 sm:p-8 lg:p-12 text-center transition-all ${
           dragActive ? "theme-card-border-hover" : ""
         }`}
         style={{
@@ -148,11 +148,11 @@ export default function Upload() {
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <UploadIcon className="w-16 h-16 theme-text-muted mx-auto mb-4" />
-        <h3 className="text-xl font-semibold theme-text-primary mb-2">
+        <UploadIcon className="w-12 h-12 sm:w-16 sm:h-16 theme-text-muted mx-auto mb-3 sm:mb-4" />
+        <h3 className="text-lg sm:text-xl font-semibold theme-text-primary mb-2">
           Drop your media files here
         </h3>
-        <p className="theme-text-muted mb-6">
+        <p className="theme-text-muted mb-4 sm:mb-6 text-sm sm:text-base">
           or click to browse (MP4, AVI, MOV, MP3, WAV)
         </p>
 
@@ -164,7 +164,7 @@ export default function Upload() {
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
 
-        <button className="px-6 py-3 theme-btn-primary rounded-lg font-medium">
+        <button className="px-6 py-3 theme-btn-primary rounded-lg font-medium min-h-[48px] text-sm sm:text-base">
           Select Files
         </button>
       </div>
