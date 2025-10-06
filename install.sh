@@ -514,9 +514,55 @@ EOF
     print_success "Production nginx configuration created"
 }
 
-# Create system nginx reverse proxy configuration
+# Create system nginx reverse proxy configuration (HTTP only, SSL will be added by certbot)
 create_system_nginx_conf() {
-    print_info "Creating system nginx reverse proxy configuration..."
+    print_info "Creating initial nginx configuration (HTTP only)..."
+
+    cat > "$NGINX_CONF" << EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+
+    # For Let's Encrypt verification
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Proxy settings
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_buffering off;
+    client_max_body_size 5G;
+
+    # Proxy to Docker nginx container
+    location / {
+        proxy_pass http://localhost:80;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass \$http_upgrade;
+    }
+
+    # Health check
+    location /health {
+        proxy_pass http://localhost:80/health;
+        access_log off;
+    }
+}
+EOF
+
+    # Enable site
+    ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
+
+    print_success "Initial nginx configuration created"
+}
+
+# Update nginx configuration with SSL settings after certificate is obtained
+update_nginx_ssl_config() {
+    print_info "Updating nginx configuration with SSL settings..."
 
     cat > "$NGINX_CONF" << EOF
 server {
@@ -540,7 +586,7 @@ server {
     listen [::]:443 ssl http2;
     server_name ${DOMAIN};
 
-    # SSL certificates (will be configured by certbot)
+    # SSL certificates (configured by certbot)
     ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     ssl_trusted_certificate /etc/letsencrypt/live/${DOMAIN}/chain.pem;
@@ -585,10 +631,10 @@ server {
 }
 EOF
 
-    # Enable site
-    ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
+    # Test and reload nginx
+    nginx -t && systemctl reload nginx
 
-    print_success "System nginx configuration created"
+    print_success "Nginx configuration updated with SSL"
 }
 
 # Setup SSL with Let's Encrypt
@@ -880,13 +926,30 @@ main() {
     update_frontend_dockerfile
     create_env_file
 
-    # Setup nginx and SSL
+    # Setup nginx (HTTP only first)
     create_system_nginx_conf
-    setup_ssl
-    setup_ssl_renewal
+
+    # Test and reload nginx
+    print_info "Testing nginx configuration..."
+    nginx -t
+    if [ $? -ne 0 ]; then
+        print_error "Nginx configuration test failed"
+        exit 1
+    fi
+    systemctl reload nginx
+    print_success "Nginx configuration loaded"
 
     # Start application
     start_application
+
+    # Setup SSL (now that nginx is working with HTTP)
+    setup_ssl
+
+    # Update nginx with SSL configuration
+    update_nginx_ssl_config
+
+    # Setup SSL auto-renewal
+    setup_ssl_renewal
 
     # Display summary
     display_summary

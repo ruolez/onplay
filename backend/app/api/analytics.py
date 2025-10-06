@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from ..database import get_db
-from ..models import Analytics, Media
+from ..models import Analytics, Media, BandwidthStats
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
@@ -96,42 +96,37 @@ async def get_analytics_overview(
         Analytics.timestamp >= since
     ).scalar() or 0
 
-    # Calculate estimated bandwidth using HLS variants (more accurate than original file size)
-    play_events = db.query(Analytics).filter(
-        Analytics.event_type == "play",
-        Analytics.timestamp >= since
-    ).all()
+    # Get ACTUAL bandwidth from nginx logs (via BandwidthStats)
+    # This is real data from HLS segment downloads, not estimates
+    total_bandwidth = db.query(
+        func.sum(BandwidthStats.total_bytes)
+    ).filter(
+        BandwidthStats.date >= since
+    ).scalar() or 0
 
-    total_bandwidth = 0
-    bandwidth_by_ip = {}
+    # Bandwidth by IP (actual usage)
+    bandwidth_by_ip_raw = db.query(
+        BandwidthStats.ip_address,
+        func.sum(BandwidthStats.total_bytes).label('total_bytes'),
+        func.sum(BandwidthStats.request_count).label('request_count')
+    ).filter(
+        BandwidthStats.date >= since
+    ).group_by(
+        BandwidthStats.ip_address
+    ).order_by(
+        func.sum(BandwidthStats.total_bytes).desc()
+    ).limit(10).all()
 
-    for event in play_events:
-        media = db.query(Media).filter(Media.id == event.media_id).first()
-        if media and media.variants:
-            # Use the average HLS variant size (more accurate than original)
-            avg_variant_size = sum(v.file_size for v in media.variants if v.file_size) / len([v for v in media.variants if v.file_size]) if media.variants else 0
-
-            if avg_variant_size > 0:
-                total_bandwidth += avg_variant_size
-
-                # Track by IP
-                ip = event.ip_address or "unknown"
-                if ip not in bandwidth_by_ip:
-                    bandwidth_by_ip[ip] = {"bandwidth": 0, "plays": 0}
-                bandwidth_by_ip[ip]["bandwidth"] += avg_variant_size
-                bandwidth_by_ip[ip]["plays"] += 1
-
-    # Convert to sorted list with hostnames
+    # Convert to list with hostnames
     bandwidth_by_ip_list = [
         {
             "ip": ip,
             "hostname": get_hostname(ip),
-            "bandwidth_bytes": data["bandwidth"],
-            "plays": data["plays"]
+            "bandwidth_bytes": int(total_bytes),
+            "requests": int(request_count)
         }
-        for ip, data in bandwidth_by_ip.items()
+        for ip, total_bytes, request_count in bandwidth_by_ip_raw
     ]
-    bandwidth_by_ip_list.sort(key=lambda x: x["bandwidth_bytes"], reverse=True)
 
     # Top media by plays
     top_media = db.query(

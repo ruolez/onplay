@@ -21,3 +21,11 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=50,
 )
+
+# Celery Beat schedule for periodic tasks
+celery_app.conf.beat_schedule = {
+    'process-bandwidth-logs': {
+        'task': 'app.worker.tasks.process_bandwidth_logs',
+        'schedule': 60.0,  # Run every 60 seconds
+    },
+}

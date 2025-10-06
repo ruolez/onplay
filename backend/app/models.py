@@ -89,3 +89,30 @@ class Tag(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     media = relationship("Media", secondary=media_tags, back_populates="tags")
+
+class BandwidthLog(Base):
+    __tablename__ = "bandwidth_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    media_id = Column(String, ForeignKey("media.id", ondelete="CASCADE"), nullable=True)
+    ip_address = Column(String, nullable=False, index=True)
+    bytes_sent = Column(Integer, nullable=False)
+    request_uri = Column(String, nullable=False)
+    status_code = Column(Integer, nullable=False)
+    request_time = Column(Float, nullable=True)  # Response time in seconds
+    timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
+    processed = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Aggregated bandwidth tracking
+class BandwidthStats(Base):
+    __tablename__ = "bandwidth_stats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    media_id = Column(String, ForeignKey("media.id", ondelete="CASCADE"), nullable=True, index=True)
+    ip_address = Column(String, nullable=False, index=True)
+    session_id = Column(String, nullable=True, index=True)  # Track sessions
+    date = Column(DateTime(timezone=True), nullable=False, index=True)  # Hourly aggregation
+    total_bytes = Column(Integer, nullable=False, default=0)
+    request_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

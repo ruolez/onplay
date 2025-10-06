@@ -9,6 +9,7 @@ services:
       - "9090:80"
     volumes:
       - ./media:/var/www/media:ro
+      - nginx_logs:/var/log/nginx
     depends_on:
       - api
       - frontend
@@ -42,12 +43,29 @@ services:
     volumes:
       - ./backend:/app
       - ./media:/media
+      - nginx_logs:/var/log/nginx:ro
     depends_on:
       - redis
       - postgres
     restart: unless-stopped
     deploy:
       replicas: 2
+
+  beat:
+    build: ./backend
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://mediauser:mediapass@postgres:5432/mediadb
+      - REDIS_URL=redis://redis:6379/0
+      - MEDIA_ROOT=/media
+    volumes:
+      - ./backend:/app
+      - ./media:/media
+      - nginx_logs:/var/log/nginx:ro
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -84,3 +102,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  nginx_logs:

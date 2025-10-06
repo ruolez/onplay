@@ -40,3 +40,4 @@ Thumbs.db
 # Backups
 *.sql
 *.tar.gz
+celerybeat-schedule*

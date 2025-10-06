@@ -296,7 +296,7 @@ export default function Stats() {
                           {item.hostname || item.ip}
                         </p>
                         <p className="theme-text-muted text-sm">
-                          {formatFileSize(item.bandwidth_bytes)} • {item.plays} plays
+                          {formatFileSize(item.bandwidth_bytes)} • {item.requests || item.plays || 0} requests
                         </p>
                       </div>
                     </div>

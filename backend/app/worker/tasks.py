@@ -389,3 +389,39 @@ def generate_audio_thumbnail(media_id: str) -> str:
 
     img.save(thumbnail_path, quality=95)
     return f"/media/thumbnails/{media_id}.jpg"
+
+
+# Bandwidth tracking state (stores last log file position)
+_last_log_position = 0
+
+
+@celery_app.task(bind=True, name="app.worker.tasks.process_bandwidth_logs")
+def process_bandwidth_logs_task(self):
+    """
+    Celery task to process nginx bandwidth logs.
+    Runs periodically to track actual bandwidth usage.
+    """
+    global _last_log_position
+
+    from .bandwidth_tracker import process_bandwidth_logs, cleanup_old_logs
+    from ..database import SessionLocal
+
+    try:
+        # Process logs from last position
+        _last_log_position = process_bandwidth_logs(
+            log_file_path="/var/log/nginx/bandwidth.log",
+            last_position=_last_log_position
+        )
+
+        # Cleanup old logs (keep last 90 days)
+        db = SessionLocal()
+        try:
+            cleanup_old_logs(db, days=90)
+        finally:
+            db.close()
+
+        return {"status": "success", "last_position": _last_log_position}
+
+    except Exception as e:
+        print(f"Error in bandwidth tracking task: {e}")
+        return {"status": "error", "error": str(e)}
