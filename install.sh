@@ -854,14 +854,32 @@ display_summary() {
 update_installation() {
     print_info "Updating OnPlay installation..."
 
-    # Check if we're in a git repository
-    if [ ! -d "$INSTALL_DIR/.git" ]; then
-        print_error "Installation directory is not a git repository. Cannot update automatically."
-        print_info "Please run a clean install instead."
-        exit 1
-    fi
-
     cd "$INSTALL_DIR"
+
+    # Check if we're in a git repository, if not initialize it
+    if [ ! -d ".git" ]; then
+        print_warning "Installation directory is not a git repository. Initializing..."
+
+        # Initialize git repository
+        git init
+        git remote add origin https://github.com/ruolez/onplay.git
+
+        print_info "Fetching latest code..."
+        git fetch origin
+
+        # Reset to match remote (this will overwrite local files)
+        print_warning "This will overwrite any local modifications..."
+        read -p "Continue? (y/n): " confirm
+        if [ "$confirm" != "y" ]; then
+            print_info "Update cancelled"
+            exit 0
+        fi
+
+        git reset --hard origin/main
+        git branch --set-upstream-to=origin/main main 2>/dev/null || git branch -M main
+
+        print_success "Git repository initialized"
+    fi
 
     # Backup .env if it exists
     if [ -f .env ]; then
