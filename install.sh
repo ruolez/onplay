@@ -850,6 +850,76 @@ display_summary() {
     echo ""
 }
 
+# Update existing installation
+update_installation() {
+    print_info "Updating OnPlay installation..."
+
+    # Check if we're in a git repository
+    if [ ! -d "$INSTALL_DIR/.git" ]; then
+        print_error "Installation directory is not a git repository. Cannot update automatically."
+        print_info "Please run a clean install instead."
+        exit 1
+    fi
+
+    cd "$INSTALL_DIR"
+
+    # Backup .env if it exists
+    if [ -f .env ]; then
+        print_info "Backing up .env file..."
+        cp .env .env.backup.$(date +%Y%m%d_%H%M%S)
+    fi
+
+    # Pull latest code
+    print_info "Pulling latest code from GitHub..."
+    git fetch origin
+    git pull origin main
+    if [ $? -ne 0 ]; then
+        print_error "Failed to pull latest code"
+        exit 1
+    fi
+    print_success "Code updated successfully"
+
+    # Stop containers
+    print_info "Stopping containers..."
+    docker compose -f docker-compose.prod.yml down
+
+    # Rebuild images
+    print_info "Rebuilding Docker images (this may take a few minutes)..."
+    docker compose -f docker-compose.prod.yml build --no-cache
+    if [ $? -ne 0 ]; then
+        print_error "Failed to rebuild Docker images"
+        exit 1
+    fi
+    print_success "Docker images rebuilt successfully"
+
+    # Start containers
+    print_info "Starting containers..."
+    docker compose -f docker-compose.prod.yml up -d
+    if [ $? -ne 0 ]; then
+        print_error "Failed to start containers"
+        exit 1
+    fi
+    print_success "Containers started successfully"
+
+    # Wait for services to be healthy
+    print_info "Waiting for services to be ready..."
+    sleep 10
+
+    # Show status
+    echo ""
+    print_success "Update completed successfully!"
+    echo ""
+    print_info "Service Status:"
+    docker compose -f docker-compose.prod.yml ps
+    echo ""
+    print_info "Your site is now running the latest version: https://${DOMAIN}"
+    echo ""
+    print_info "Useful Commands:"
+    echo "  - View logs: cd $INSTALL_DIR && docker compose -f docker-compose.prod.yml logs -f"
+    echo "  - Restart services: cd $INSTALL_DIR && docker compose -f docker-compose.prod.yml restart"
+    echo ""
+}
+
 # Main installation flow
 main() {
     clear
@@ -869,33 +939,45 @@ main() {
     if check_previous_installation; then
         print_warning "Previous OnPlay installation detected"
         echo ""
-        echo "  1) Clean install (remove OnPlay and install fresh)"
-        echo "  2) Delete OnPlay only (remove without reinstalling)"
-        echo "  3) Complete system cleanup (⚠️  Remove ALL Docker containers and nginx configs)"
-        echo "  4) Fresh install (no cleanup)"
-        echo "  5) Cancel"
+        echo "  1) Update installation (pull latest code and rebuild)"
+        echo "  2) Clean install (remove OnPlay and install fresh)"
+        echo "  3) Delete OnPlay only (remove without reinstalling)"
+        echo "  4) Complete system cleanup (⚠️  Remove ALL Docker containers and nginx configs)"
+        echo "  5) Fresh install (no cleanup)"
+        echo "  6) Cancel"
         echo ""
-        read -p "Enter your choice (1-5): " choice
+        read -p "Enter your choice (1-6): " choice
 
         case $choice in
             1)
-                cleanup_installation
+                # Get domain from .env or prompt
+                if [ -f "$INSTALL_DIR/.env" ]; then
+                    DOMAIN=$(grep "^DOMAIN=" "$INSTALL_DIR/.env" | cut -d'=' -f2)
+                fi
+                if [ -z "$DOMAIN" ]; then
+                    get_domain
+                fi
+                update_installation
+                exit 0
                 ;;
             2)
+                cleanup_installation
+                ;;
+            3)
                 cleanup_installation
                 print_success "OnPlay has been completely removed"
                 exit 0
                 ;;
-            3)
+            4)
                 complete_system_cleanup
                 if [ $? -eq 1 ]; then
                     exit 0
                 fi
                 ;;
-            4)
+            5)
                 print_info "Proceeding with fresh installation (no cleanup)..."
                 ;;
-            5)
+            6)
                 print_info "Installation cancelled"
                 exit 0
                 ;;
