@@ -31,7 +31,7 @@ function App() {
                 className="flex items-center space-x-2 font-bold text-xl theme-text-primary"
               >
                 <Film className="w-8 h-8 theme-icon-accent" />
-                <span>{theme === "cyber" ? "ONPLAY" : "OnPlay"}</span>
+                <span>OnPlay</span>
               </Link>
 
               <div className="flex items-center space-x-6">
@@ -40,21 +40,21 @@ function App() {
                   className="transition-colors flex items-center space-x-2 theme-nav-link"
                 >
                   <Film className="w-5 h-5" />
-                  <span>{theme === "cyber" ? "GALLERY" : "Gallery"}</span>
+                  <span>Gallery</span>
                 </Link>
                 <Link
                   to="/upload"
                   className="transition-colors flex items-center space-x-2 theme-nav-link"
                 >
                   <UploadIcon className="w-5 h-5" />
-                  <span>{theme === "cyber" ? "UPLOAD" : "Upload"}</span>
+                  <span>Upload</span>
                 </Link>
                 <Link
                   to="/stats"
                   className="transition-colors flex items-center space-x-2 theme-nav-link"
                 >
                   <BarChart3 className="w-5 h-5" />
-                  <span>{theme === "cyber" ? "STATS" : "Stats"}</span>
+                  <span>Stats</span>
                 </Link>
                 <ThemeSelector />
               </div>

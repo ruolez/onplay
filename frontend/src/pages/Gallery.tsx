@@ -15,7 +15,6 @@ import {
   Grid3x3,
   List,
   Tag as TagIcon,
-  Plus,
 } from "lucide-react";
 
 export default function Gallery() {
