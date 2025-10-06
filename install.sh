@@ -315,10 +315,11 @@ services:
   nginx:
     build: ./nginx
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./media:/var/www/media:ro
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
     depends_on:
       - api
       - frontend
@@ -352,12 +353,29 @@ services:
     volumes:
       - ./backend:/app
       - ./media:/media
+      - nginx_logs:/var/log/nginx:ro
     depends_on:
       - redis
       - postgres
     restart: unless-stopped
     deploy:
       replicas: 2
+
+  beat:
+    build: ./backend
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://mediauser:${DB_PASSWORD}@postgres:5432/mediadb
+      - REDIS_URL=redis://redis:6379/0
+      - MEDIA_ROOT=/media
+    volumes:
+      - ./backend:/app
+      - ./media:/media
+      - nginx_logs:/var/log/nginx:ro
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
 
   frontend:
     build:
@@ -388,6 +406,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  nginx_logs:
 EOF
 
     print_success "Production docker-compose configuration created"
@@ -414,6 +433,8 @@ http {
     log_format main '$remote_addr - $remote_user [$time_local] "$request" '
                     '$status $body_bytes_sent "$http_referer" '
                     '"$http_user_agent" "$http_x_forwarded_for"';
+
+    log_format bandwidth '$remote_addr|$time_iso8601|$request_uri|$body_bytes_sent|$status|$request_time';
 
     access_log /var/log/nginx/access.log main;
 
@@ -489,6 +510,9 @@ http {
             add_header Cache-Control "public, immutable";
             add_header Access-Control-Allow-Origin *;
 
+            # Bandwidth tracking for HLS segments
+            access_log /var/log/nginx/bandwidth.log bandwidth;
+
             # HLS specific
             location ~ \.(m3u8)$ {
                 add_header Cache-Control "no-cache";
@@ -539,7 +563,7 @@ server {
 
     # Proxy to Docker nginx container
     location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -616,7 +640,7 @@ server {
 
     # Proxy to Docker nginx container
     location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
