@@ -1,0 +1,42 @@
+# Media files
+media/original/*
+media/hls/*
+media/thumbnails/*
+!media/original/.gitkeep
+!media/hls/.gitkeep
+!media/thumbnails/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.env.local
+.env
+
+# Backups
+*.sql
+*.tar.gz
