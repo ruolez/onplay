@@ -3,7 +3,6 @@ import { Palette } from "lucide-react";
 import { useTheme, type ThemeType } from "../contexts/ThemeContext";
 
 const themes: { value: ThemeType; label: string }[] = [
-  { value: "slate", label: "Slate" },
   { value: "jade", label: "Jade" },
   { value: "midnight", label: "Midnight" },
   { value: "charcoal", label: "Charcoal" },

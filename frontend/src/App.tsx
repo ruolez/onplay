@@ -14,7 +14,6 @@ import LogoPreview from "./pages/LogoPreview";
 import ThemeSelector from "./components/ThemeSelector";
 import MiniPlayer from "./components/MiniPlayer";
 import { useTheme } from "./contexts/ThemeContext";
-import { PlayerProvider } from "./contexts/PlayerContext";
 import { themes, applyTheme } from "./lib/theme";
 import { Home, Upload as UploadIcon, BarChart3, Menu, X } from "lucide-react";
 
@@ -46,11 +45,33 @@ function AppContent() {
               className="flex items-center space-x-2 font-bold text-lg sm:text-xl theme-text-primary"
               onClick={() => setMobileMenuOpen(false)}
             >
-              <svg className="w-9 h-9 sm:w-10 sm:h-10 theme-icon-accent" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="10" fill="currentColor" opacity="0.15"/>
-                <path d="M13 11L21 16L13 21V11Z" fill="currentColor"/>
-                <path d="M16 2C8.3 2 2 8.3 2 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.4"/>
-                <path d="M30 16c0 7.7-6.3 14-14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.4"/>
+              <svg
+                className="w-9 h-9 sm:w-10 sm:h-10 theme-icon-accent"
+                viewBox="0 0 32 32"
+                fill="none"
+              >
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="10"
+                  fill="currentColor"
+                  opacity="0.15"
+                />
+                <path d="M13 11L21 16L13 21V11Z" fill="currentColor" />
+                <path
+                  d="M16 2C8.3 2 2 8.3 2 16"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity="0.4"
+                />
+                <path
+                  d="M30 16c0 7.7-6.3 14-14 14"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  opacity="0.4"
+                />
               </svg>
               <span className="hidden sm:inline">On·Play</span>
             </Link>

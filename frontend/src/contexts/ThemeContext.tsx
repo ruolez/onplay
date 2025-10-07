@@ -7,7 +7,6 @@ import {
 } from "react";
 
 export type ThemeType =
-  | "slate"
   | "jade"
   | "midnight"
   | "charcoal"
@@ -26,7 +25,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeType>(() => {
     const saved = localStorage.getItem("theme");
-    return (saved as ThemeType) || "slate";
+    return (saved as ThemeType) || "jade";
   });
 
   useEffect(() => {

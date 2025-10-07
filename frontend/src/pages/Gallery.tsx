@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { mediaApi, Media, Tag } from "../lib/api";
-import { formatDuration, formatFileSize, formatDate } from "../lib/utils";
+import { formatDuration, formatFileSize } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
 import {
   Play,
   Music,
   Clock,
   HardDrive,
-  Calendar,
   Trash2,
   Edit2,
   X,
