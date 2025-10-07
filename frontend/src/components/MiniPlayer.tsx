@@ -3,11 +3,28 @@ import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../contexts/PlayerContext";
 import VideoPlayer, { VideoPlayerRef } from "./VideoPlayer";
 import { mediaApi } from "../lib/api";
-import { X, ExternalLink, Clock, HardDrive } from "lucide-react";
+import {
+  X,
+  ExternalLink,
+  Clock,
+  HardDrive,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { formatDuration, formatFileSize } from "../lib/utils";
 
 export default function MiniPlayer() {
-  const { currentMedia, isModalOpen, sessionId, closePlayer } = usePlayer();
+  const {
+    currentMedia,
+    isModalOpen,
+    sessionId,
+    closePlayer,
+    playNext,
+    playPrevious,
+    hasNext,
+    hasPrevious,
+    queuePosition,
+  } = usePlayer();
   const navigate = useNavigate();
   const playerRef = useRef<VideoPlayerRef>(null);
   const [thumbnailTimestamp] = useState(Date.now());
@@ -67,16 +84,60 @@ export default function MiniPlayer() {
       <div className="theme-card rounded-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
-          <h2 className="text-lg sm:text-xl font-bold theme-text-primary truncate flex-1 pr-4">
-            {currentMedia.filename}
-          </h2>
-          <button
-            onClick={closePlayer}
-            className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold theme-text-primary truncate">
+              {currentMedia.filename}
+            </h2>
+          </div>
+
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            {/* Queue Navigation */}
+            {queuePosition && (
+              <>
+                <button
+                  onClick={playPrevious}
+                  disabled={!hasPrevious}
+                  className={`p-2 rounded-lg transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                    hasPrevious
+                      ? "hover:bg-white/10 theme-text-primary"
+                      : "theme-text-muted opacity-30 cursor-not-allowed"
+                  }`}
+                  title="Previous"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                <span className="text-sm theme-text-muted whitespace-nowrap px-2">
+                  {queuePosition.current} / {queuePosition.total}
+                </span>
+
+                <button
+                  onClick={playNext}
+                  disabled={!hasNext}
+                  className={`p-2 rounded-lg transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center ${
+                    hasNext
+                      ? "hover:bg-white/10 theme-text-primary"
+                      : "theme-text-muted opacity-30 cursor-not-allowed"
+                  }`}
+                  title="Next"
+                  aria-label="Next"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+
+                <div className="w-px h-6 bg-white/10 mx-1" />
+              </>
+            )}
+
+            <button
+              onClick={closePlayer}
+              className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Player */}
@@ -92,7 +153,12 @@ export default function MiniPlayer() {
             autoplay={true}
             onPlay={() => trackEvent("play")}
             onPause={() => trackEvent("pause")}
-            onEnded={() => trackEvent("complete")}
+            onEnded={async () => {
+              await trackEvent("complete");
+              if (hasNext) {
+                playNext();
+              }
+            }}
             onTimeUpdate={(time) => {
               if (currentMedia.duration) {
                 const progress = (time / currentMedia.duration) * 100;

@@ -228,7 +228,7 @@ export default function Gallery() {
 
   const handleCardClick = (item: Media) => {
     if (item.status === "ready") {
-      openPlayer(item.id);
+      openPlayer(item.id, filteredMedia);
     }
   };
 
