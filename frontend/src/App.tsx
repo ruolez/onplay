@@ -52,7 +52,7 @@ function AppContent() {
                 <path d="M16 2C8.3 2 2 8.3 2 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.4"/>
                 <path d="M30 16c0 7.7-6.3 14-14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.4"/>
               </svg>
-              <span className="hidden sm:inline">OnPlay</span>
+              <span className="hidden sm:inline">On·Play</span>
             </Link>
 
             {/* Desktop Navigation */}

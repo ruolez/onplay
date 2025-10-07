@@ -408,11 +408,28 @@ export default function Gallery() {
 
               {/* Info */}
               <div className="p-2 sm:p-4">
-                <div className="flex items-start justify-between mb-1 sm:mb-2">
-                  <h3 className="theme-text-primary font-medium truncate flex-1 text-xs sm:text-sm">
-                    {item.filename}
-                  </h3>
-                  <div className="hidden sm:flex space-x-1 ml-2">
+                {/* Filename - First Line */}
+                <h3 className="theme-text-primary font-medium truncate text-xs sm:text-sm mb-1 sm:mb-2">
+                  {item.filename}
+                </h3>
+
+                {/* Duration and Action Icons - Second Line */}
+                <div className="hidden sm:flex items-center justify-between mb-1 sm:mb-2">
+                  {/* Duration - Left aligned */}
+                  <div className="flex items-center space-x-2 text-xs sm:text-sm theme-text-muted">
+                    {item.duration && (
+                      <>
+                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span>{formatDuration(item.duration)}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Separator */}
+                  <div className="w-px h-4 bg-white/10" />
+
+                  {/* Action Icons - Right aligned */}
+                  <div className="flex space-x-1">
                     <button
                       onClick={(e) => handleTagClick(e, item.id)}
                       className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
@@ -456,21 +473,6 @@ export default function Gallery() {
                       )}
                     </div>
                   </div>
-                </div>
-
-                <div className="hidden sm:block space-y-1 text-xs sm:text-sm theme-text-muted">
-                  {item.duration && (
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{formatDuration(item.duration)}</span>
-                    </div>
-                  )}
-                  {item.file_size && (
-                    <div className="flex items-center space-x-2">
-                      <HardDrive className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span>{formatFileSize(item.file_size)}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Tags */}
