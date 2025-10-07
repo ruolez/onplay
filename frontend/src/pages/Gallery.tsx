@@ -273,7 +273,7 @@ export default function Gallery() {
         </div>
 
         {/* Filters and View Toggle */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex space-x-2 sm:space-x-4 overflow-x-auto">
             {["all", "video", "audio"].map((f) => (
               <button
@@ -289,10 +289,10 @@ export default function Gallery() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex space-x-2 justify-end">
+          <div className="flex space-x-2 flex-shrink-0">
             <button
               onClick={() => toggleViewMode("grid")}
-              className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
+              className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
                 viewMode === "grid"
                   ? "theme-btn-primary"
                   : "theme-btn-secondary"
@@ -300,11 +300,11 @@ export default function Gallery() {
               title="Grid view"
               aria-label="Grid view"
             >
-              <Grid3x3 className="w-5 h-5" />
+              <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={() => toggleViewMode("list")}
-              className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
+              className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
                 viewMode === "list"
                   ? "theme-btn-primary"
                   : "theme-btn-secondary"
@@ -312,7 +312,7 @@ export default function Gallery() {
               title="List view"
               aria-label="List view"
             >
-              <List className="w-5 h-5" />
+              <List className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
