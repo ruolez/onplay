@@ -30,7 +30,17 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - True dark backgrounds with mesh gradients
   - Border-based focus effects
 - **Theme Persistence**: LocalStorage with React Context
+- **Gallery Filter Persistence**: All filter states preserved across navigation
+  - Media type filter (all/video/audio)
+  - Search query
+  - Selected tags
+  - View mode (grid/list)
 - **Responsive Design**: Mobile-first with Tailwind CSS
+- **Modal Player**: Click media cards to open instant-play modal overlay
+  - Darkened/blurred background
+  - Autoplay with Video.js HLS streaming
+  - 3-dot menu on cards for full detail page access
+  - Analytics tracking preserved (play, pause, complete, progress)
 
 ### Analytics
 - **Event Tracking**: Play, pause, complete, progress milestones (25%, 50%, 75%)
@@ -80,10 +90,12 @@ media-player/
 │   │   │   ├── Player.tsx        # Video player with analytics
 │   │   │   └── Stats.tsx         # Dashboard with bandwidth tracking
 │   │   ├── components/
-│   │   │   ├── VideoPlayer.tsx   # Video.js wrapper with HLS
+│   │   │   ├── VideoPlayer.tsx   # Video.js wrapper with HLS + autoplay
+│   │   │   ├── MiniPlayer.tsx    # Modal overlay player component
 │   │   │   └── ThemeSelector.tsx # Theme switcher UI
 │   │   ├── contexts/
-│   │   │   └── ThemeContext.tsx  # Theme management
+│   │   │   ├── ThemeContext.tsx  # Theme management
+│   │   │   └── PlayerContext.tsx # Modal player state management
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Axios API client
 │   │   │   ├── theme.ts          # Theme definitions
@@ -149,6 +161,166 @@ media-player/
   item.tags.some((tag) => selectedTags.includes(tag.id))
   ```
 - **UI Pattern**: Modal-based tag addition with existing tag quick-select
+
+### Gallery Filter Persistence
+
+**User Experience**: All gallery filter settings are preserved when users navigate away and return, maintaining their exact view state.
+
+#### Persisted State
+
+All filter states are stored in `localStorage` and restored on component mount:
+
+1. **Media Type Filter** (`gallery-filter`)
+   - Values: "all" | "video" | "audio"
+   - Lazy initialization from localStorage with default "all"
+
+2. **Search Query** (`gallery-search`)
+   - String value of current search input
+   - Restored exactly as typed
+
+3. **Selected Tags** (`gallery-tags`)
+   - Array of tag IDs (JSON serialized)
+   - Graceful error handling for parse failures
+
+4. **View Mode** (`gallery-view`)
+   - Values: "grid" | "list"
+   - Previously implemented
+
+#### Implementation Pattern
+
+```typescript
+// Lazy initialization (runs once on mount)
+const [filter, setFilter] = useState<"all" | "video" | "audio">(
+  () => (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") || "all"
+);
+
+const [searchQuery, setSearchQuery] = useState(
+  () => localStorage.getItem("gallery-search") || ""
+);
+
+const [selectedTags, setSelectedTags] = useState<number[]>(() => {
+  try {
+    const saved = localStorage.getItem("gallery-tags");
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+});
+
+// Sync to localStorage on state changes
+useEffect(() => {
+  localStorage.setItem("gallery-filter", filter);
+}, [filter]);
+
+useEffect(() => {
+  localStorage.setItem("gallery-search", searchQuery);
+}, [searchQuery]);
+
+useEffect(() => {
+  localStorage.setItem("gallery-tags", JSON.stringify(selectedTags));
+}, [selectedTags]);
+```
+
+#### Key Considerations
+
+- **Lazy Initialization**: Use function form of `useState` to read localStorage only once
+- **JSON Serialization**: Arrays (tags) must be stringified/parsed
+- **Error Handling**: Catch JSON parse errors for corrupted localStorage data
+- **Performance**: Each state has its own `useEffect` hook (avoids unnecessary updates)
+- **Type Safety**: Cast localStorage values to proper union types
+
+### Modal Player Architecture
+
+**Navigation UX Pattern**: Users click media cards to instantly play in a modal overlay without page navigation.
+
+#### Why Modal Instead of Page Navigation
+
+- **Instant Playback**: Start playing immediately without route transitions
+- **Context Preservation**: Stay on Gallery page while watching
+- **Quick Browsing**: Close and open different media rapidly
+- **Detail Page Available**: 3-dot menu on cards for full Player page access
+
+#### Implementation
+
+**1. PlayerContext** (`contexts/PlayerContext.tsx`)
+- Global state management following ThemeContext pattern
+- Manages current media, modal open state, session ID
+- `openPlayer(mediaId)`: Fetches full media details + variants via API
+- `closePlayer()`: Closes modal with 300ms delay for smooth animation
+- **Important**: Fetch media by ID, don't accept partial Media objects (Gallery list lacks variants)
+
+```typescript
+const openPlayer = useCallback(async (mediaId: string) => {
+  try {
+    const response = await mediaApi.getMediaById(mediaId);
+    setCurrentMedia(response.data);  // Full data with variants
+    setSessionId(Math.random().toString(36).substring(7));
+    setIsModalOpen(true);
+  } catch (error) {
+    console.error("Failed to load media:", error);
+  }
+}, []);
+```
+
+**2. MiniPlayer Component** (`components/MiniPlayer.tsx`)
+- Modal overlay with backdrop blur (`bg-black/60 backdrop-blur-sm`)
+- Fixed position (`fixed inset-0`) with high z-index (`z-[100]`)
+- Reuses existing VideoPlayer component with autoplay
+- Preserves all analytics tracking (play, pause, complete, progress milestones)
+- Click backdrop or X button to close
+- "View Full Details" button navigates to Player page and closes modal
+- Body scroll lock when modal is open (`document.body.style.overflow = "hidden"`)
+- Selects highest bitrate variant for playback
+
+```typescript
+const bestVariant = currentMedia.variants
+  ? currentMedia.variants.sort((a, b) => b.bitrate - a.bitrate)[0]
+  : null;
+```
+
+**3. Gallery Updates** (`pages/Gallery.tsx`)
+- Card click opens modal: `onClick={() => handleCardClick(item)}`
+- **Before**: `navigate(/player/${item.id})`
+- **After**: `openPlayer(item.id)`
+- Added 3-dot menu (`MoreVertical` icon) with "View Details" option
+- Menu click stops propagation to prevent card click
+- Menu positioned absolute, closes on backdrop click
+- Desktop only (grid view), also available in list view
+
+**4. VideoPlayer Autoplay** (`components/VideoPlayer.tsx`)
+- Added `autoplay?: boolean` prop
+- **Browser Requirement**: Start muted for autoplay to work
+- Unmute after playback begins to restore audio
+```typescript
+autoplay: autoplay || false,
+muted: autoplay ? true : false,  // Required by browsers
+
+if (autoplay) {
+  player.one("play", () => {
+    player.muted(false);  // Unmute after start
+  });
+}
+```
+
+**5. Provider Setup** (`main.tsx`)
+```typescript
+<ThemeProvider>
+  <PlayerProvider>
+    <App />
+  </PlayerProvider>
+</ThemeProvider>
+```
+
+**6. App Integration** (`App.tsx`)
+- Add `<MiniPlayer />` at root level (outside Router, inside providers)
+- Renders only when `isModalOpen === true`
+
+#### Common Issues
+
+1. **Undefined Variants Error**: Always fetch full media via API, don't use Gallery list data
+2. **Autoplay Blocked**: Must start muted, then unmute after play event
+3. **Scroll Behind Modal**: Set `document.body.style.overflow = "hidden"` and restore on unmount
+4. **Analytics Lost**: Preserve session ID and all event tracking in MiniPlayer
 
 ### Bandwidth Tracking Architecture
 
@@ -326,6 +498,9 @@ VITE_API_URL=http://localhost:8080/api
 6. **Tag Creation**: Backend uses case-insensitive matching to prevent duplicates
 7. **Bandwidth Calculation**: Uses HLS variant sizes, not original file sizes (more accurate)
 8. **Hostname Resolution**: May be slow with many IPs; done at query time to avoid delays during tracking
+9. **Modal Player Data**: Always fetch full media via `mediaApi.getMediaById()`, Gallery list lacks variants
+10. **Autoplay Requirements**: Must start muted (`muted: true`) then unmute after play event to bypass browser restrictions
+11. **Filter Persistence**: Use lazy initialization `useState(() => localStorage.getItem(...))` to avoid reading on every render; wrap JSON.parse in try/catch for safety
 
 ## Future Enhancements
 

@@ -6,6 +6,7 @@ import "video.js/dist/video-js.css";
 interface VideoPlayerProps {
   src: string;
   poster?: string;
+  autoplay?: boolean;
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
@@ -18,7 +19,7 @@ export interface VideoPlayerRef {
 }
 
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
-  ({ src, poster, onPlay, onPause, onEnded, onTimeUpdate }, ref) => {
+  ({ src, poster, autoplay, onPlay, onPause, onEnded, onTimeUpdate }, ref) => {
     const videoRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<Player | null>(null);
 
@@ -46,6 +47,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           preload: "auto",
           poster,
           playsinline: true,
+          autoplay: autoplay || false,
+          muted: autoplay ? true : false, // Mute if autoplay (required for most browsers)
           sources: [
             {
               src,
@@ -71,6 +74,14 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
             nativeTextTracks: false,
           },
         });
+
+        // Handle autoplay - unmute after play starts if autoplay was enabled
+        if (autoplay) {
+          player.one("play", () => {
+            // Unmute after first play to avoid autoplay restrictions
+            player.muted(false);
+          });
+        }
 
         // Event listeners
         if (onPlay) player.on("play", onPlay);

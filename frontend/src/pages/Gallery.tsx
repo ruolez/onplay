@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { mediaApi, Media, Tag } from "../lib/api";
 import { formatDuration, formatFileSize, formatDate } from "../lib/utils";
+import { usePlayer } from "../contexts/PlayerContext";
 import {
   Play,
   Music,
@@ -15,13 +16,20 @@ import {
   Grid3x3,
   List,
   Tag as TagIcon,
+  MoreVertical,
 } from "lucide-react";
 
 export default function Gallery() {
   const [media, setMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "video" | "audio">("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "video" | "audio">(
+    () =>
+      (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") ||
+      "all",
+  );
+  const [searchQuery, setSearchQuery] = useState(
+    () => localStorage.getItem("gallery-search") || "",
+  );
   const [viewMode, setViewMode] = useState<"grid" | "list">(
     () => (localStorage.getItem("gallery-view") as "grid" | "list") || "grid",
   );
@@ -39,18 +47,42 @@ export default function Gallery() {
   const [newFilename, setNewFilename] = useState("");
   const [loadTime] = useState(Date.now());
   const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem("gallery-tags");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [tagModal, setTagModal] = useState<{
     show: boolean;
     mediaId: string | null;
   }>({ show: false, mediaId: null });
   const [tagInput, setTagInput] = useState("");
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { openPlayer } = usePlayer();
 
   const toggleViewMode = (mode: "grid" | "list") => {
     setViewMode(mode);
     localStorage.setItem("gallery-view", mode);
   };
+
+  // Persist filter to localStorage
+  useEffect(() => {
+    localStorage.setItem("gallery-filter", filter);
+  }, [filter]);
+
+  // Persist search query to localStorage
+  useEffect(() => {
+    localStorage.setItem("gallery-search", searchQuery);
+  }, [searchQuery]);
+
+  // Persist selected tags to localStorage
+  useEffect(() => {
+    localStorage.setItem("gallery-tags", JSON.stringify(selectedTags));
+  }, [selectedTags]);
 
   useEffect(() => {
     loadMedia();
@@ -184,6 +216,23 @@ export default function Gallery() {
     setTagInput("");
   };
 
+  const handleMenuClick = (e: React.MouseEvent, mediaId: string) => {
+    e.stopPropagation();
+    setMenuOpen(menuOpen === mediaId ? null : mediaId);
+  };
+
+  const handleViewDetails = (e: React.MouseEvent, mediaId: string) => {
+    e.stopPropagation();
+    setMenuOpen(null);
+    navigate(`/player/${mediaId}`);
+  };
+
+  const handleCardClick = (item: Media) => {
+    if (item.status === "ready") {
+      openPlayer(item.id);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
@@ -311,9 +360,7 @@ export default function Gallery() {
           {filteredMedia.map((item) => (
             <div
               key={item.id}
-              onClick={() =>
-                item.status === "ready" && navigate(`/player/${item.id}`)
-              }
+              onClick={() => handleCardClick(item)}
               className={`group relative theme-card rounded-lg sm:rounded-xl overflow-hidden transition-transform active:scale-95 sm:hover:scale-105 ${
                 item.status === "ready" ? "cursor-pointer" : "cursor-default"
               }`}
@@ -389,6 +436,25 @@ export default function Gallery() {
                     >
                       <Trash2 className="w-4 h-4 text-red-500" />
                     </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => handleMenuClick(e, item.id)}
+                        className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                        title="More options"
+                      >
+                        <MoreVertical className="w-4 h-4 theme-text-muted" />
+                      </button>
+                      {menuOpen === item.id && (
+                        <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-50">
+                          <button
+                            onClick={(e) => handleViewDetails(e, item.id)}
+                            className="w-full text-left px-4 py-2 rounded-lg transition-colors theme-dropdown-item text-sm"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -431,9 +497,7 @@ export default function Gallery() {
           {filteredMedia.map((item) => (
             <div
               key={item.id}
-              onClick={() =>
-                item.status === "ready" && navigate(`/player/${item.id}`)
-              }
+              onClick={() => handleCardClick(item)}
               className={`theme-card rounded-lg p-2 transition-all ${
                 item.status === "ready"
                   ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
@@ -522,6 +586,26 @@ export default function Gallery() {
                   >
                     <Trash2 className="w-3.5 h-3.5 text-red-500" />
                   </button>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => handleMenuClick(e, item.id)}
+                      className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                      title="More options"
+                      aria-label="More options"
+                    >
+                      <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
+                    </button>
+                    {menuOpen === item.id && (
+                      <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-50">
+                        <button
+                          onClick={(e) => handleViewDetails(e, item.id)}
+                          className="w-full text-left px-4 py-2 rounded-lg transition-colors theme-dropdown-item text-sm"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
