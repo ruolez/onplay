@@ -224,33 +224,6 @@ export default function Gallery() {
           />
         </div>
 
-        {/* Tag Filters */}
-        {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {allTags.map((tag) => (
-              <button
-                key={tag.id}
-                onClick={() => toggleTagFilter(tag.id)}
-                className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[36px] ${
-                  selectedTags.includes(tag.id)
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-              >
-                {tag.name}
-              </button>
-            ))}
-            {selectedTags.length > 0 && (
-              <button
-                onClick={() => setSelectedTags([])}
-                className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors min-h-[36px]"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Filters and View Toggle */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex space-x-2 sm:space-x-4 overflow-x-auto">
@@ -295,6 +268,33 @@ export default function Gallery() {
             </button>
           </div>
         </div>
+
+        {/* Tag Filters */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {allTags.map((tag) => (
+              <button
+                key={tag.id}
+                onClick={() => toggleTagFilter(tag.id)}
+                className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[36px] ${
+                  selectedTags.includes(tag.id)
+                    ? "theme-btn-primary"
+                    : "theme-btn-secondary"
+                }`}
+              >
+                {tag.name}
+              </button>
+            ))}
+            {selectedTags.length > 0 && (
+              <button
+                onClick={() => setSelectedTags([])}
+                className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors min-h-[36px]"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Media Grid/List */}
@@ -427,132 +427,100 @@ export default function Gallery() {
           ))}
         </div>
       ) : (
-        <div className="space-y-2 sm:space-y-3">
+        <div className="space-y-1">
           {filteredMedia.map((item) => (
             <div
               key={item.id}
               onClick={() =>
                 item.status === "ready" && navigate(`/player/${item.id}`)
               }
-              className={`theme-card rounded-lg sm:rounded-xl p-3 sm:p-4 transition-all ${
+              className={`theme-card rounded-lg p-2 transition-all ${
                 item.status === "ready"
                   ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
                   : "cursor-default"
               }`}
             >
-              <div className="flex gap-3 sm:gap-4">
-                {/* Thumbnail */}
-                <div
-                  className="relative w-28 h-20 sm:w-40 sm:h-24 rounded-lg overflow-hidden flex-shrink-0"
-                  style={{ background: "var(--card-bg)" }}
-                >
-                  {item.thumbnail_path ? (
-                    <img
-                      src={`${item.thumbnail_path}?t=${loadTime}`}
-                      alt={item.filename}
-                      className="w-full h-full object-cover"
-                    />
+              <div className="flex items-center gap-2">
+                {/* Media Type Icon */}
+                <div className="flex-shrink-0">
+                  {item.media_type === "video" ? (
+                    <Play className="w-4 h-4 theme-text-muted" />
                   ) : (
-                    <div className="flex items-center justify-center h-full">
-                      {item.media_type === "video" ? (
-                        <Play className="w-10 h-10 theme-text-muted opacity-50" />
-                      ) : (
-                        <Music className="w-10 h-10 theme-text-muted opacity-50" />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Status badge */}
-                  {item.status !== "ready" && (
-                    <div className="absolute top-2 right-2">
-                      <div
-                        className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(item.status)}`}
-                      >
-                        {item.status}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Play overlay */}
-                  {item.status === "ready" && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Play className="w-8 h-8 theme-text-primary" />
-                    </div>
+                    <Music className="w-4 h-4 theme-text-muted" />
                   )}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between mb-1 sm:mb-2">
-                    <h3 className="theme-text-primary font-medium text-sm sm:text-base lg:text-lg truncate flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="theme-text-primary font-medium text-xs sm:text-sm truncate flex-1">
                       {item.filename}
                     </h3>
+
+                    {/* Status badge inline */}
+                    {item.status !== "ready" && (
+                      <div
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white flex-shrink-0 ${getStatusColor(item.status)}`}
+                      >
+                        {item.status}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm theme-text-muted mb-2">
-                    <div className="flex items-center space-x-1">
-                      <span className="capitalize font-medium">
-                        {item.media_type}
-                      </span>
-                    </div>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-xs theme-text-muted mt-0.5">
                     {item.duration && (
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <div className="flex items-center space-x-0.5">
+                        <Clock className="w-3 h-3" />
                         <span>{formatDuration(item.duration)}</span>
                       </div>
                     )}
                     {item.file_size && (
-                      <div className="hidden sm:flex items-center space-x-1">
-                        <HardDrive className="w-4 h-4" />
+                      <div className="flex items-center space-x-0.5">
+                        <HardDrive className="w-3 h-3" />
                         <span>{formatFileSize(item.file_size)}</span>
                       </div>
                     )}
+                    {/* Tags inline with metadata */}
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
+                        className="px-1.5 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-[10px] theme-text-secondary cursor-pointer transition-colors"
+                        title="Click to remove"
+                      >
+                        {tag.name} ×
+                      </span>
+                    ))}
                   </div>
-
-                  {/* Tags */}
-                  {item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {item.tags.map((tag) => (
-                        <span
-                          key={tag.id}
-                          onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
-                          className="px-1.5 sm:px-2 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-xs theme-text-secondary cursor-pointer transition-colors"
-                          title="Click to remove"
-                        >
-                          {tag.name} ×
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1 flex-shrink-0">
+                <div className="flex space-x-0.5 flex-shrink-0 items-center">
                   <button
                     onClick={(e) => handleTagClick(e, item.id)}
-                    className="p-2 rounded hover:bg-white/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+                    className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                     title="Add tag"
                     aria-label="Add tag"
                   >
-                    <TagIcon className="w-4 h-4 theme-text-muted" />
+                    <TagIcon className="w-3.5 h-3.5 theme-text-muted" />
                   </button>
                   <button
                     onClick={(e) =>
                       handleRenameClick(e, item.id, item.filename)
                     }
-                    className="p-2 rounded hover:bg-white/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+                    className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                     title="Rename"
                     aria-label="Rename"
                   >
-                    <Edit2 className="w-4 h-4 theme-text-muted" />
+                    <Edit2 className="w-3.5 h-3.5 theme-text-muted" />
                   </button>
                   <button
                     onClick={(e) => handleDeleteClick(e, item.id)}
-                    className="p-2 rounded hover:bg-red-500/20 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+                    className="p-1.5 rounded hover:bg-red-500/20 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                     title="Delete"
                     aria-label="Delete"
                   >
-                    <Trash2 className="w-4 h-4 text-red-500" />
+                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
                   </button>
                 </div>
               </div>

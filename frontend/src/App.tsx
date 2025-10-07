@@ -54,7 +54,7 @@ function AppContent() {
                 className="transition-colors flex items-center space-x-2 theme-nav-link min-h-[44px] px-2"
               >
                 <Film className="w-5 h-5" />
-                <span>Gallery</span>
+                <span>Home</span>
               </Link>
               <Link
                 to="/upload"
@@ -98,7 +98,7 @@ function AppContent() {
                 className="flex items-center space-x-3 theme-nav-link p-3 rounded-lg hover:bg-white/5 transition-colors min-h-[44px]"
               >
                 <Film className="w-5 h-5" />
-                <span>Gallery</span>
+                <span>Home</span>
               </Link>
               <Link
                 to="/upload"
