@@ -126,8 +126,8 @@ export default function PersistentPlayer() {
 
   return (
     <>
-      {/* Hidden VideoPlayer - handles actual playback */}
-      <div className="hidden">
+      {/* Video Player - positioned off-screen but not hidden (required for fullscreen to work) */}
+      <div className="fixed -top-[9999px] -left-[9999px] pointer-events-none">
         <VideoPlayer
           ref={playerRef}
           src={playerSrc}
