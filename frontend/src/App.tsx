@@ -77,9 +77,10 @@ function AppContent() {
               onClick={() => setMobileMenuOpen(false)}
             >
               <svg
-                className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 theme-icon-accent"
+                className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10"
                 viewBox="0 0 32 32"
                 fill="none"
+                style={{ color: "#14b8a6" }}
               >
                 <circle
                   cx="16"

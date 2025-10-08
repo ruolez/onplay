@@ -25,7 +25,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeType>(() => {
     const saved = localStorage.getItem("theme");
-    return (saved as ThemeType) || "jade";
+    return (saved as ThemeType) || "eclipse";
   });
 
   useEffect(() => {
