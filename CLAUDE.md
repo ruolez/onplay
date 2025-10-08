@@ -16,6 +16,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 ## Key Features
 
 ### Media Processing
+
 - **HLS Streaming**: Adaptive bitrate streaming with multiple quality variants
   - Video: 1080p, 720p, 480p, 360p (auto-scaled based on source)
   - Audio: 320kbps, 128kbps, 64kbps
@@ -25,6 +26,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 - **Metadata Extraction**: Duration, bitrate, codec, resolution via FFmpeg probe
 
 ### User Interface
+
 - **8 Professional Themes**: Slate, Jade, Midnight, Charcoal, Graphite, Onyx, Steel, Eclipse
   - Minimal shadows, subtle borders (0.06 opacity)
   - True dark backgrounds with mesh gradients
@@ -41,19 +43,26 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Full-width search input (Gallery route only)
   - Compact theme selector with 2-column grid layout
   - Search state synced via URL params between mobile/desktop
-- **Modal Player**: Click media cards to open instant-play modal overlay
-  - Darkened/blurred background
-  - Autoplay with Video.js HLS streaming
+- **Persistent Bottom Bar Player**: Spotify-style player that stays at bottom of screen
+  - Click media cards to load into persistent player
+  - Audio files play in background with controls always visible
+  - Video files auto-fullscreen immediately on play
+  - After exiting fullscreen, video continues in bottom bar
+  - Works across all routes without interruption
   - 3-dot menu on cards for full detail page access
   - Analytics tracking preserved (play, pause, complete, progress)
+  - Fullscreen toggle button for re-entering fullscreen
+  - Seekable progress bar with hover feedback
+  - Volume control with mute toggle (desktop only)
 - **Autoplay Queue**: Continuous playback of media items
   - Auto-advances to next track when current finishes
   - Queue based on filtered Gallery view (respects search/tags/type filters)
-  - Previous/next navigation buttons in modal player
+  - Previous/next navigation buttons in bottom bar
   - Queue position indicator (e.g., "3 / 15")
   - Each track gets unique analytics session
 
 ### Analytics
+
 - **Event Tracking**: Play, pause, complete, progress milestones (25%, 50%, 75%)
 - **Completion Rates**: Per-media analytics
 - **Session-based Tracking**: Unique session IDs
@@ -64,6 +73,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Top sources display showing bandwidth consumers
 
 ### Media Management
+
 - **Password-protected Deletion**: Hardcoded password "ddd"
 - **Rename Functionality**: Update media filenames
 - **Custom Thumbnails**: Pause video and set current frame as thumbnail
@@ -101,13 +111,13 @@ media-player/
 │   │   │   ├── Player.tsx        # Video player with analytics
 │   │   │   └── Stats.tsx         # Dashboard with bandwidth tracking
 │   │   ├── components/
-│   │   │   ├── VideoPlayer.tsx      # Video.js wrapper with HLS + autoplay
-│   │   │   ├── MiniPlayer.tsx       # Modal overlay player component
-│   │   │   ├── ThemeSelector.tsx    # Theme switcher UI
-│   │   │   └── SegmentedControl.tsx # iOS-style segmented control for filters
+│   │   │   ├── VideoPlayer.tsx         # Video.js wrapper with HLS + autoplay
+│   │   │   ├── PersistentPlayer.tsx    # Bottom bar player component
+│   │   │   ├── ThemeSelector.tsx       # Theme switcher UI
+│   │   │   └── SegmentedControl.tsx    # iOS-style segmented control for filters
 │   │   ├── contexts/
 │   │   │   ├── ThemeContext.tsx  # Theme management
-│   │   │   └── PlayerContext.tsx # Modal player state management
+│   │   │   └── PlayerContext.tsx # Persistent player state management
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Axios API client
 │   │   │   ├── theme.ts          # Theme definitions
@@ -120,6 +130,7 @@ media-player/
 ## Important Implementation Details
 
 ### FFmpeg Video Processing
+
 - **Stream Separation**: Always separate video and audio streams
   ```python
   input_stream = ffmpeg.input(input_path)
@@ -130,6 +141,7 @@ media-player/
 - **Prevent Audio Loss**: Never apply video filters to combined stream
 
 ### Cache-busting Strategy
+
 - **Problem**: Browser caches thumbnail images after update
 - **Solution**: Append timestamp query param `?t=${timestamp}`
   ```tsx
@@ -137,6 +149,7 @@ media-player/
   ```
 
 ### Theme System
+
 - **CSS Variables**: Dynamic theming without page reload
 - **Type Safety**: Union type for all theme names
   ```typescript
@@ -156,15 +169,17 @@ media-player/
   - Eclipse (grayscale): `#ff9f1c` amber gold for grayscale warmth
 
 ### VideoPlayer Ref Pattern
+
 - **Expose Methods**: Use `forwardRef` + `useImperativeHandle`
   ```typescript
   export interface VideoPlayerRef {
-    getCurrentTime: () => number
-    getPlayer: () => Player | null
+    getCurrentTime: () => number;
+    getPlayer: () => Player | null;
   }
   ```
 
 ### Audio Thumbnail Design Principles
+
 - **Smooth Mesh Gradients**: Multi-point distance-based blending
 - **Glassmorphism**: Semi-transparent layers with blur effects
 - **Organic Waveforms**: Combined sine waves (3+ frequencies)
@@ -172,6 +187,7 @@ media-player/
 - **Multiple Blur Passes**: Background + elements + final sharpen
 
 ### Tagging System Architecture
+
 - **Database Models** (models.py):
   - `Tag` table with unique name constraint and index
   - `media_tags` junction table for many-to-many relationship
@@ -182,7 +198,7 @@ media-player/
   ```
 - **Filtering Logic**: OR operation - shows media with ANY selected tag
   ```typescript
-  item.tags.some((tag) => selectedTags.includes(tag.id))
+  item.tags.some((tag) => selectedTags.includes(tag.id));
   ```
 - **UI Pattern**: Modal-based tag addition with existing tag quick-select
 
@@ -215,11 +231,13 @@ All filter states are stored in `localStorage` and restored on component mount:
 ```typescript
 // Lazy initialization (runs once on mount)
 const [filter, setFilter] = useState<"all" | "video" | "audio">(
-  () => (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") || "all"
+  () =>
+    (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") ||
+    "all",
 );
 
 const [searchQuery, setSearchQuery] = useState(
-  () => localStorage.getItem("gallery-search") || ""
+  () => localStorage.getItem("gallery-search") || "",
 );
 
 const [selectedTags, setSelectedTags] = useState<number[]>(() => {
@@ -253,98 +271,159 @@ useEffect(() => {
 - **Performance**: Each state has its own `useEffect` hook (avoids unnecessary updates)
 - **Type Safety**: Cast localStorage values to proper union types
 
-### Modal Player Architecture
+### Persistent Player Architecture
 
-**Navigation UX Pattern**: Users click media cards to instantly play in a modal overlay without page navigation.
+**UX Pattern**: Spotify-style persistent player that stays at the bottom of the screen across all routes, providing uninterrupted playback.
 
-#### Why Modal Instead of Page Navigation
+#### Why Persistent Bottom Bar
 
-- **Instant Playback**: Start playing immediately without route transitions
-- **Context Preservation**: Stay on Gallery page while watching
-- **Quick Browsing**: Close and open different media rapidly
-- **Detail Page Available**: 3-dot menu on cards for full Player page access
+- **Continuous Playback**: Audio and video continue playing while browsing
+- **Always Accessible**: Controls visible at all times without modal overlay
+- **Natural UX**: Industry-standard pattern (Spotify, YouTube Music, Apple Music)
+- **Video Fullscreen**: Auto-enters browser fullscreen for videos, with manual toggle
+- **Route Independence**: Works across all pages (Gallery, Upload, Stats)
 
 #### Implementation
 
 **1. PlayerContext** (`contexts/PlayerContext.tsx`)
-- Global state management following ThemeContext pattern
-- Manages current media, modal open state, session ID
-- `openPlayer(mediaId)`: Fetches full media details + variants via API
-- `closePlayer()`: Closes modal with 300ms delay for smooth animation
+
+- Global state management with playback controls
+- Manages: current media, session ID, playback state (isPlaying, currentTime, duration, volume)
+- `openPlayer(mediaId, queueItems)`: Fetches full media details + variants via API
+- `closePlayer()`: Stops playback and hides bottom bar
+- `togglePlayPause()`, `seek()`, `setVolume()`: Playback control methods
+- Exposes `playerRef` for direct VideoPlayer access
 - **Important**: Fetch media by ID, don't accept partial Media objects (Gallery list lacks variants)
 
 ```typescript
-const openPlayer = useCallback(async (mediaId: string) => {
-  try {
-    const response = await mediaApi.getMediaById(mediaId);
-    setCurrentMedia(response.data);  // Full data with variants
-    setSessionId(Math.random().toString(36).substring(7));
-    setIsModalOpen(true);
-  } catch (error) {
-    console.error("Failed to load media:", error);
-  }
-}, []);
-```
-
-**2. MiniPlayer Component** (`components/MiniPlayer.tsx`)
-- Modal overlay with backdrop blur (`bg-black/60 backdrop-blur-sm`)
-- Fixed position (`fixed inset-0`) with high z-index (`z-[100]`)
-- Reuses existing VideoPlayer component with autoplay
-- Preserves all analytics tracking (play, pause, complete, progress milestones)
-- Click backdrop or X button to close
-- "View Full Details" button navigates to Player page and closes modal
-- Body scroll lock when modal is open (`document.body.style.overflow = "hidden"`)
-- Selects highest bitrate variant for playback
-
-```typescript
-const bestVariant = currentMedia.variants
-  ? currentMedia.variants.sort((a, b) => b.bitrate - a.bitrate)[0]
-  : null;
-```
-
-**3. Gallery Updates** (`pages/Gallery.tsx`)
-- Card click opens modal: `onClick={() => handleCardClick(item)}`
-- **Before**: `navigate(/player/${item.id})`
-- **After**: `openPlayer(item.id)`
-- Added 3-dot menu (`MoreVertical` icon) with "View Details" option
-- Menu click stops propagation to prevent card click
-- Menu positioned absolute, closes on backdrop click
-- Desktop only (grid view), also available in list view
-
-**4. VideoPlayer Autoplay** (`components/VideoPlayer.tsx`)
-- Added `autoplay?: boolean` prop
-- **Browser Requirement**: Start muted for autoplay to work
-- Unmute after playback begins to restore audio
-```typescript
-autoplay: autoplay || false,
-muted: autoplay ? true : false,  // Required by browsers
-
-if (autoplay) {
-  player.one("play", () => {
-    player.muted(false);  // Unmute after start
-  });
+interface PlayerContextType {
+  currentMedia: Media | null;
+  sessionId: string;
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  openPlayer: (mediaId: string, queueItems?: Media[]) => Promise<void>;
+  closePlayer: () => void;
+  togglePlayPause: () => void;
+  seek: (time: number) => void;
+  setVolume: (volume: number) => void;
+  // ... queue methods
 }
 ```
 
-**5. Provider Setup** (`main.tsx`)
+**2. PersistentPlayer Component** (`components/PersistentPlayer.tsx`)
+
+- Fixed bottom bar (`fixed bottom-0`) with 85px height
+- VideoPlayer positioned off-screen (not hidden) for fullscreen to work properly
+  - `className="fixed -top-[9999px] -left-[9999px] pointer-events-none"`
+  - Prevents fullscreen from showing empty wrapper
+- Smooth slide-up animation on media load
+- **Layout sections**:
+  - **Left**: Thumbnail (56x56) + Title + Time display
+  - **Center**: Previous/Play-Pause/Next controls + Seekable progress bar
+  - **Right**: Volume slider (desktop) + Fullscreen button (video only) + Queue position + Close button
+- Auto-fullscreen for video files on first play event
+- Fullscreen state tracking across browser vendors (fullscreenchange events)
+- Preserves all analytics tracking (play, pause, complete, progress milestones)
+
 ```typescript
-<ThemeProvider>
-  <PlayerProvider>
-    <App />
-  </PlayerProvider>
-</ThemeProvider>
+// Auto-fullscreen on play event (not timer - ensures user gesture is fresh)
+onPlay={() => {
+  setIsPlaying(true);
+  trackEvent("play");
+
+  if (currentMedia?.media_type === "video" && !hasTriggeredFullscreen) {
+    const player = playerRef.current.getPlayer();
+    player?.requestFullscreen();
+    setHasTriggeredFullscreen(true);
+  }
+}}
 ```
 
-**6. App Integration** (`App.tsx`)
-- Add `<MiniPlayer />` at root level (outside Router, inside providers)
-- Renders only when `isModalOpen === true`
+**3. VideoPlayer Enhancements** (`components/VideoPlayer.tsx`)
+
+- Added `play()`, `pause()`, `seek()`, `setVolume()` methods to ref
+- Added `onDurationChange` callback prop
+- **Autoplay Requirement**: Start muted for browser autoplay policy
+- Unmute after playback begins to restore audio
+
+```typescript
+export interface VideoPlayerRef {
+  getCurrentTime: () => number;
+  getPlayer: () => Player | null;
+  play: () => Promise<void>;
+  pause: () => void;
+  seek: (time: number) => void;
+  setVolume: (volume: number) => void;
+}
+```
+
+**4. Gallery Integration** (`pages/Gallery.tsx`)
+
+- Card click loads into persistent player: `openPlayer(item.id, filteredMedia)`
+- Passes filtered media list as queue for autoplay
+- 3-dot menu (`MoreVertical` icon) with "View Details" option for full Player page
+- Desktop only (grid view), also available in list view
+
+**5. App Layout** (`App.tsx`)
+
+- Add `pb-24` (96px padding) to main container for bottom bar clearance
+- Add `<PersistentPlayer />` at root level (outside Router, inside providers)
+- Always rendered, visibility controlled by PlayerContext state
+
+```typescript
+<div className="min-h-screen theme-bg pb-24">
+  <Routes>...</Routes>
+  <PersistentPlayer />
+</div>
+```
+
+**6. Fullscreen Behavior**
+
+- **Auto-fullscreen**: Videos trigger fullscreen on first play event
+- **Manual Toggle**: Fullscreen button (Maximize/Minimize icon) for re-entering
+- **Exit Fullscreen**: Press ESC or click Minimize button
+- **After Exit**: Video continues in bottom bar as small preview
+- **State Tracking**: Listens to fullscreenchange events across browsers
+
+```typescript
+// Fullscreen toggle
+const toggleFullscreen = () => {
+  const player = playerRef.current?.getPlayer();
+  if (isFullscreen) {
+    document.exitFullscreen();
+  } else {
+    player?.requestFullscreen();
+  }
+};
+
+// Track fullscreen state
+useEffect(() => {
+  const handleFullscreenChange = () => {
+    setIsFullscreen(!!document.fullscreenElement);
+  };
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  // ... other vendor prefixes
+}, []);
+```
+
+#### Key Features
+
+- **Audio Files**: Play in background, controls always visible, never fullscreen
+- **Video Files**: Auto-fullscreen on play, continue in bar after exit, manual fullscreen toggle
+- **Seekable Progress**: Click progress bar to jump to any position, hover shows dot indicator
+- **Volume Control**: Slider with mute toggle (desktop only, hidden on mobile)
+- **Queue Position**: Shows "3 / 15" indicator when queue is active
+- **Cross-Route**: Works seamlessly across Gallery, Upload, Stats pages
 
 #### Common Issues
 
-1. **Undefined Variants Error**: Always fetch full media via API, don't use Gallery list data
-2. **Autoplay Blocked**: Must start muted, then unmute after play event
-3. **Scroll Behind Modal**: Set `document.body.style.overflow = "hidden"` and restore on unmount
-4. **Analytics Lost**: Preserve session ID and all event tracking in MiniPlayer
+1. **Fullscreen Timing**: Use play event trigger (not timer) to avoid expired user gesture
+2. **Hidden Element**: VideoPlayer must be positioned off-screen (not `display: none`) for fullscreen to work
+3. **Autoplay Policy**: Must start muted, then unmute after play event
+4. **Undefined Variants**: Always fetch full media via API, don't use Gallery list data
+5. **Analytics Preserved**: All tracking events work identically to modal player
 
 ### Autoplay Queue Architecture
 
@@ -360,31 +439,32 @@ if (autoplay) {
 #### Implementation
 
 **1. PlayerContext State** (`contexts/PlayerContext.tsx`)
+
 ```typescript
 const [queue, setQueue] = useState<Media[]>([]);
 const [currentIndex, setCurrentIndex] = useState<number>(-1);
 
 // Updated openPlayer signature
-const openPlayer = useCallback(async (
-  mediaId: string,
-  queueItems?: Media[]
-) => {
-  // Store queue and find current position
-  if (queueItems && queueItems.length > 0) {
-    const index = queueItems.findIndex(item => item.id === mediaId);
-    setQueue(queueItems);
-    setCurrentIndex(index >= 0 ? index : 0);
-  } else {
-    setQueue([]);
-    setCurrentIndex(-1);
-  }
+const openPlayer = useCallback(
+  async (mediaId: string, queueItems?: Media[]) => {
+    // Store queue and find current position
+    if (queueItems && queueItems.length > 0) {
+      const index = queueItems.findIndex((item) => item.id === mediaId);
+      setQueue(queueItems);
+      setCurrentIndex(index >= 0 ? index : 0);
+    } else {
+      setQueue([]);
+      setCurrentIndex(-1);
+    }
 
-  // Fetch full media details
-  const response = await mediaApi.getMediaById(mediaId);
-  setCurrentMedia(response.data);
-  setSessionId(Math.random().toString(36).substring(7));
-  setIsModalOpen(true);
-}, []);
+    // Fetch full media details
+    const response = await mediaApi.getMediaById(mediaId);
+    setCurrentMedia(response.data);
+    setSessionId(Math.random().toString(36).substring(7));
+    setIsModalOpen(true);
+  },
+  [],
+);
 
 // Navigation methods
 const playNext = useCallback(async () => {
@@ -393,7 +473,7 @@ const playNext = useCallback(async () => {
     const response = await mediaApi.getMediaById(nextItem.id);
     setCurrentMedia(response.data);
     setSessionId(Math.random().toString(36).substring(7));
-    setCurrentIndex(prev => prev + 1);
+    setCurrentIndex((prev) => prev + 1);
   }
 }, [currentIndex, queue]);
 
@@ -403,19 +483,21 @@ const playPrevious = useCallback(async () => {
     const response = await mediaApi.getMediaById(prevItem.id);
     setCurrentMedia(response.data);
     setSessionId(Math.random().toString(36).substring(7));
-    setCurrentIndex(prev => prev - 1);
+    setCurrentIndex((prev) => prev - 1);
   }
 }, [currentIndex, queue]);
 
 // Computed values
 const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
 const hasPrevious = currentIndex > 0;
-const queuePosition = queue.length > 0
-  ? { current: currentIndex + 1, total: queue.length }
-  : undefined;
+const queuePosition =
+  queue.length > 0
+    ? { current: currentIndex + 1, total: queue.length }
+    : undefined;
 ```
 
 **2. Gallery Integration** (`pages/Gallery.tsx`)
+
 ```typescript
 const handleCardClick = (item: Media) => {
   if (item.status === "ready") {
@@ -424,7 +506,8 @@ const handleCardClick = (item: Media) => {
 };
 ```
 
-**3. MiniPlayer Auto-Advance** (`components/MiniPlayer.tsx`)
+**3. PersistentPlayer Auto-Advance** (`components/PersistentPlayer.tsx`)
+
 ```typescript
 const { playNext, hasNext, hasPrevious, queuePosition } = usePlayer();
 
@@ -438,12 +521,15 @@ onEnded={async () => {
 
 // UI: Previous/Next buttons and position indicator
 <button onClick={playPrevious} disabled={!hasPrevious}>
-  <ChevronLeft />
+  <SkipBack />
+</button>
+<button onClick={togglePlayPause}>
+  {isPlaying ? <Pause /> : <Play />}
+</button>
+<button onClick={playNext} disabled={!hasNext}>
+  <SkipForward />
 </button>
 <span>{queuePosition.current} / {queuePosition.total}</span>
-<button onClick={playNext} disabled={!hasNext}>
-  <ChevronRight />
-</button>
 ```
 
 #### Key Features
@@ -464,6 +550,7 @@ onEnded={async () => {
 - **Shared State**: Both use URL query parameter `?q=...` for synchronization
 
 **App.tsx (Mobile Navigation)**
+
 ```typescript
 const [mobileSearchQuery, setMobileSearchQuery] = useState(
   searchParams.get("q") || ""
@@ -493,6 +580,7 @@ const handleMobileSearchChange = (value: string) => {
 ```
 
 **Gallery.tsx (Desktop + State Sync)**
+
 ```typescript
 const urlSearchQuery = searchParams.get("q") || "";
 
@@ -532,6 +620,7 @@ useEffect(() => {
 #### Implementation
 
 **Component** (`components/SegmentedControl.tsx`)
+
 ```typescript
 interface SegmentedOption<T extends string> {
   value: T;
@@ -548,6 +637,7 @@ interface SegmentedControlProps<T extends string> {
 ```
 
 **Key Features:**
+
 - **TypeScript Generics**: Type-safe values for any string union type
 - **Keyboard Navigation**: Arrow keys (Left/Right/Up/Down), Home/End keys
 - **ARIA Attributes**: `role="radiogroup"`, `role="radio"`, `aria-checked`
@@ -556,6 +646,7 @@ interface SegmentedControlProps<T extends string> {
 - **Visual Design**: Single-unit container with 1px padding, rounded-md internal segments
 
 **Usage Pattern:**
+
 ```typescript
 <SegmentedControl
   options={[
@@ -572,11 +663,13 @@ interface SegmentedControlProps<T extends string> {
 #### Visual Hierarchy Strategy
 
 **Gallery Filter Layout:**
+
 1. **Primary Filter** (Segmented Control): Orange accent, single-unit design
 2. **Secondary Filter** (Tag Pills): Same blue as view toggles, separate rounded pills
 3. **View Toggle**: Blue accent, icon-only buttons
 
 This creates clear visual distinction between:
+
 - **What you're filtering** (media type - orange segmented control)
 - **How you're filtering** (tags - blue pills)
 - **How you're viewing** (grid/list - blue icon buttons)
@@ -584,6 +677,7 @@ This creates clear visual distinction between:
 #### Styling
 
 **CSS Classes** (`index.css`):
+
 ```css
 .theme-segmented-control {
   background: var(--card-bg);
@@ -607,6 +701,7 @@ This creates clear visual distinction between:
 ```
 
 **Alignment Considerations:**
+
 - Use `items-center` for container alignment with view toggle buttons
 - Consistent height (`min-h-[38px]`) ensures perfect baseline alignment
 - Padding `p-1` (4px) creates visual separation between segments
@@ -626,12 +721,14 @@ OnPlay tracks **actual bandwidth** consumed by parsing Nginx access logs, provid
 #### How It Works
 
 **1. Nginx Logging**
+
 - Custom log format captures every HLS segment (.ts file) request
 - Log format: `IP|Timestamp|URI|Bytes|Status|RequestTime`
 - Separate bandwidth log: `/var/log/nginx/bandwidth.log`
 - Shared Docker volume allows worker containers to read logs
 
 **2. Celery Beat Scheduler**
+
 - Runs `process_bandwidth_logs_task` every 60 seconds
 - Incremental processing (tracks file position between runs)
 - Parses logs and extracts: IP, media_id, bytes_sent, timestamp
@@ -658,6 +755,7 @@ class BandwidthStats(Base):
 ```
 
 **4. Analytics API**
+
 - Queries `BandwidthStats` for dashboard
 - Real-time accurate bandwidth per IP
 - No estimation - actual bytes served
@@ -665,14 +763,14 @@ class BandwidthStats(Base):
 
 #### Advantages Over Previous System
 
-| Aspect | Old (Estimates) | New (Actual) |
-|--------|----------------|--------------|
-| **Data Source** | Media variant sizes | Nginx access logs |
-| **Accuracy** | ~50-70% accurate | 100% accurate |
-| **Method** | Median variant × completions | Sum of actual bytes served |
-| **Partial Plays** | Ignored | Counted accurately |
-| **Quality Switching** | Assumed one quality | Tracks all switches |
-| **Buffering/Seeking** | Not accounted for | Fully accounted for |
+| Aspect                | Old (Estimates)              | New (Actual)               |
+| --------------------- | ---------------------------- | -------------------------- |
+| **Data Source**       | Media variant sizes          | Nginx access logs          |
+| **Accuracy**          | ~50-70% accurate             | 100% accurate              |
+| **Method**            | Median variant × completions | Sum of actual bytes served |
+| **Partial Plays**     | Ignored                      | Counted accurately         |
+| **Quality Switching** | Assumed one quality          | Tracks all switches        |
+| **Buffering/Seeking** | Not accounted for            | Fully accounted for        |
 
 #### Architecture
 
@@ -707,7 +805,7 @@ Dashboard shows real bandwidth
 ```yaml
 # docker-compose.yml
 volumes:
-  nginx_logs:  # Shared between nginx, worker, and beat
+  nginx_logs: # Shared between nginx, worker, and beat
 
 nginx:
   volumes:
@@ -715,11 +813,11 @@ nginx:
 
 worker:
   volumes:
-    - nginx_logs:/var/log/nginx:ro  # Read-only
+    - nginx_logs:/var/log/nginx:ro # Read-only
 
 beat:
   volumes:
-    - nginx_logs:/var/log/nginx:ro  # Read-only
+    - nginx_logs:/var/log/nginx:ro # Read-only
 ```
 
 #### Monitoring
@@ -738,6 +836,7 @@ docker compose exec api python -c "from app.database import SessionLocal; from a
 ## API Endpoints
 
 ### Media
+
 - `POST /api/upload` - Upload media file
 - `GET /api/media` - List media (filterable by type, status) - includes tags array
 - `GET /api/media/{id}` - Get single media with variants and tags
@@ -746,11 +845,13 @@ docker compose exec api python -c "from app.database import SessionLocal; from a
 - `POST /api/media/{id}/thumbnail` - Set custom thumbnail from timestamp
 
 ### Tags
+
 - `GET /api/tags` - List all tags
 - `POST /api/media/{id}/tags` - Add tag to media (creates tag if doesn't exist)
 - `DELETE /api/media/{id}/tags/{tag_id}` - Remove tag from media
 
 ### Analytics
+
 - `POST /api/analytics/track` - Track playback event
 - `GET /api/analytics/media/{id}` - Get media analytics
 - `GET /api/analytics/overview` - Dashboard overview (includes bandwidth tracking)
@@ -795,14 +896,16 @@ VITE_API_URL=http://localhost:8080/api
 6. **Tag Creation**: Backend uses case-insensitive matching to prevent duplicates
 7. **Bandwidth Calculation**: Uses HLS variant sizes, not original file sizes (more accurate)
 8. **Hostname Resolution**: May be slow with many IPs; done at query time to avoid delays during tracking
-9. **Modal Player Data**: Always fetch full media via `mediaApi.getMediaById()`, Gallery list lacks variants
+9. **Persistent Player Data**: Always fetch full media via `mediaApi.getMediaById()`, Gallery list lacks variants
 10. **Autoplay Requirements**: Must start muted (`muted: true`) then unmute after play event to bypass browser restrictions
-11. **Filter Persistence**: Use lazy initialization `useState(() => localStorage.getItem(...))` to avoid reading on every render; wrap JSON.parse in try/catch for safety
-12. **Autoplay Queue**: Always pass `filteredMedia` (not `media`) to `openPlayer()` to respect active filters; each track needs new session ID
-13. **Mobile Search State**: Use URL params (`?q=...`) for search state, not localStorage, to sync between mobile top bar and desktop Gallery input
-14. **Theme Selector Mobile**: Use 2-column grid with `grid-cols-2 sm:grid-cols-1` and handle odd-numbered items with `col-span-2` on last item
-15. **Segmented Control Alignment**: Use consistent `min-h-[38px]` height and `items-center` alignment; each theme needs orange color that complements (not clashes with) primary button color
-16. **Filter Visual Hierarchy**: Primary filters (media type) use orange segmented control; secondary filters (tags) and view toggles use blue to create clear distinction
+11. **Fullscreen Timing**: Trigger fullscreen on play event (not timer) to ensure user gesture is still fresh and hasn't expired
+12. **VideoPlayer Positioning**: VideoPlayer must be positioned off-screen (not `display: none`) for fullscreen API to work properly; use `fixed -top-[9999px] -left-[9999px]`
+13. **Filter Persistence**: Use lazy initialization `useState(() => localStorage.getItem(...))` to avoid reading on every render; wrap JSON.parse in try/catch for safety
+14. **Autoplay Queue**: Always pass `filteredMedia` (not `media`) to `openPlayer()` to respect active filters; each track needs new session ID
+15. **Mobile Search State**: Use URL params (`?q=...`) for search state, not localStorage, to sync between mobile top bar and desktop Gallery input
+16. **Theme Selector Mobile**: Use 2-column grid with `grid-cols-2 sm:grid-cols-1` and handle odd-numbered items with `col-span-2` on last item
+17. **Segmented Control Alignment**: Use consistent `min-h-[38px]` height and `items-center` alignment; each theme needs orange color that complements (not clashes with) primary button color
+18. **Filter Visual Hierarchy**: Primary filters (media type) use orange segmented control; secondary filters (tags) and view toggles use blue to create clear distinction
 
 ## Future Enhancements
 
