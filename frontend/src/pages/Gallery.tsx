@@ -266,7 +266,7 @@ export default function Gallery() {
   });
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="container mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-6 sm:pb-8">
       {/* Controls */}
       <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
         {/* Search Bar (Desktop only - mobile uses top bar search) */}
