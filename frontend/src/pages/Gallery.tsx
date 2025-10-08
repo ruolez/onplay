@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { mediaApi, Media, Tag } from "../lib/api";
 import { formatDuration, formatFileSize } from "../lib/utils";
@@ -26,9 +26,7 @@ export default function Gallery() {
       (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") ||
       "all",
   );
-  const [searchQuery, setSearchQuery] = useState(
-    () => localStorage.getItem("gallery-search") || "",
-  );
+  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">(
     () => (localStorage.getItem("gallery-view") as "grid" | "list") || "grid",
   );
@@ -63,7 +61,9 @@ export default function Gallery() {
   const navigate = useNavigate();
   const { openPlayer } = usePlayer();
   const [searchParams, setSearchParams] = useSearchParams();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Read search from URL params
+  const urlSearchQuery = searchParams.get("q") || "";
 
   const toggleViewMode = (mode: "grid" | "list") => {
     setViewMode(mode);
@@ -75,10 +75,22 @@ export default function Gallery() {
     localStorage.setItem("gallery-filter", filter);
   }, [filter]);
 
-  // Persist search query to localStorage
+  // Sync URL search query to local state
   useEffect(() => {
-    localStorage.setItem("gallery-search", searchQuery);
-  }, [searchQuery]);
+    setSearchQuery(urlSearchQuery);
+  }, [urlSearchQuery]);
+
+  // Update URL when search changes (desktop only - mobile uses top bar)
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("q", value);
+    } else {
+      params.delete("q");
+    }
+    setSearchParams(params, { replace: true });
+  };
 
   // Persist selected tags to localStorage
   useEffect(() => {
@@ -89,15 +101,6 @@ export default function Gallery() {
     loadMedia();
     loadTags();
   }, [filter]);
-
-  // Auto-focus search input if navigated from top bar search button
-  useEffect(() => {
-    if (searchParams.get("focus") === "search" && searchInputRef.current) {
-      searchInputRef.current.focus();
-      // Remove the focus parameter from URL
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
 
   const loadMedia = async () => {
     try {
@@ -266,15 +269,14 @@ export default function Gallery() {
     <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Controls */}
       <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
-        {/* Search Bar */}
-        <div className="relative max-w-2xl">
+        {/* Search Bar (Desktop only - mobile uses top bar search) */}
+        <div className="hidden md:block relative max-w-2xl">
           <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 theme-text-muted" />
           <input
-            ref={searchInputRef}
             type="text"
             placeholder="Search media..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 sm:pl-12 pr-4 py-2 sm:py-3 rounded-xl theme-input focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base"
             style={{
               background: "var(--input-bg)",

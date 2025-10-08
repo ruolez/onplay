@@ -4,6 +4,8 @@ import {
   Route,
   Link,
   useLocation,
+  useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Gallery from "./pages/Gallery";
@@ -28,6 +30,11 @@ function AppContent() {
   const { theme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [mobileSearchQuery, setMobileSearchQuery] = useState(
+    searchParams.get("q") || "",
+  );
 
   useEffect(() => {
     const themeConfig = themes[theme];
@@ -40,6 +47,23 @@ function AppContent() {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Sync mobile search with URL params
+  useEffect(() => {
+    setMobileSearchQuery(searchParams.get("q") || "");
+  }, [searchParams]);
+
+  // Update URL when mobile search changes
+  const handleMobileSearchChange = (value: string) => {
+    setMobileSearchQuery(value);
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("q", value);
+    } else {
+      params.delete("q");
+    }
+    navigate(`?${params.toString()}`, { replace: true });
+  };
 
   return (
     <div className="min-h-screen theme-bg">
@@ -109,31 +133,37 @@ function AppContent() {
               <ThemeSelector />
             </div>
 
-            {/* Mobile Actions */}
-            <div className="md:hidden flex items-center space-x-1">
-              {/* Search Button */}
-              <Link
-                to="/?focus=search"
-                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
-                aria-label="Search"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Search className="w-5 h-5" />
-              </Link>
+            {/* Mobile Search Input (Gallery only) */}
+            {location.pathname === "/" && (
+              <div className="md:hidden flex-1 mx-2 relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 theme-text-muted pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={mobileSearchQuery}
+                  onChange={(e) => handleMobileSearchChange(e.target.value)}
+                  className="w-full pl-8 pr-2 py-1.5 rounded-lg text-sm theme-input focus:outline-none focus:ring-1 focus:ring-offset-1"
+                  style={{
+                    background: "var(--input-bg)",
+                    color: "var(--text-primary)",
+                    borderColor: "var(--card-border)",
+                  }}
+                />
+              </div>
+            )}
 
-              {/* Menu Button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-5 h-5" />
-                ) : (
-                  <Menu className="w-5 h-5" />
-                )}
-              </button>
-            </div>
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </button>
           </div>
         </div>
 
