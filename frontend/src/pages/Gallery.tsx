@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { mediaApi, Media, Tag } from "../lib/api";
 import { formatDuration, formatFileSize } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
+import SegmentedControl from "../components/SegmentedControl";
 import {
   Play,
   Music,
@@ -268,7 +269,7 @@ export default function Gallery() {
   return (
     <div className="container mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-6 sm:pb-8">
       {/* Controls */}
-      <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
+      <div className="mb-6 sm:mb-8 space-y-4 sm:space-y-6">
         {/* Search Bar (Desktop only - mobile uses top bar search) */}
         <div className="hidden md:block relative max-w-2xl">
           <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 theme-text-muted" />
@@ -288,19 +289,16 @@ export default function Gallery() {
 
         {/* Filters and View Toggle */}
         <div className="flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex space-x-2 sm:space-x-4 overflow-x-auto">
-            {["all", "video", "audio"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f as any)}
-                className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-all text-sm sm:text-base whitespace-nowrap min-h-[40px] ${
-                  filter === f ? "theme-btn-primary" : "theme-btn-secondary"
-                }`}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            options={[
+              { value: "all", label: "All" },
+              { value: "video", label: "Video" },
+              { value: "audio", label: "Audio" },
+            ]}
+            value={filter}
+            onChange={setFilter}
+            className="flex-1 sm:flex-initial"
+          />
 
           {/* View Mode Toggle */}
           <div className="flex space-x-2 flex-shrink-0">
