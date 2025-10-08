@@ -220,14 +220,15 @@ export default function PersistentPlayer() {
           isVisible ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
-          background: "rgba(0, 0, 0, 0.95)",
+          background: "var(--player-bar-bg)",
           backdropFilter: "blur(20px)",
-          borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+          borderTop: "1px solid var(--player-bar-border)",
         }}
       >
         {/* Progress Bar */}
         <div
-          className="w-full h-1 bg-white/10 cursor-pointer group relative"
+          className="w-full h-1 cursor-pointer group relative"
+          style={{ background: "var(--player-progress-bg)" }}
           onClick={handleProgressClick}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
@@ -276,11 +277,24 @@ export default function PersistentPlayer() {
             <button
               onClick={playPrevious}
               disabled={!hasPrevious}
-              className={`p-2 rounded-full transition-colors ${
-                hasPrevious
-                  ? "hover:bg-white/10 theme-text-primary"
-                  : "theme-text-muted opacity-30 cursor-not-allowed"
+              className={`p-2 rounded-full transition-colors theme-text-primary ${
+                !hasPrevious && "opacity-30 cursor-not-allowed"
               }`}
+              style={
+                hasPrevious
+                  ? {
+                      ["--tw-hover-bg" as any]: "var(--player-bar-button-hover)",
+                    }
+                  : {}
+              }
+              onMouseEnter={(e) =>
+                hasPrevious &&
+                (e.currentTarget.style.background =
+                  "var(--player-bar-button-hover)")
+              }
+              onMouseLeave={(e) =>
+                hasPrevious && (e.currentTarget.style.background = "")
+              }
               title="Previous"
             >
               <SkipBack className="w-5 h-5" />
@@ -305,11 +319,17 @@ export default function PersistentPlayer() {
             <button
               onClick={playNext}
               disabled={!hasNext}
-              className={`p-2 rounded-full transition-colors ${
-                hasNext
-                  ? "hover:bg-white/10 theme-text-primary"
-                  : "theme-text-muted opacity-30 cursor-not-allowed"
+              className={`p-2 rounded-full transition-colors theme-text-primary ${
+                !hasNext && "opacity-30 cursor-not-allowed"
               }`}
+              onMouseEnter={(e) =>
+                hasNext &&
+                (e.currentTarget.style.background =
+                  "var(--player-bar-button-hover)")
+              }
+              onMouseLeave={(e) =>
+                hasNext && (e.currentTarget.style.background = "")
+              }
               title="Next"
             >
               <SkipForward className="w-5 h-5" />
@@ -329,7 +349,12 @@ export default function PersistentPlayer() {
             <div className="hidden md:flex items-center gap-2">
               <button
                 onClick={toggleMute}
-                className="p-2 rounded-full hover:bg-white/10 transition-colors theme-text-primary"
+                className="p-2 rounded-full transition-colors theme-text-primary"
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
                 title={isMuted ? "Unmute" : "Mute"}
               >
                 {isMuted || volume === 0 ? (
@@ -347,7 +372,7 @@ export default function PersistentPlayer() {
                 onChange={handleVolumeChange}
                 className="w-20 h-1 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%, rgba(255,255,255,0.1) 100%)`,
+                  background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, var(--player-progress-bg) ${volume * 100}%, var(--player-progress-bg) 100%)`,
                 }}
               />
             </div>
@@ -356,7 +381,12 @@ export default function PersistentPlayer() {
             {currentMedia?.media_type === "video" && (
               <button
                 onClick={toggleFullscreen}
-                className="p-2 rounded-full hover:bg-white/10 transition-colors theme-text-primary"
+                className="p-2 rounded-full transition-colors theme-text-primary"
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
                 title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
               >
                 {isFullscreen ? (
@@ -370,7 +400,12 @@ export default function PersistentPlayer() {
             {/* Close Button */}
             <button
               onClick={closePlayer}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors theme-text-muted hover:theme-text-primary"
+              className="p-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background =
+                  "var(--player-bar-button-hover)")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.background = "")}
               title="Close"
             >
               <X className="w-5 h-5" />

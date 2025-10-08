@@ -274,7 +274,7 @@
 }
 
 .theme-dropdown {
-  background: rgba(0, 0, 0, 0.95);
+  background: var(--dropdown-bg);
   border: 1px solid var(--card-border);
   backdrop-filter: blur(10px);
   z-index: 50;

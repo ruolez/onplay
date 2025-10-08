@@ -10,6 +10,7 @@ const themes: { value: ThemeType; label: string }[] = [
   { value: "onyx", label: "Onyx" },
   { value: "steel", label: "Steel" },
   { value: "eclipse", label: "Eclipse" },
+  { value: "linen", label: "Linen" },
 ];
 
 export default function ThemeSelector() {

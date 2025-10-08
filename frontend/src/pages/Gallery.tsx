@@ -400,7 +400,10 @@ export default function Gallery() {
 
                 {/* Play overlay */}
                 {item.status === "ready" && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    style={{ background: "var(--card-overlay)" }}
+                  >
                     <Play className="w-16 h-16 theme-text-primary drop-shadow-lg" />
                   </div>
                 )}

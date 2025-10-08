@@ -13,7 +13,8 @@ export type ThemeType =
   | "graphite"
   | "onyx"
   | "steel"
-  | "eclipse";
+  | "eclipse"
+  | "linen";
 
 interface ThemeContextType {
   theme: ThemeType;
