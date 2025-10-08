@@ -27,6 +27,7 @@ export interface Media {
   height?: number;
   thumbnail_path?: string;
   created_at: string;
+  play_count?: number;
   variants: MediaVariant[];
   tags: Tag[];
 }

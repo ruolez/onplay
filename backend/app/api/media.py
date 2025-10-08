@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from ..database import get_db
-from ..models import Media, MediaStatus, MediaType, MediaVariant
+from ..models import Media, MediaStatus, MediaType, MediaVariant, Analytics
 from typing import Optional, List
 from pydantic import BaseModel
 import os
@@ -46,6 +46,20 @@ async def list_media(
     total = query.count()
     media_list = query.order_by(desc(Media.created_at)).offset(skip).limit(limit).all()
 
+    # Build play count subquery for efficient aggregation
+    play_counts = {}
+    if media_list:
+        media_ids = [m.id for m in media_list]
+        play_count_results = db.query(
+            Analytics.media_id,
+            func.count(Analytics.id).label('play_count')
+        ).filter(
+            Analytics.media_id.in_(media_ids),
+            Analytics.event_type == "play"
+        ).group_by(Analytics.media_id).all()
+
+        play_counts = {media_id: count for media_id, count in play_count_results}
+
     return {
         "total": total,
         "skip": skip,
@@ -60,6 +74,7 @@ async def list_media(
                 "thumbnail_path": m.thumbnail_path,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
                 "file_size": m.file_size,
+                "play_count": play_counts.get(m.id, 0),
                 "tags": [{"id": t.id, "name": t.name} for t in m.tags]
             }
             for m in media_list

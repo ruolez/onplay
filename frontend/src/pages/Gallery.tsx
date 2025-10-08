@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { mediaApi, Media, Tag } from "../lib/api";
-import { formatDuration, formatFileSize } from "../lib/utils";
+import { formatDuration, formatLongDuration } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
 import SegmentedControl from "../components/SegmentedControl";
 import {
   Play,
   Music,
   Clock,
-  HardDrive,
   Trash2,
   Edit2,
   X,
@@ -17,6 +16,7 @@ import {
   List,
   Tag as TagIcon,
   MoreVertical,
+  ArrowUpDown,
 } from "lucide-react";
 
 export default function Gallery() {
@@ -30,6 +30,14 @@ export default function Gallery() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">(
     () => (localStorage.getItem("gallery-view") as "grid" | "list") || "grid",
+  );
+  const [sortBy, setSortBy] = useState<"name" | "duration" | "plays">(
+    () =>
+      (localStorage.getItem("gallery-sort") as "name" | "duration" | "plays") ||
+      "name",
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    () => (localStorage.getItem("gallery-sort-order") as "asc" | "desc") || "asc",
   );
   const [deleteModal, setDeleteModal] = useState<{
     show: boolean;
@@ -59,6 +67,7 @@ export default function Gallery() {
   }>({ show: false, mediaId: null });
   const [tagInput, setTagInput] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { openPlayer } = usePlayer();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -75,6 +84,15 @@ export default function Gallery() {
   useEffect(() => {
     localStorage.setItem("gallery-filter", filter);
   }, [filter]);
+
+  // Persist sort settings to localStorage
+  useEffect(() => {
+    localStorage.setItem("gallery-sort", sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem("gallery-sort-order", sortOrder);
+  }, [sortOrder]);
 
   // Sync URL search query to local state
   useEffect(() => {
@@ -102,6 +120,17 @@ export default function Gallery() {
     loadMedia();
     loadTags();
   }, [filter]);
+
+  // Close sort menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortMenuOpen && !(e.target as Element).closest('.sort-menu-container')) {
+        setSortMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [sortMenuOpen]);
 
   const loadMedia = async () => {
     try {
@@ -243,7 +272,7 @@ export default function Gallery() {
 
   const handleCardClick = (item: Media) => {
     if (item.status === "ready") {
-      openPlayer(item.id, filteredMedia);
+      openPlayer(item.id, sortedMedia);
     }
   };
 
@@ -265,6 +294,31 @@ export default function Gallery() {
       item.tags.some((tag) => selectedTags.includes(tag.id));
     return matchesSearch && matchesTags;
   });
+
+  // Sort filtered media
+  const sortedMedia = [...filteredMedia].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sortBy) {
+      case "name":
+        comparison = a.filename.toLowerCase().localeCompare(b.filename.toLowerCase());
+        break;
+      case "duration":
+        comparison = (a.duration || 0) - (b.duration || 0);
+        break;
+      case "plays":
+        comparison = (a.play_count || 0) - (b.play_count || 0);
+        break;
+    }
+
+    return sortOrder === "asc" ? comparison : -comparison;
+  });
+
+  // Calculate total duration
+  const totalDuration = filteredMedia.reduce(
+    (sum, item) => sum + (item.duration || 0),
+    0,
+  );
 
   return (
     <div className="container mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-6 sm:pb-8">
@@ -300,32 +354,79 @@ export default function Gallery() {
             className="flex-1 sm:flex-initial"
           />
 
-          {/* View Mode Toggle */}
-          <div className="flex space-x-2 flex-shrink-0">
-            <button
-              onClick={() => toggleViewMode("grid")}
-              className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
-                viewMode === "grid"
-                  ? "theme-btn-primary"
-                  : "theme-btn-secondary"
-              }`}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-            <button
-              onClick={() => toggleViewMode("list")}
-              className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
-                viewMode === "list"
-                  ? "theme-btn-primary"
-                  : "theme-btn-secondary"
-              }`}
-              title="List view"
-              aria-label="List view"
-            >
-              <List className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            {/* Sort Dropdown */}
+            <div className="relative sort-menu-container">
+              <button
+                onClick={() => setSortMenuOpen(!sortMenuOpen)}
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[40px] sm:min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
+                title="Sort options"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline capitalize">{sortBy}</span>
+                <span className="text-[10px]">
+                  {sortOrder === "asc" ? "↑" : "↓"}
+                </span>
+              </button>
+              {sortMenuOpen && (
+                <div className="absolute right-0 mt-1 w-36 rounded-lg shadow-xl theme-dropdown z-50">
+                  {[
+                    { value: "name" as const, label: "Name" },
+                    { value: "duration" as const, label: "Duration" },
+                    { value: "plays" as const, label: "Plays" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        if (sortBy === option.value) {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy(option.value);
+                          setSortOrder("asc");
+                        }
+                        setSortMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs sm:text-sm flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      <span>{option.label}</span>
+                      {sortBy === option.value && (
+                        <span className="text-[10px]">
+                          {sortOrder === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex space-x-2">
+              <button
+                onClick={() => toggleViewMode("grid")}
+                className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
+                  viewMode === "grid"
+                    ? "theme-btn-primary"
+                    : "theme-btn-secondary"
+                }`}
+                title="Grid view"
+                aria-label="Grid view"
+              >
+                <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <button
+                onClick={() => toggleViewMode("list")}
+                className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
+                  viewMode === "list"
+                    ? "theme-btn-primary"
+                    : "theme-btn-secondary"
+                }`}
+                title="List view"
+                aria-label="List view"
+              >
+                <List className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -358,7 +459,7 @@ export default function Gallery() {
       </div>
 
       {/* Media Grid/List */}
-      {filteredMedia.length === 0 ? (
+      {sortedMedia.length === 0 ? (
         <div className="text-center py-12 sm:py-20">
           <p className="theme-text-muted text-base sm:text-lg px-4">
             {searchQuery
@@ -366,9 +467,11 @@ export default function Gallery() {
               : "No media files found. Upload some files to get started!"}
           </p>
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-          {filteredMedia.map((item) => (
+      ) : (
+        <>
+          {viewMode === "grid" ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+              {sortedMedia.map((item) => (
             <div
               key={item.id}
               onClick={() => handleCardClick(item)}
@@ -506,11 +609,11 @@ export default function Gallery() {
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {filteredMedia.map((item) => (
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {sortedMedia.map((item) => (
             <div
               key={item.id}
               onClick={() => handleCardClick(item)}
@@ -554,10 +657,10 @@ export default function Gallery() {
                         <span>{formatDuration(item.duration)}</span>
                       </div>
                     )}
-                    {item.file_size && (
+                    {(item.play_count ?? 0) > 0 && (
                       <div className="flex items-center space-x-0.5">
-                        <HardDrive className="w-3 h-3" />
-                        <span>{formatFileSize(item.file_size)}</span>
+                        <Play className="w-3 h-3" />
+                        <span>{item.play_count} plays</span>
                       </div>
                     )}
                     {/* Tags inline with metadata */}
@@ -625,8 +728,18 @@ export default function Gallery() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+              ))}
+            </div>
+          )}
+
+          {/* Total Duration Display */}
+          <div className="mt-4 pt-3 border-t flex items-center justify-center gap-1.5 text-xs theme-text-muted"
+               style={{ borderColor: "var(--card-border)" }}>
+            <span>{sortedMedia.length} items</span>
+            <span>•</span>
+            <span>{formatLongDuration(totalDuration)}</span>
+          </div>
+        </>
       )}
 
       {/* Delete Modal */}
