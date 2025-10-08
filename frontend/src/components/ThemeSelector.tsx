@@ -53,18 +53,36 @@ export default function ThemeSelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl theme-dropdown z-[9999]">
-          {themes.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => handleThemeSelect(t.value)}
-              className={`w-full text-left px-4 py-3 first:rounded-t-lg last:rounded-b-lg transition-colors theme-dropdown-item min-h-[44px] ${
-                theme === t.value ? "theme-dropdown-item-active" : ""
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="absolute right-0 mt-2 w-40 sm:w-48 rounded-lg shadow-xl theme-dropdown z-[9999]">
+          <div className="grid grid-cols-2 sm:grid-cols-1 gap-0">
+            {themes.map((t, index) => (
+              <button
+                key={t.value}
+                onClick={() => handleThemeSelect(t.value)}
+                className={`w-full text-left px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base transition-colors theme-dropdown-item min-h-[36px] sm:min-h-[44px] ${
+                  theme === t.value ? "theme-dropdown-item-active" : ""
+                } ${
+                  // Round corners based on grid position
+                  index === 0
+                    ? "rounded-tl-lg sm:rounded-tr-lg"
+                    : index === 1
+                      ? "rounded-tr-lg sm:rounded-tr-none"
+                      : index === themes.length - 2
+                        ? "sm:rounded-bl-none sm:rounded-br-none"
+                        : index === themes.length - 1
+                          ? "rounded-br-lg sm:rounded-bl-lg"
+                          : ""
+                } ${
+                  // Handle odd number of items - last item spans full width on mobile
+                  themes.length % 2 !== 0 && index === themes.length - 1
+                    ? "col-span-2 sm:col-span-1 rounded-b-lg sm:rounded-bl-lg sm:rounded-br-lg"
+                    : ""
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
