@@ -11,21 +11,62 @@ interface VideoPlayerProps {
   onPause?: () => void;
   onEnded?: () => void;
   onTimeUpdate?: (currentTime: number) => void;
+  onDurationChange?: (duration: number) => void;
 }
 
 export interface VideoPlayerRef {
   getCurrentTime: () => number;
   getPlayer: () => Player | null;
+  play: () => Promise<void>;
+  pause: () => void;
+  seek: (time: number) => void;
+  setVolume: (volume: number) => void;
 }
 
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
-  ({ src, poster, autoplay, onPlay, onPause, onEnded, onTimeUpdate }, ref) => {
+  (
+    {
+      src,
+      poster,
+      autoplay,
+      onPlay,
+      onPause,
+      onEnded,
+      onTimeUpdate,
+      onDurationChange,
+    },
+    ref,
+  ) => {
     const videoRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<Player | null>(null);
 
     useImperativeHandle(ref, () => ({
       getCurrentTime: () => playerRef.current?.currentTime() || 0,
       getPlayer: () => playerRef.current,
+      play: async () => {
+        if (playerRef.current) {
+          try {
+            await playerRef.current.play();
+          } catch (error) {
+            console.error("Failed to play:", error);
+          }
+        }
+      },
+      pause: () => {
+        if (playerRef.current) {
+          playerRef.current.pause();
+        }
+      },
+      seek: (time: number) => {
+        if (playerRef.current) {
+          playerRef.current.currentTime(time);
+        }
+      },
+      setVolume: (volume: number) => {
+        if (playerRef.current) {
+          playerRef.current.volume(volume);
+        }
+      },
     }));
 
     useEffect(() => {
@@ -90,6 +131,11 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         if (onTimeUpdate) {
           player.on("timeupdate", () => {
             onTimeUpdate(player.currentTime() || 0);
+          });
+        }
+        if (onDurationChange) {
+          player.on("durationchange", () => {
+            onDurationChange(player.duration() || 0);
           });
         }
 

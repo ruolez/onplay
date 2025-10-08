@@ -1,4 +1,4 @@
-import type { ThemeConfig } from './theme'
+import type { ThemeConfig } from "./theme";
 
 export const professionalThemes: Record<string, ThemeConfig> = {
   slate: {
@@ -25,6 +25,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(255, 255, 255, 0.04)",
     btnSecondaryText: "#a1a1aa",
     btnSecondaryHover: "rgba(255, 255, 255, 0.08)",
+    btnOrangeBg: "#ff7849",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ff9068",
     inputBg: "rgba(255, 255, 255, 0.02)",
     inputBorder: "rgba(255, 255, 255, 0.08)",
     inputText: "#e4e4e7",
@@ -67,6 +70,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(48, 54, 61, 0.5)",
     btnSecondaryText: "#8b949e",
     btnSecondaryHover: "rgba(48, 54, 61, 0.8)",
+    btnOrangeBg: "#ff8c42",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ffa566",
     inputBg: "rgba(22, 27, 34, 0.6)",
     inputBorder: "rgba(48, 54, 61, 0.5)",
     inputText: "#e6edf3",
@@ -109,6 +115,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(255, 255, 255, 0.08)",
     btnSecondaryText: "#999999",
     btnSecondaryHover: "rgba(255, 255, 255, 0.12)",
+    btnOrangeBg: "#ff8800",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ffa033",
     inputBg: "rgba(255, 255, 255, 0.03)",
     inputBorder: "rgba(255, 255, 255, 0.1)",
     inputText: "#ededed",
@@ -151,6 +160,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(94, 109, 130, 0.2)",
     btnSecondaryText: "#7fdbca",
     btnSecondaryHover: "rgba(94, 109, 130, 0.3)",
+    btnOrangeBg: "#ffb86c",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ffc68a",
     inputBg: "rgba(26, 31, 38, 0.5)",
     inputBorder: "rgba(94, 109, 130, 0.3)",
     inputText: "#d6deeb",
@@ -193,6 +205,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(255, 255, 255, 0.08)",
     btnSecondaryText: "#b3b3b3",
     btnSecondaryHover: "rgba(255, 255, 255, 0.12)",
+    btnOrangeBg: "#ff8c00",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ffa733",
     inputBg: "rgba(255, 255, 255, 0.03)",
     inputBorder: "rgba(255, 255, 255, 0.1)",
     inputText: "#ffffff",
@@ -235,6 +250,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(71, 85, 105, 0.2)",
     btnSecondaryText: "#94a3b8",
     btnSecondaryHover: "rgba(71, 85, 105, 0.3)",
+    btnOrangeBg: "#ff8c5a",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ffa67d",
     inputBg: "rgba(30, 41, 59, 0.2)",
     inputBorder: "rgba(71, 85, 105, 0.25)",
     inputText: "#cbd5e1",
@@ -277,6 +295,9 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     btnSecondaryBg: "rgba(113, 113, 122, 0.15)",
     btnSecondaryText: "#a1a1aa",
     btnSecondaryHover: "rgba(113, 113, 122, 0.25)",
+    btnOrangeBg: "#ff9f1c",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#ffb449",
     inputBg: "rgba(39, 39, 42, 0.3)",
     inputBorder: "rgba(113, 113, 122, 0.2)",
     inputText: "#fafafa",
@@ -294,4 +315,4 @@ export const professionalThemes: Record<string, ThemeConfig> = {
     statBorder3: "rgba(96, 165, 250, 0.15)",
     statBorder4: "rgba(250, 204, 21, 0.15)",
   },
-}
+};

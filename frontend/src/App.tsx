@@ -14,7 +14,7 @@ import Upload from "./pages/Upload";
 import Stats from "./pages/Stats";
 import LogoPreview from "./pages/LogoPreview";
 import ThemeSelector from "./components/ThemeSelector";
-import MiniPlayer from "./components/MiniPlayer";
+import PersistentPlayer from "./components/PersistentPlayer";
 import { useTheme } from "./contexts/ThemeContext";
 import { themes, applyTheme } from "./lib/theme";
 import {
@@ -66,7 +66,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen theme-bg">
+    <div className="min-h-screen theme-bg pb-24">
       {/* Navigation */}
       <nav className="theme-nav sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6">
@@ -212,8 +212,8 @@ function AppContent() {
         <Route path="/logo-preview" element={<LogoPreview />} />
       </Routes>
 
-      {/* Modal Player */}
-      <MiniPlayer />
+      {/* Persistent Player */}
+      <PersistentPlayer />
     </div>
   );
 }
