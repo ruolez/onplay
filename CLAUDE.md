@@ -66,6 +66,11 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 - **Event Tracking**: Play, pause, complete, progress milestones (25%, 50%, 75%)
 - **Completion Rates**: Per-media analytics
 - **Session-based Tracking**: Unique session IDs
+- **Play Count Tracking**:
+  - Backend efficiently aggregates play events per media item
+  - Displayed in Gallery list view when count > 0
+  - Used for "Popular" sorting option
+  - Batch query optimization prevents N+1 performance issues
 - **Bandwidth Tracking**:
   - Calculated using average HLS variant size (not original file)
   - Aggregated by time period (7/30/90 days)
@@ -85,6 +90,13 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Click tag to remove from media
   - Quick-select from existing tags
   - Tags displayed in both grid and list views
+- **Sorting & Organization**:
+  - Compact dropdown sort control with 4 options
+  - Sort by: New (date added), Name (alphabetical), Popular (play count), Duration (length)
+  - Ascending/descending toggle for each sort type
+  - Sort preferences persist to localStorage
+  - Total duration display at bottom of gallery (minimalistic design)
+  - Item count shown alongside total duration
 
 ## Code Organization
 
@@ -121,7 +133,7 @@ media-player/
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Axios API client
 │   │   │   ├── theme.ts          # Theme definitions
-│   │   │   └── utils.ts          # Format helpers
+│   │   │   └── utils.ts          # Format helpers (duration, file size, dates)
 │   │   └── main.tsx
 │   └── package.json
 └── docker-compose.yml
@@ -225,6 +237,14 @@ All filter states are stored in `localStorage` and restored on component mount:
 4. **View Mode** (`gallery-view`)
    - Values: "grid" | "list"
    - Previously implemented
+
+5. **Sort Type** (`gallery-sort`)
+   - Values: "new" | "name" | "popular" | "duration"
+   - Default: "name"
+
+6. **Sort Order** (`gallery-sort-order`)
+   - Values: "asc" | "desc"
+   - Default: "asc"
 
 #### Implementation Pattern
 
@@ -673,6 +693,54 @@ This creates clear visual distinction between:
 - **What you're filtering** (media type - orange segmented control)
 - **How you're filtering** (tags - blue pills)
 - **How you're viewing** (grid/list - blue icon buttons)
+
+### Sorting UI Architecture
+
+**Design Pattern**: Compact dropdown control for sorting options, minimizing UI footprint while providing clear state indication.
+
+#### Why Dropdown Over Buttons
+
+- **Space Efficiency**: ~70% less horizontal space than separate buttons
+- **Scalability**: Easy to add more sort options without cluttering UI
+- **Professional Standard**: Used by Linear, GitHub, Notion for data tables
+- **State Clarity**: Always shows current sort field and direction
+
+#### Implementation
+
+**Sort State Management:**
+
+```typescript
+const [sortBy, setSortBy] = useState<"name" | "duration" | "popular" | "new">(
+  () =>
+    (localStorage.getItem("gallery-sort") as "name" | "duration" | "popular" | "new") ||
+    "name",
+);
+const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+  () => (localStorage.getItem("gallery-sort-order") as "asc" | "desc") || "asc",
+);
+```
+
+**Sort Options (in order):**
+1. **New** - Sort by date added (created_at field)
+2. **Name** - Alphabetical sort (case-insensitive)
+3. **Popular** - Sort by play count
+4. **Duration** - Sort by media length
+
+**Click Behavior:**
+- Click different option: Switch to that field, reset to ascending
+- Click same option: Toggle between ascending/descending
+
+**UI Components:**
+- Compact button showing: Icon + Field name (desktop) + Arrow direction
+- Dropdown menu with all 4 options
+- Active option shows current arrow direction (↑/↓)
+- Click-outside listener to close dropdown
+
+**Total Duration Display:**
+- Shows at bottom of filtered gallery
+- Format: "X items • Xh Xm Xs"
+- Minimalistic design (text-xs, theme-text-muted)
+- Uses `formatLongDuration()` utility for human-readable format
 
 #### Styling
 

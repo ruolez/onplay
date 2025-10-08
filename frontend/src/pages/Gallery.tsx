@@ -31,9 +31,9 @@ export default function Gallery() {
   const [viewMode, setViewMode] = useState<"grid" | "list">(
     () => (localStorage.getItem("gallery-view") as "grid" | "list") || "grid",
   );
-  const [sortBy, setSortBy] = useState<"name" | "duration" | "plays">(
+  const [sortBy, setSortBy] = useState<"name" | "duration" | "popular" | "new">(
     () =>
-      (localStorage.getItem("gallery-sort") as "name" | "duration" | "plays") ||
+      (localStorage.getItem("gallery-sort") as "name" | "duration" | "popular" | "new") ||
       "name",
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
@@ -306,8 +306,11 @@ export default function Gallery() {
       case "duration":
         comparison = (a.duration || 0) - (b.duration || 0);
         break;
-      case "plays":
+      case "popular":
         comparison = (a.play_count || 0) - (b.play_count || 0);
+        break;
+      case "new":
+        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         break;
     }
 
@@ -371,9 +374,10 @@ export default function Gallery() {
               {sortMenuOpen && (
                 <div className="absolute right-0 mt-1 w-36 rounded-lg shadow-xl theme-dropdown z-50">
                   {[
+                    { value: "new" as const, label: "New" },
                     { value: "name" as const, label: "Name" },
+                    { value: "popular" as const, label: "Popular" },
                     { value: "duration" as const, label: "Duration" },
-                    { value: "plays" as const, label: "Plays" },
                   ].map((option) => (
                     <button
                       key={option.value}
