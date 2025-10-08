@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { mediaApi, Media, Tag } from "../lib/api";
 import { formatDuration, formatFileSize } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
@@ -62,6 +62,8 @@ export default function Gallery() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const navigate = useNavigate();
   const { openPlayer } = usePlayer();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const toggleViewMode = (mode: "grid" | "list") => {
     setViewMode(mode);
@@ -87,6 +89,15 @@ export default function Gallery() {
     loadMedia();
     loadTags();
   }, [filter]);
+
+  // Auto-focus search input if navigated from top bar search button
+  useEffect(() => {
+    if (searchParams.get("focus") === "search" && searchInputRef.current) {
+      searchInputRef.current.focus();
+      // Remove the focus parameter from URL
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const loadMedia = async () => {
     try {
@@ -259,6 +270,7 @@ export default function Gallery() {
         <div className="relative max-w-2xl">
           <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 theme-text-muted" />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search media..."
             value={searchQuery}

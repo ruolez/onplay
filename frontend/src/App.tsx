@@ -15,7 +15,14 @@ import ThemeSelector from "./components/ThemeSelector";
 import MiniPlayer from "./components/MiniPlayer";
 import { useTheme } from "./contexts/ThemeContext";
 import { themes, applyTheme } from "./lib/theme";
-import { Home, Upload as UploadIcon, BarChart3, Menu, X } from "lucide-react";
+import {
+  Home,
+  Upload as UploadIcon,
+  BarChart3,
+  Menu,
+  X,
+  Search,
+} from "lucide-react";
 
 function AppContent() {
   const { theme } = useTheme();
@@ -42,11 +49,11 @@ function AppContent() {
           <div className="flex items-center justify-between h-14 sm:h-16">
             <Link
               to="/"
-              className="flex items-center space-x-2 font-bold text-lg sm:text-xl theme-text-primary"
+              className="flex items-center space-x-1.5 sm:space-x-2 font-bold text-base sm:text-lg lg:text-xl theme-text-primary flex-shrink-0"
               onClick={() => setMobileMenuOpen(false)}
             >
               <svg
-                className="w-9 h-9 sm:w-10 sm:h-10 theme-icon-accent"
+                className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 theme-icon-accent"
                 viewBox="0 0 32 32"
                 fill="none"
               >
@@ -73,7 +80,7 @@ function AppContent() {
                   opacity="0.4"
                 />
               </svg>
-              <span className="hidden sm:inline">On·Play</span>
+              <span>On·Play</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -102,18 +109,31 @@ function AppContent() {
               <ThemeSelector />
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg theme-btn-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
+            {/* Mobile Actions */}
+            <div className="md:hidden flex items-center space-x-1">
+              {/* Search Button */}
+              <Link
+                to="/?focus=search"
+                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                aria-label="Search"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Search className="w-5 h-5" />
+              </Link>
+
+              {/* Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
