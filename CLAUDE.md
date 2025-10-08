@@ -101,9 +101,10 @@ media-player/
 │   │   │   ├── Player.tsx        # Video player with analytics
 │   │   │   └── Stats.tsx         # Dashboard with bandwidth tracking
 │   │   ├── components/
-│   │   │   ├── VideoPlayer.tsx   # Video.js wrapper with HLS + autoplay
-│   │   │   ├── MiniPlayer.tsx    # Modal overlay player component
-│   │   │   └── ThemeSelector.tsx # Theme switcher UI
+│   │   │   ├── VideoPlayer.tsx      # Video.js wrapper with HLS + autoplay
+│   │   │   ├── MiniPlayer.tsx       # Modal overlay player component
+│   │   │   ├── ThemeSelector.tsx    # Theme switcher UI
+│   │   │   └── SegmentedControl.tsx # iOS-style segmented control for filters
 │   │   ├── contexts/
 │   │   │   ├── ThemeContext.tsx  # Theme management
 │   │   │   └── PlayerContext.tsx # Modal player state management
@@ -141,6 +142,18 @@ media-player/
   ```typescript
   export type ThemeType = "slate" | "jade" | "midnight" | ...
   ```
+- **Color Palette**: Each theme includes three button color systems:
+  - `btnPrimary`: Primary actions (view toggles, important CTAs) - typically blue/teal
+  - `btnSecondary`: Secondary actions (filters, less emphasis) - muted grays
+  - `btnOrange`: Accent actions (segmented controls) - complementary orange tones
+- **Orange Accent Strategy**: Each theme has a carefully chosen orange that complements its primary color
+  - Jade (teal): `#ff7849` coral orange for warm contrast
+  - Midnight (blue): `#ff8c42` warm orange for classic complementary pairing
+  - Charcoal (Vercel blue): `#ff8800` pure orange for high contrast
+  - Graphite (cyan): `#ffb86c` peachy orange for cool palette warmth
+  - Onyx (white): `#ff8c00` dark orange for monochrome accent
+  - Steel (sky blue): `#ff8c5a` coral for warm/cool contrast
+  - Eclipse (grayscale): `#ff9f1c` amber gold for grayscale warmth
 
 ### VideoPlayer Ref Pattern
 - **Expose Methods**: Use `forwardRef` + `useImperativeHandle`
@@ -504,6 +517,108 @@ useEffect(() => {
 - **Smaller Touch Targets**: 36px min-height on mobile vs 44px on desktop for dropdowns
 - **Responsive Text**: `text-sm` on mobile, `text-base` on desktop
 
+### Segmented Control Architecture
+
+**Design Pattern**: iOS-style segmented control for mutually exclusive filter options, providing superior visual hierarchy over individual buttons.
+
+#### Why Segmented Control
+
+- **Visual Hierarchy**: Clear distinction between primary filters (media type) and secondary filters (tags)
+- **Space Efficiency**: 30% less horizontal space than separate buttons
+- **Professional Pattern**: Industry standard (Apple Music, Spotify, Figma) for exclusive choices
+- **Mobile Optimized**: Touch-friendly but visually compact
+- **Accessibility**: Single tab stop with arrow key navigation
+
+#### Implementation
+
+**Component** (`components/SegmentedControl.tsx`)
+```typescript
+interface SegmentedOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+interface SegmentedControlProps<T extends string> {
+  options: SegmentedOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+  label?: string;
+  className?: string;
+}
+```
+
+**Key Features:**
+- **TypeScript Generics**: Type-safe values for any string union type
+- **Keyboard Navigation**: Arrow keys (Left/Right/Up/Down), Home/End keys
+- **ARIA Attributes**: `role="radiogroup"`, `role="radio"`, `aria-checked`
+- **Theme Integration**: Uses `--btn-orange-bg` CSS variables for active state
+- **Responsive**: `min-h-[38px]` consistent height, full width on mobile
+- **Visual Design**: Single-unit container with 1px padding, rounded-md internal segments
+
+**Usage Pattern:**
+```typescript
+<SegmentedControl
+  options={[
+    { value: "all", label: "All" },
+    { value: "video", label: "Video" },
+    { value: "audio", label: "Audio" },
+  ]}
+  value={filter}
+  onChange={setFilter}
+  className="flex-1 sm:flex-initial"
+/>
+```
+
+#### Visual Hierarchy Strategy
+
+**Gallery Filter Layout:**
+1. **Primary Filter** (Segmented Control): Orange accent, single-unit design
+2. **Secondary Filter** (Tag Pills): Same blue as view toggles, separate rounded pills
+3. **View Toggle**: Blue accent, icon-only buttons
+
+This creates clear visual distinction between:
+- **What you're filtering** (media type - orange segmented control)
+- **How you're filtering** (tags - blue pills)
+- **How you're viewing** (grid/list - blue icon buttons)
+
+#### Styling
+
+**CSS Classes** (`index.css`):
+```css
+.theme-segmented-control {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.theme-segmented-option {
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.theme-segmented-option:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.theme-segmented-option-active {
+  background: var(--btn-orange-bg);
+  color: var(--btn-orange-text);
+}
+```
+
+**Alignment Considerations:**
+- Use `items-center` for container alignment with view toggle buttons
+- Consistent height (`min-h-[38px]`) ensures perfect baseline alignment
+- Padding `p-1` (4px) creates visual separation between segments
+- Active state gets subtle shadow: `0 1px 3px rgba(0, 0, 0, 0.1)`
+
+#### Common Issues
+
+1. **Height Misalignment**: Ensure segmented control and adjacent buttons have matching `min-h` values
+2. **Orange Color Clash**: Each theme's orange is chosen to complement (not clash with) primary blue/teal
+3. **Keyboard Focus**: Container needs `onKeyDown` handler, buttons need `role="radio"` for screen readers
+4. **TypeScript Generics**: Use `<T extends string>` to preserve union type narrowing
+
 ### Bandwidth Tracking Architecture
 
 OnPlay tracks **actual bandwidth** consumed by parsing Nginx access logs, providing precise real-world usage data instead of estimates.
@@ -686,6 +801,8 @@ VITE_API_URL=http://localhost:8080/api
 12. **Autoplay Queue**: Always pass `filteredMedia` (not `media`) to `openPlayer()` to respect active filters; each track needs new session ID
 13. **Mobile Search State**: Use URL params (`?q=...`) for search state, not localStorage, to sync between mobile top bar and desktop Gallery input
 14. **Theme Selector Mobile**: Use 2-column grid with `grid-cols-2 sm:grid-cols-1` and handle odd-numbered items with `col-span-2` on last item
+15. **Segmented Control Alignment**: Use consistent `min-h-[38px]` height and `items-center` alignment; each theme needs orange color that complements (not clashes with) primary button color
+16. **Filter Visual Hierarchy**: Primary filters (media type) use orange segmented control; secondary filters (tags) and view toggles use blue to create clear distinction
 
 ## Future Enhancements
 
