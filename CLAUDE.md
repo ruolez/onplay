@@ -36,11 +36,22 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Selected tags
   - View mode (grid/list)
 - **Responsive Design**: Mobile-first with Tailwind CSS
+- **Mobile Navigation**: Optimized top bar for mobile devices
+  - Logo + "On·Play" text always visible
+  - Full-width search input (Gallery route only)
+  - Compact theme selector with 2-column grid layout
+  - Search state synced via URL params between mobile/desktop
 - **Modal Player**: Click media cards to open instant-play modal overlay
   - Darkened/blurred background
   - Autoplay with Video.js HLS streaming
   - 3-dot menu on cards for full detail page access
   - Analytics tracking preserved (play, pause, complete, progress)
+- **Autoplay Queue**: Continuous playback of media items
+  - Auto-advances to next track when current finishes
+  - Queue based on filtered Gallery view (respects search/tags/type filters)
+  - Previous/next navigation buttons in modal player
+  - Queue position indicator (e.g., "3 / 15")
+  - Each track gets unique analytics session
 
 ### Analytics
 - **Event Tracking**: Play, pause, complete, progress milestones (25%, 50%, 75%)
@@ -322,6 +333,177 @@ if (autoplay) {
 3. **Scroll Behind Modal**: Set `document.body.style.overflow = "hidden"` and restore on unmount
 4. **Analytics Lost**: Preserve session ID and all event tracking in MiniPlayer
 
+### Autoplay Queue Architecture
+
+**User Experience**: When a user clicks a media card in Gallery, the filtered list becomes a playback queue. After the current track finishes, the next item automatically plays.
+
+#### Why Queue Snapshot Pattern
+
+- **Simple**: Filtered media list becomes the queue when user clicks any item
+- **Intuitive**: Queue matches exactly what user sees in Gallery
+- **No Staleness**: Modal blocks the Gallery, so filters can't change mid-playback
+- **Minimal Code**: Extends existing PlayerContext without new contexts
+
+#### Implementation
+
+**1. PlayerContext State** (`contexts/PlayerContext.tsx`)
+```typescript
+const [queue, setQueue] = useState<Media[]>([]);
+const [currentIndex, setCurrentIndex] = useState<number>(-1);
+
+// Updated openPlayer signature
+const openPlayer = useCallback(async (
+  mediaId: string,
+  queueItems?: Media[]
+) => {
+  // Store queue and find current position
+  if (queueItems && queueItems.length > 0) {
+    const index = queueItems.findIndex(item => item.id === mediaId);
+    setQueue(queueItems);
+    setCurrentIndex(index >= 0 ? index : 0);
+  } else {
+    setQueue([]);
+    setCurrentIndex(-1);
+  }
+
+  // Fetch full media details
+  const response = await mediaApi.getMediaById(mediaId);
+  setCurrentMedia(response.data);
+  setSessionId(Math.random().toString(36).substring(7));
+  setIsModalOpen(true);
+}, []);
+
+// Navigation methods
+const playNext = useCallback(async () => {
+  if (currentIndex < queue.length - 1) {
+    const nextItem = queue[currentIndex + 1];
+    const response = await mediaApi.getMediaById(nextItem.id);
+    setCurrentMedia(response.data);
+    setSessionId(Math.random().toString(36).substring(7));
+    setCurrentIndex(prev => prev + 1);
+  }
+}, [currentIndex, queue]);
+
+const playPrevious = useCallback(async () => {
+  if (currentIndex > 0) {
+    const prevItem = queue[currentIndex - 1];
+    const response = await mediaApi.getMediaById(prevItem.id);
+    setCurrentMedia(response.data);
+    setSessionId(Math.random().toString(36).substring(7));
+    setCurrentIndex(prev => prev - 1);
+  }
+}, [currentIndex, queue]);
+
+// Computed values
+const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
+const hasPrevious = currentIndex > 0;
+const queuePosition = queue.length > 0
+  ? { current: currentIndex + 1, total: queue.length }
+  : undefined;
+```
+
+**2. Gallery Integration** (`pages/Gallery.tsx`)
+```typescript
+const handleCardClick = (item: Media) => {
+  if (item.status === "ready") {
+    openPlayer(item.id, filteredMedia); // Pass filtered list as queue
+  }
+};
+```
+
+**3. MiniPlayer Auto-Advance** (`components/MiniPlayer.tsx`)
+```typescript
+const { playNext, hasNext, hasPrevious, queuePosition } = usePlayer();
+
+// Auto-play next track when current ends
+onEnded={async () => {
+  await trackEvent("complete");
+  if (hasNext) {
+    playNext();
+  }
+}}
+
+// UI: Previous/Next buttons and position indicator
+<button onClick={playPrevious} disabled={!hasPrevious}>
+  <ChevronLeft />
+</button>
+<span>{queuePosition.current} / {queuePosition.total}</span>
+<button onClick={playNext} disabled={!hasNext}>
+  <ChevronRight />
+</button>
+```
+
+#### Key Features
+
+- **Respects Filters**: Queue = exactly what user sees (search + tags + type filter)
+- **New Session Per Track**: Each track gets unique session ID for analytics
+- **Works in Both Views**: Grid and list view use same code path
+- **Graceful Handling**: Last item doesn't auto-advance, single item shows no queue UI
+
+### Mobile Navigation Architecture
+
+**Mobile-First Search**: Full-width search input integrated into top navigation bar for instant access.
+
+#### State Management via URL Params
+
+- **Mobile**: Search input in top bar (App.tsx) - only visible on Gallery route
+- **Desktop**: Search input in Gallery controls (Gallery.tsx)
+- **Shared State**: Both use URL query parameter `?q=...` for synchronization
+
+**App.tsx (Mobile Navigation)**
+```typescript
+const [mobileSearchQuery, setMobileSearchQuery] = useState(
+  searchParams.get("q") || ""
+);
+
+const handleMobileSearchChange = (value: string) => {
+  setMobileSearchQuery(value);
+  const params = new URLSearchParams(searchParams);
+  if (value) {
+    params.set("q", value);
+  } else {
+    params.delete("q");
+  }
+  navigate(`?${params.toString()}`, { replace: true });
+};
+
+// Mobile search input (Gallery route only)
+{location.pathname === "/" && (
+  <div className="md:hidden flex-1 mx-2 relative">
+    <input
+      value={mobileSearchQuery}
+      onChange={(e) => handleMobileSearchChange(e.target.value)}
+      placeholder="Search..."
+    />
+  </div>
+)}
+```
+
+**Gallery.tsx (Desktop + State Sync)**
+```typescript
+const urlSearchQuery = searchParams.get("q") || "";
+
+// Sync URL query to local state
+useEffect(() => {
+  setSearchQuery(urlSearchQuery);
+}, [urlSearchQuery]);
+
+// Desktop search input (hidden on mobile)
+<div className="hidden md:block">
+  <input
+    value={searchQuery}
+    onChange={(e) => handleSearchChange(e.target.value)}
+  />
+</div>
+```
+
+#### Mobile UI Optimizations
+
+- **Compact Theme Selector**: 2-column grid on mobile vs single column on desktop
+- **Tighter Spacing**: Reduced top padding in Gallery (12px vs 24px on mobile)
+- **Smaller Touch Targets**: 36px min-height on mobile vs 44px on desktop for dropdowns
+- **Responsive Text**: `text-sm` on mobile, `text-base` on desktop
+
 ### Bandwidth Tracking Architecture
 
 OnPlay tracks **actual bandwidth** consumed by parsing Nginx access logs, providing precise real-world usage data instead of estimates.
@@ -501,6 +683,9 @@ VITE_API_URL=http://localhost:8080/api
 9. **Modal Player Data**: Always fetch full media via `mediaApi.getMediaById()`, Gallery list lacks variants
 10. **Autoplay Requirements**: Must start muted (`muted: true`) then unmute after play event to bypass browser restrictions
 11. **Filter Persistence**: Use lazy initialization `useState(() => localStorage.getItem(...))` to avoid reading on every render; wrap JSON.parse in try/catch for safety
+12. **Autoplay Queue**: Always pass `filteredMedia` (not `media`) to `openPlayer()` to respect active filters; each track needs new session ID
+13. **Mobile Search State**: Use URL params (`?q=...`) for search state, not localStorage, to sync between mobile top bar and desktop Gallery input
+14. **Theme Selector Mobile**: Use 2-column grid with `grid-cols-2 sm:grid-cols-1` and handle odd-numbered items with `col-span-2` on last item
 
 ## Future Enhancements
 
