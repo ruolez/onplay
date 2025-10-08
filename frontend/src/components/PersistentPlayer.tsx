@@ -11,6 +11,8 @@ import {
   Volume2,
   VolumeX,
   X,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 
 export default function PersistentPlayer() {
@@ -41,6 +43,7 @@ export default function PersistentPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [hasTriggeredFullscreen, setHasTriggeredFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Slide up animation when media loads
   useEffect(() => {
@@ -55,6 +58,34 @@ export default function PersistentPlayer() {
   useEffect(() => {
     setHasTriggeredFullscreen(false);
   }, [currentMedia?.id]);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        handleFullscreenChange,
+      );
+      document.removeEventListener(
+        "mozfullscreenchange",
+        handleFullscreenChange,
+      );
+      document.removeEventListener(
+        "MSFullscreenChange",
+        handleFullscreenChange,
+      );
+    };
+  }, []);
 
   const trackEvent = async (eventType: string, data?: any) => {
     if (!currentMedia) return;
@@ -92,6 +123,23 @@ export default function PersistentPlayer() {
     } else {
       setVolume(0);
       setIsMuted(true);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const player = playerRef.current?.getPlayer();
+    if (!player) return;
+
+    if (isFullscreen) {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    } else {
+      // Enter fullscreen
+      player
+        .requestFullscreen()
+        .catch((err) => console.log("Fullscreen request:", err));
     }
   };
 
@@ -303,6 +351,21 @@ export default function PersistentPlayer() {
                 }}
               />
             </div>
+
+            {/* Fullscreen Button (Video only) */}
+            {currentMedia?.media_type === "video" && (
+              <button
+                onClick={toggleFullscreen}
+                className="p-2 rounded-full hover:bg-white/10 transition-colors theme-text-primary"
+                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? (
+                  <Minimize className="w-5 h-5" />
+                ) : (
+                  <Maximize className="w-5 h-5" />
+                )}
+              </button>
+            )}
 
             {/* Close Button */}
             <button
