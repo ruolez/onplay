@@ -40,6 +40,7 @@ export default function PersistentPlayer() {
   const [thumbnailTimestamp] = useState(Date.now());
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [hasTriggeredFullscreen, setHasTriggeredFullscreen] = useState(false);
 
   // Slide up animation when media loads
   useEffect(() => {
@@ -50,20 +51,10 @@ export default function PersistentPlayer() {
     }
   }, [currentMedia]);
 
-  // Auto-fullscreen for video
+  // Reset fullscreen trigger when media changes
   useEffect(() => {
-    if (currentMedia?.media_type === "video" && playerRef.current) {
-      const player = playerRef.current.getPlayer();
-      if (player) {
-        // Small delay to ensure player is ready
-        setTimeout(() => {
-          player
-            .requestFullscreen()
-            .catch((err) => console.log("Fullscreen request failed:", err));
-        }, 500);
-      }
-    }
-  }, [currentMedia?.id, playerRef]);
+    setHasTriggeredFullscreen(false);
+  }, [currentMedia?.id]);
 
   const trackEvent = async (eventType: string, data?: any) => {
     if (!currentMedia) return;
@@ -149,6 +140,21 @@ export default function PersistentPlayer() {
           onPlay={() => {
             setIsPlaying(true);
             trackEvent("play");
+
+            // Auto-fullscreen for video on first play
+            if (
+              currentMedia?.media_type === "video" &&
+              !hasTriggeredFullscreen &&
+              playerRef.current
+            ) {
+              const player = playerRef.current.getPlayer();
+              if (player) {
+                setHasTriggeredFullscreen(true);
+                player
+                  .requestFullscreen()
+                  .catch((err) => console.log("Fullscreen request:", err));
+              }
+            }
           }}
           onPause={() => {
             setIsPlaying(false);
