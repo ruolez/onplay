@@ -629,7 +629,7 @@ export default function Gallery() {
             </div>
           ) : (
             <div className="space-y-1">
-              {sortedMedia.map((item) => (
+              {sortedMedia.map((item, index) => (
             <div
               key={item.id}
               onClick={() => handleCardClick(item)}
@@ -641,6 +641,13 @@ export default function Gallery() {
               style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <div className="flex items-center gap-2">
+                {/* Number */}
+                <div className="flex-shrink-0 w-6 text-right">
+                  <span className="text-xs theme-text-muted font-mono">
+                    {index + 1}
+                  </span>
+                </div>
+
                 {/* Media Type Icon */}
                 <div className="flex-shrink-0">
                   {item.media_type === "video" ? (
