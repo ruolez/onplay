@@ -66,13 +66,16 @@ export default function PersistentPlayer() {
     const player = playerRef.current.getPlayer();
     if (!player) return;
 
-    const handleCanPlay = async () => {
+    const attemptPlay = async () => {
       try {
-        // Unmute before playing (will be muted initially for autoplay compatibility)
-        player.muted(false);
+        // Start muted for autoplay compatibility
+        player.muted(true);
 
         // Explicitly call play() - this keeps it close to user gesture
         await player.play();
+
+        // Unmute AFTER play succeeds (critical for mobile)
+        player.muted(false);
 
         // Chain fullscreen request to successful play (for videos only)
         if (currentMedia.media_type === "video" && !hasTriggeredFullscreen) {
@@ -87,11 +90,16 @@ export default function PersistentPlayer() {
       }
     };
 
-    // Wait for media to be ready before playing
-    player.one("canplay", handleCanPlay);
+    // Check if player is already ready, otherwise wait for 'canplay'
+    // readyState >= 3 means HAVE_FUTURE_DATA (can play)
+    if (player.readyState() >= 3) {
+      attemptPlay();
+    } else {
+      player.one("canplay", attemptPlay);
+    }
 
     return () => {
-      player.off("canplay", handleCanPlay);
+      player.off("canplay", attemptPlay);
     };
   }, [currentMedia?.id, hasTriggeredFullscreen]);
 
