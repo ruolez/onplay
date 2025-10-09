@@ -6,15 +6,7 @@ import {
   ReactNode,
 } from "react";
 
-export type ThemeType =
-  | "jade"
-  | "midnight"
-  | "charcoal"
-  | "graphite"
-  | "onyx"
-  | "steel"
-  | "eclipse"
-  | "linen";
+export type ThemeType = "eclipse" | "linen";
 
 interface ThemeContextType {
   theme: ThemeType;
