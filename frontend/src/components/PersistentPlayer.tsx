@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
 import VideoPlayer from "./VideoPlayer";
 import { mediaApi } from "../lib/api";
@@ -43,6 +43,8 @@ export default function PersistentPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const shouldMaintainFullscreen = useRef(false);
+  const requestFullscreenOnPlay = useRef(false);
 
   // Slide up animation when media loads and trigger playback
   useEffect(() => {
@@ -70,15 +72,36 @@ export default function PersistentPlayer() {
     }
   }, [currentMedia]);
 
-  // Reset playing state when media changes
+  // Reset playing state when media changes and handle fullscreen persistence
   useEffect(() => {
     setIsPlaying(false);
-  }, [currentMedia?.id]);
+
+    // If we should maintain fullscreen and new media is video, request it on play
+    if (
+      shouldMaintainFullscreen.current &&
+      currentMedia?.media_type === "video"
+    ) {
+      requestFullscreenOnPlay.current = true;
+    }
+  }, [currentMedia?.id, currentMedia?.media_type]);
 
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const inFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(inFullscreen);
+
+      // Update intent: if user manually exits fullscreen, stop maintaining it
+      if (!inFullscreen && shouldMaintainFullscreen.current) {
+        // Check if this was a manual exit (not during media change)
+        // If we have current media and it's a video, this was likely manual
+        if (currentMedia?.media_type === "video") {
+          shouldMaintainFullscreen.current = false;
+        }
+      } else if (inFullscreen) {
+        // Entered fullscreen, remember to maintain it
+        shouldMaintainFullscreen.current = true;
+      }
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -101,7 +124,7 @@ export default function PersistentPlayer() {
         handleFullscreenChange,
       );
     };
-  }, []);
+  }, [currentMedia?.media_type]);
 
   const trackEvent = async (eventType: string, data?: any) => {
     if (!currentMedia) return;
@@ -147,12 +170,14 @@ export default function PersistentPlayer() {
     if (!player) return;
 
     if (isFullscreen) {
-      // Exit fullscreen
+      // User manually exiting fullscreen
+      shouldMaintainFullscreen.current = false;
       if (document.exitFullscreen) {
         document.exitFullscreen();
       }
     } else {
-      // Enter fullscreen
+      // User manually entering fullscreen
+      shouldMaintainFullscreen.current = true;
       player
         .requestFullscreen()
         .catch((err) => console.log("Fullscreen request:", err));
@@ -204,6 +229,17 @@ export default function PersistentPlayer() {
           onPlay={() => {
             setIsPlaying(true);
             trackEvent("play");
+
+            // Re-enter fullscreen if we should maintain it
+            if (requestFullscreenOnPlay.current && playerRef.current) {
+              const player = playerRef.current.getPlayer();
+              if (player) {
+                requestFullscreenOnPlay.current = false;
+                player
+                  .requestFullscreen()
+                  .catch((err) => console.log("Fullscreen request:", err));
+              }
+            }
           }}
           onPause={() => {
             setIsPlaying(false);
