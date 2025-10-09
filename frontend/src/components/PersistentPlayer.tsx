@@ -312,7 +312,7 @@ export default function PersistentPlayer() {
               {isPlaying ? (
                 <Pause className="w-6 h-6" fill="currentColor" />
               ) : (
-                <Play className="w-6 h-6" fill="currentColor" />
+                <Play className="w-6 h-6 translate-x-[1px]" fill="currentColor" />
               )}
             </button>
 

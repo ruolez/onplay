@@ -510,9 +510,15 @@ export default function Gallery() {
                 ) : (
                   <div className="flex items-center justify-center h-full">
                     {item.media_type === "video" ? (
-                      <Play className="w-16 h-16 theme-text-muted opacity-50" />
+                      <Play
+                        className="w-16 h-16 opacity-50"
+                        style={{ color: "var(--icon-video)" }}
+                      />
                     ) : (
-                      <Music className="w-16 h-16 theme-text-muted opacity-50" />
+                      <Music
+                        className="w-16 h-16 opacity-50"
+                        style={{ color: "var(--icon-audio)" }}
+                      />
                     )}
                   </div>
                 )}
@@ -638,9 +644,15 @@ export default function Gallery() {
                 {/* Media Type Icon */}
                 <div className="flex-shrink-0">
                   {item.media_type === "video" ? (
-                    <Play className="w-4 h-4 theme-text-muted" />
+                    <Play
+                      className="w-4 h-4"
+                      style={{ color: "var(--icon-video)" }}
+                    />
                   ) : (
-                    <Music className="w-4 h-4 theme-text-muted" />
+                    <Music
+                      className="w-4 h-4"
+                      style={{ color: "var(--icon-audio)" }}
+                    />
                   )}
                 </div>
 

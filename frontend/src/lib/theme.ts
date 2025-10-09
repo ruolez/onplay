@@ -68,6 +68,10 @@ export interface ThemeConfig {
   playerBarBorder: string;
   playerBarButtonHover: string;
   playerProgressBg: string;
+
+  // Media type icons
+  iconAudio: string;
+  iconVideo: string;
 }
 
 export const themes: Record<string, ThemeConfig> = {
@@ -120,6 +124,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(255, 255, 255, 0.1)",
     playerBarButtonHover: "rgba(255, 255, 255, 0.1)",
     playerProgressBg: "rgba(255, 255, 255, 0.1)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   midnight: {
@@ -171,6 +177,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(48, 54, 61, 0.5)",
     playerBarButtonHover: "rgba(48, 54, 61, 0.5)",
     playerProgressBg: "rgba(48, 54, 61, 0.5)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   charcoal: {
@@ -222,6 +230,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(255, 255, 255, 0.08)",
     playerBarButtonHover: "rgba(255, 255, 255, 0.08)",
     playerProgressBg: "rgba(255, 255, 255, 0.1)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   graphite: {
@@ -273,6 +283,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(94, 109, 130, 0.3)",
     playerBarButtonHover: "rgba(94, 109, 130, 0.2)",
     playerProgressBg: "rgba(94, 109, 130, 0.3)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   onyx: {
@@ -324,6 +336,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(255, 255, 255, 0.08)",
     playerBarButtonHover: "rgba(255, 255, 255, 0.08)",
     playerProgressBg: "rgba(255, 255, 255, 0.08)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   steel: {
@@ -375,6 +389,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(71, 85, 105, 0.3)",
     playerBarButtonHover: "rgba(71, 85, 105, 0.2)",
     playerProgressBg: "rgba(71, 85, 105, 0.3)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   eclipse: {
@@ -426,6 +442,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(113, 113, 122, 0.2)",
     playerBarButtonHover: "rgba(113, 113, 122, 0.15)",
     playerProgressBg: "rgba(113, 113, 122, 0.2)",
+    iconAudio: "#a78bfa",
+    iconVideo: "#60a5fa",
   },
 
   linen: {
@@ -499,6 +517,8 @@ export const themes: Record<string, ThemeConfig> = {
     playerBarBorder: "rgba(0, 0, 0, 0.1)",
     playerBarButtonHover: "rgba(0, 0, 0, 0.05)",
     playerProgressBg: "rgba(0, 0, 0, 0.1)",
+    iconAudio: "#8b5cf6",
+    iconVideo: "#3b82f6",
   },
 };
 
@@ -564,4 +584,7 @@ export function applyTheme(theme: ThemeConfig) {
   root.style.setProperty("--player-bar-border", theme.playerBarBorder);
   root.style.setProperty("--player-bar-button-hover", theme.playerBarButtonHover);
   root.style.setProperty("--player-progress-bg", theme.playerProgressBg);
+
+  root.style.setProperty("--icon-audio", theme.iconAudio);
+  root.style.setProperty("--icon-video", theme.iconVideo);
 }
