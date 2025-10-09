@@ -190,6 +190,35 @@ media-player/
   }
   ```
 
+### HLS Memory Management
+
+**Critical**: HLS.js default behavior keeps infinite back buffer, causing memory leaks and browser crashes in production.
+
+- **Problem**: Default `backBufferLength: Infinity` keeps ALL played segments in memory
+- **Symptoms**:
+  - Memory grows to 1.5GB+ after 15-20 minutes of playback
+  - Browser crashes with "Oops could not load page" error
+  - Page auto-refreshes unexpectedly in production
+- **Solution**: Set explicit back buffer limit in Video.js configuration
+  ```typescript
+  html5: {
+    vhs: {
+      overrideNative: true,
+      bandwidth: 4194304,
+      backBufferLength: 30, // Keep 30 seconds (YouTube standard)
+    },
+  }
+  ```
+- **Recommended Values**:
+  - **30 seconds**: Standard for VOD (allows backward seeking, stable memory)
+  - **10 seconds**: Live streams without DVR (minimal memory footprint)
+  - **60 seconds**: Better seeking UX (slightly higher memory usage)
+- **Expected Results**:
+  - Memory stays stable at ~200-300MB regardless of playback duration
+  - No browser crashes or auto-refreshes
+  - Smooth playback for hours
+- **References**: Mux blog "An HLS.js cautionary tale", hls.js GitHub issues #5402, #1220, #939
+
 ### Audio Thumbnail Design Principles
 
 - **Smooth Mesh Gradients**: Multi-point distance-based blending
@@ -1065,6 +1094,7 @@ VITE_API_URL=http://localhost:8080/api
 21. **Click-Outside Handler**: Add `media-menu-container` class to menu wrapper for proper click-outside detection without interfering with menu clicks
 22. **Mobile Tap Highlight**: Disable with `style={{ WebkitTapHighlightColor: 'transparent' }}` to prevent purple flash on mobile browsers
 23. **List View Layout**: Right-align duration/play count metadata to efficiently use horizontal space; keep tags under filename for better visual grouping
+24. **HLS Memory Leaks**: MUST set `backBufferLength: 30` in Video.js VHS config; default infinite buffer causes 1.5GB+ memory growth after 15-20 minutes, leading to browser crashes and production auto-refreshes. See HLS Memory Management section for details.
 
 ## Future Enhancements
 
