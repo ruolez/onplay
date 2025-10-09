@@ -6,6 +6,7 @@ import "video.js/dist/video-js.css";
 interface VideoPlayerProps {
   src: string;
   poster?: string;
+  autoplay?: boolean;
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
@@ -27,6 +28,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
     {
       src,
       poster,
+      autoplay,
       onPlay,
       onPause,
       onEnded,
@@ -67,7 +69,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
       },
     }));
 
-    // Create player once on mount
     useEffect(() => {
       if (!playerRef.current && videoRef.current) {
         const videoElement = document.createElement("video-js");
@@ -87,8 +88,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           preload: "auto",
           poster,
           playsinline: true,
-          autoplay: false, // Don't rely on autoplay flag
-          muted: true, // Start muted for autoplay compatibility
+          autoplay: autoplay || false,
+          muted: autoplay ? true : false, // Mute if autoplay (required for most browsers)
           sources: [
             {
               src,
@@ -115,6 +116,14 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           },
         });
 
+        // Handle autoplay - unmute after play starts if autoplay was enabled
+        if (autoplay) {
+          player.one("play", () => {
+            // Unmute after first play to avoid autoplay restrictions
+            player.muted(false);
+          });
+        }
+
         // Event listeners
         if (onPlay) player.on("play", onPlay);
         if (onPause) player.on("pause", onPause);
@@ -139,20 +148,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           playerRef.current = null;
         }
       };
-    }, []); // Create once, never recreate
-
-    // Update source when src changes (instead of recreating player)
-    useEffect(() => {
-      if (playerRef.current && src) {
-        playerRef.current.src({
-          src,
-          type: "application/x-mpegURL",
-        });
-        if (poster) {
-          playerRef.current.poster(poster);
-        }
-      }
-    }, [src, poster]);
+    }, [src]);
 
     return (
       <div className="w-full rounded-lg overflow-hidden shadow-2xl">

@@ -45,63 +45,37 @@ export default function PersistentPlayer() {
   const [hasTriggeredFullscreen, setHasTriggeredFullscreen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Slide up animation when media loads
+  // Slide up animation when media loads and trigger playback
   useEffect(() => {
     if (currentMedia) {
       setTimeout(() => setIsVisible(true), 50);
+
+      // Ensure playback starts after player is ready
+      const attemptPlay = () => {
+        const player = playerRef.current?.getPlayer();
+        if (player && player.readyState() >= 2) {
+          player.play().catch((err) => {
+            console.log("Auto-play prevented:", err);
+            // Autoplay was blocked, user will need to click play
+          });
+        } else if (player) {
+          // Wait for player to be ready
+          setTimeout(attemptPlay, 100);
+        }
+      };
+
+      // Give VideoPlayer time to initialize
+      setTimeout(attemptPlay, 500);
     } else {
       setIsVisible(false);
     }
   }, [currentMedia]);
 
-  // Reset fullscreen trigger when media changes
+  // Reset fullscreen trigger and playing state when media changes
   useEffect(() => {
     setHasTriggeredFullscreen(false);
+    setIsPlaying(false);
   }, [currentMedia?.id]);
-
-  // Explicit play control for reliable autoplay on mobile
-  useEffect(() => {
-    if (!currentMedia || !playerRef.current) return;
-
-    const player = playerRef.current.getPlayer();
-    if (!player) return;
-
-    const attemptPlay = async () => {
-      try {
-        // Start muted for autoplay compatibility
-        player.muted(true);
-
-        // Explicitly call play() - this keeps it close to user gesture
-        await player.play();
-
-        // Unmute AFTER play succeeds (critical for mobile)
-        player.muted(false);
-
-        // Chain fullscreen request to successful play (for videos only)
-        if (currentMedia.media_type === "video" && !hasTriggeredFullscreen) {
-          setHasTriggeredFullscreen(true);
-          player.requestFullscreen().catch((err) => {
-            console.log("Fullscreen request failed:", err);
-          });
-        }
-      } catch (error) {
-        console.error("Autoplay failed:", error);
-        // Autoplay was blocked - user will need to click play manually
-      }
-    };
-
-    // Check if player is already ready, otherwise wait for 'canplay'
-    // readyState >= 3 means HAVE_FUTURE_DATA (can play)
-    if (player.readyState() >= 3) {
-      attemptPlay();
-    } else {
-      player.one("canplay", attemptPlay);
-    }
-
-    return () => {
-      player.off("canplay", attemptPlay);
-    };
-  }, [currentMedia?.id, hasTriggeredFullscreen]);
 
   // Listen for fullscreen changes
   useEffect(() => {
@@ -228,9 +202,28 @@ export default function PersistentPlayer() {
               ? `${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`
               : undefined
           }
+          autoplay={true}
           onPlay={() => {
             setIsPlaying(true);
             trackEvent("play");
+
+            // Auto-fullscreen for video on first play
+            if (
+              currentMedia?.media_type === "video" &&
+              !hasTriggeredFullscreen &&
+              playerRef.current
+            ) {
+              const player = playerRef.current.getPlayer();
+              if (player && player.readyState() >= 2) {
+                // Wait a tick to ensure player is fully ready
+                setTimeout(() => {
+                  setHasTriggeredFullscreen(true);
+                  player
+                    .requestFullscreen()
+                    .catch((err) => console.log("Fullscreen request:", err));
+                }, 100);
+              }
+            }
           }}
           onPause={() => {
             setIsPlaying(false);
