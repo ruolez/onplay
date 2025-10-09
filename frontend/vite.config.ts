@@ -8,7 +8,12 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     watch: {
-      usePolling: true
+      // usePolling disabled - only needed for Docker/WSL
+      // usePolling: true
+      ignored: ['**/node_modules/**', '**/.git/**']
+    },
+    hmr: {
+      overlay: false  // Prevents error overlay from triggering reloads
     },
     proxy: {
       '/api': {

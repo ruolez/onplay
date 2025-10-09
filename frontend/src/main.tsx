@@ -14,3 +14,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </ThemeProvider>
   </React.StrictMode>,
 );
+
+// Accept HMR updates without full page reload
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
