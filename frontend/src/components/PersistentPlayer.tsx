@@ -252,18 +252,18 @@ export default function PersistentPlayer() {
         </div>
 
         {/* Main Controls */}
-        <div className="px-4 py-3 flex items-center gap-4">
+        <div className="px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-4">
           {/* Left: Thumbnail + Info */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             {currentMedia.thumbnail_path && (
               <img
                 src={`${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`}
                 alt={currentMedia.filename}
-                className="w-14 h-14 rounded object-cover flex-shrink-0"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0"
               />
             )}
             <div className="min-w-0 flex-1">
-              <h3 className="theme-text-primary font-medium text-sm truncate">
+              <h3 className="theme-text-primary font-medium text-sm line-clamp-2 sm:truncate">
                 {currentMedia.filename}
               </h3>
               <p className="theme-text-muted text-xs">
@@ -337,7 +337,7 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Right: Volume + Queue Position + Close */}
-          <div className="flex items-center gap-4 flex-1 justify-end">
+          <div className="flex items-center gap-2 sm:gap-4 sm:flex-1 justify-end">
             {/* Queue Position */}
             {queuePosition && (
               <span className="text-sm theme-text-muted whitespace-nowrap hidden sm:block">
