@@ -69,7 +69,7 @@ export default function Gallery() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { openPlayer } = usePlayer();
+  const { openPlayer, requestFullscreen } = usePlayer();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read search from URL params
@@ -284,6 +284,13 @@ export default function Gallery() {
   const handleCardClick = (item: Media) => {
     if (item.status === "ready") {
       openPlayer(item.id, sortedMedia);
+
+      // Request fullscreen for videos after player initializes
+      if (item.media_type === "video") {
+        setTimeout(() => {
+          requestFullscreen();
+        }, 800);
+      }
     }
   };
 

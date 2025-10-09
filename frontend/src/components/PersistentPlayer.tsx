@@ -42,7 +42,6 @@ export default function PersistentPlayer() {
   const [thumbnailTimestamp] = useState(Date.now());
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [hasTriggeredFullscreen, setHasTriggeredFullscreen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Slide up animation when media loads and trigger playback
@@ -71,9 +70,8 @@ export default function PersistentPlayer() {
     }
   }, [currentMedia]);
 
-  // Reset fullscreen trigger and playing state when media changes
+  // Reset playing state when media changes
   useEffect(() => {
-    setHasTriggeredFullscreen(false);
     setIsPlaying(false);
   }, [currentMedia?.id]);
 
@@ -206,24 +204,6 @@ export default function PersistentPlayer() {
           onPlay={() => {
             setIsPlaying(true);
             trackEvent("play");
-
-            // Auto-fullscreen for video on first play
-            if (
-              currentMedia?.media_type === "video" &&
-              !hasTriggeredFullscreen &&
-              playerRef.current
-            ) {
-              const player = playerRef.current.getPlayer();
-              if (player && player.readyState() >= 2) {
-                // Wait a tick to ensure player is fully ready
-                setTimeout(() => {
-                  setHasTriggeredFullscreen(true);
-                  player
-                    .requestFullscreen()
-                    .catch((err) => console.log("Fullscreen request:", err));
-                }, 100);
-              }
-            }
           }}
           onPause={() => {
             setIsPlaying(false);

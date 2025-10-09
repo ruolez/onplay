@@ -30,6 +30,7 @@ interface PlayerContextType {
   setIsPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
+  requestFullscreen: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -139,6 +140,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const requestFullscreen = useCallback(() => {
+    const player = playerRef.current?.getPlayer();
+    if (player) {
+      player.requestFullscreen().catch((err) => {
+        console.log("Fullscreen request:", err);
+      });
+    }
+  }, []);
+
   const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;
   const queuePosition =
@@ -169,6 +179,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsPlaying,
         setCurrentTime,
         setDuration,
+        requestFullscreen,
       }}
     >
       {children}
