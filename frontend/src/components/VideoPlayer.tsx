@@ -109,6 +109,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
+              bandwidth: 4194304,
+              backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
             },
             nativeVideoTracks: false,
             nativeAudioTracks: false,
