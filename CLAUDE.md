@@ -694,6 +694,92 @@ This creates clear visual distinction between:
 - **How you're filtering** (tags - blue pills)
 - **How you're viewing** (grid/list - blue icon buttons)
 
+### Gallery Card Actions Architecture
+
+**Design Pattern**: Consolidated three-dots dropdown menu for all media card actions, providing cleaner UI with better mobile UX.
+
+#### Why Consolidate into Three-Dots Menu
+
+- **Space Efficiency**: ~70% less horizontal space than individual action buttons
+- **Cleaner Design**: Reduces visual clutter on media cards
+- **Better Mobile UX**: Fewer cramped touch targets, prevents accidental taps
+- **Professional Standard**: Industry pattern (YouTube, Gmail, Google Drive)
+- **Focus on Content**: More space for thumbnails and metadata
+
+#### Implementation
+
+**Grid View Layout:**
+- **Line 1**: Filename
+- **Line 2**: Duration (left) + Three-dots menu (right)
+- **Line 3**: Tags (if any)
+
+**List View Layout:**
+- **Row**: Media icon | Filename + Tags | Duration + Play count | Three-dots menu
+- All metadata right-aligned for efficient use of horizontal space
+
+**Three-Dots Menu Items (both views):**
+1. **View Details** - Play icon, opens full player page
+2. **Add Tag** - Tag icon, opens tag modal
+3. **Rename** - Edit icon, opens rename modal
+4. **Delete** - Trash icon (styled in red with `text-red-500 hover:bg-red-500/10`)
+
+**Dropdown Styling:**
+```typescript
+// Grid and list view dropdown
+<div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
+  <button className="text-xs flex items-center gap-2">
+    <Icon className="w-3.5 h-3.5" />
+    Action Label
+  </button>
+</div>
+```
+
+**Key Technical Details:**
+
+1. **Z-Index Management:**
+   - Dropdown: `z-[100]`
+   - Active card gets `z-[110]` when menu is open (prevents overlap in list view)
+   - Conditional class: `${menuOpen === item.id ? "z-[110]" : ""}`
+
+2. **Click-Outside Handler:**
+   ```typescript
+   useEffect(() => {
+     const handleClickOutside = (e: MouseEvent) => {
+       if (menuOpen && !(e.target as Element).closest('.media-menu-container')) {
+         setMenuOpen(null);
+       }
+     };
+     document.addEventListener('mousedown', handleClickOutside);
+     return () => document.removeEventListener('mousedown', handleClickOutside);
+   }, [menuOpen]);
+   ```
+
+3. **Grid View Overflow:**
+   - Remove `overflow-hidden` from card container
+   - Add `overflow-hidden rounded-t-lg` to thumbnail container only
+   - Allows dropdown to overflow while keeping image corners rounded
+
+4. **Mobile Tap Highlight:**
+   - Disable with `style={{ WebkitTapHighlightColor: 'transparent' }}`
+   - Prevents purple flash on mobile when tapping menu
+
+5. **List View Tag Spacing:**
+   - Tight tag borders: `px-1 py-[1px]` instead of `px-1.5 py-0.5`
+   - More space from title: `mt-1.5` instead of `mt-0.5`
+   - Reduced gap between tags: `gap-1` instead of `gap-1.5`
+
+6. **Container Class Pattern:**
+   - Add `media-menu-container` class to menu wrapper
+   - Enables click-outside detection without interfering with clicks inside menu
+
+#### Common Issues
+
+1. **Dropdown Hidden**: Must remove `overflow-hidden` from card, only apply to thumbnail
+2. **Z-Index Stacking**: List items need conditional `z-[110]` when menu is active
+3. **Menu Stays Open**: Add click-outside listener with proper container class
+4. **Mobile Tap Flash**: Disable WebKit tap highlight color
+5. **Text Size Hierarchy**: Dropdown text (`text-xs`) must be smaller than card title (`text-xs sm:text-sm`)
+
 ### Sorting UI Architecture
 
 **Design Pattern**: Compact dropdown control for sorting options, minimizing UI footprint while providing clear state indication.
@@ -974,6 +1060,11 @@ VITE_API_URL=http://localhost:8080/api
 16. **Theme Selector Mobile**: Use 2-column grid with `grid-cols-2 sm:grid-cols-1` and handle odd-numbered items with `col-span-2` on last item
 17. **Segmented Control Alignment**: Use consistent `min-h-[38px]` height and `items-center` alignment; each theme needs orange color that complements (not clashes with) primary button color
 18. **Filter Visual Hierarchy**: Primary filters (media type) use orange segmented control; secondary filters (tags) and view toggles use blue to create clear distinction
+19. **Three-Dots Menu Overflow**: Remove `overflow-hidden` from card container, apply only to thumbnail; prevents dropdown clipping while keeping rounded corners
+20. **Three-Dots Menu Z-Index**: Use `z-[100]` for dropdown and conditional `z-[110]` on active card to prevent stacking issues in list view
+21. **Click-Outside Handler**: Add `media-menu-container` class to menu wrapper for proper click-outside detection without interfering with menu clicks
+22. **Mobile Tap Highlight**: Disable with `style={{ WebkitTapHighlightColor: 'transparent' }}` to prevent purple flash on mobile browsers
+23. **List View Layout**: Right-align duration/play count metadata to efficiently use horizontal space; keep tags under filename for better visual grouping
 
 ## Future Enhancements
 
