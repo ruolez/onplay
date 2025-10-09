@@ -59,6 +59,42 @@ export default function PersistentPlayer() {
     setHasTriggeredFullscreen(false);
   }, [currentMedia?.id]);
 
+  // Explicit play control for reliable autoplay on mobile
+  useEffect(() => {
+    if (!currentMedia || !playerRef.current) return;
+
+    const player = playerRef.current.getPlayer();
+    if (!player) return;
+
+    const handleCanPlay = async () => {
+      try {
+        // Unmute before playing (will be muted initially for autoplay compatibility)
+        player.muted(false);
+
+        // Explicitly call play() - this keeps it close to user gesture
+        await player.play();
+
+        // Chain fullscreen request to successful play (for videos only)
+        if (currentMedia.media_type === "video" && !hasTriggeredFullscreen) {
+          setHasTriggeredFullscreen(true);
+          player.requestFullscreen().catch((err) => {
+            console.log("Fullscreen request failed:", err);
+          });
+        }
+      } catch (error) {
+        console.error("Autoplay failed:", error);
+        // Autoplay was blocked - user will need to click play manually
+      }
+    };
+
+    // Wait for media to be ready before playing
+    player.one("canplay", handleCanPlay);
+
+    return () => {
+      player.off("canplay", handleCanPlay);
+    };
+  }, [currentMedia?.id, hasTriggeredFullscreen]);
+
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -184,25 +220,9 @@ export default function PersistentPlayer() {
               ? `${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`
               : undefined
           }
-          autoplay={true}
           onPlay={() => {
             setIsPlaying(true);
             trackEvent("play");
-
-            // Auto-fullscreen for video on first play
-            if (
-              currentMedia?.media_type === "video" &&
-              !hasTriggeredFullscreen &&
-              playerRef.current
-            ) {
-              const player = playerRef.current.getPlayer();
-              if (player) {
-                setHasTriggeredFullscreen(true);
-                player
-                  .requestFullscreen()
-                  .catch((err) => console.log("Fullscreen request:", err));
-              }
-            }
           }}
           onPause={() => {
             setIsPlaying(false);
