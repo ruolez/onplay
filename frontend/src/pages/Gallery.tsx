@@ -132,6 +132,17 @@ export default function Gallery() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [sortMenuOpen]);
 
+  // Close three-dots menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuOpen && !(e.target as Element).closest('.media-menu-container')) {
+        setMenuOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
   const loadMedia = async () => {
     try {
       setLoading(true);
@@ -479,13 +490,14 @@ export default function Gallery() {
             <div
               key={item.id}
               onClick={() => handleCardClick(item)}
-              className={`group relative theme-card rounded-lg sm:rounded-xl overflow-hidden transition-transform active:scale-95 sm:hover:scale-105 ${
+              className={`group relative theme-card rounded-lg sm:rounded-xl transition-transform active:scale-95 sm:hover:scale-105 ${
                 item.status === "ready" ? "cursor-pointer" : "cursor-default"
-              }`}
+              } ${menuOpen === item.id ? "z-[110]" : ""}`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               {/* Thumbnail */}
               <div
-                className="relative aspect-video"
+                className="relative aspect-video overflow-hidden rounded-t-lg sm:rounded-t-xl"
                 style={{ background: "var(--card-bg)" }}
               >
                 {item.thumbnail_path ? (
@@ -534,7 +546,7 @@ export default function Gallery() {
                   {item.filename}
                 </h3>
 
-                {/* Duration and Action Icons - Second Line */}
+                {/* Duration and Three-Dots Menu - Second Line */}
                 <div className="hidden sm:flex items-center justify-between mb-1 sm:mb-2">
                   {/* Duration - Left aligned */}
                   <div className="flex items-center space-x-2 text-xs sm:text-sm theme-text-muted">
@@ -546,53 +558,47 @@ export default function Gallery() {
                     )}
                   </div>
 
-                  {/* Separator */}
-                  <div className="w-px h-4 bg-white/10" />
-
-                  {/* Action Icons - Right aligned */}
-                  <div className="flex space-x-1">
+                  {/* Three-Dots Menu - Right aligned */}
+                  <div className="relative media-menu-container">
                     <button
-                      onClick={(e) => handleTagClick(e, item.id)}
+                      onClick={(e) => handleMenuClick(e, item.id)}
                       className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                      title="Add tag"
+                      title="More options"
                     >
-                      <TagIcon className="w-4 h-4 theme-text-muted" />
+                      <MoreVertical className="w-4 h-4 theme-text-muted" />
                     </button>
-                    <button
-                      onClick={(e) =>
-                        handleRenameClick(e, item.id, item.filename)
-                      }
-                      className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                      title="Rename"
-                    >
-                      <Edit2 className="w-4 h-4 theme-text-muted" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteClick(e, item.id)}
-                      className="p-1.5 rounded hover:bg-red-500/20 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </button>
-                    <div className="relative">
-                      <button
-                        onClick={(e) => handleMenuClick(e, item.id)}
-                        className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                        title="More options"
-                      >
-                        <MoreVertical className="w-4 h-4 theme-text-muted" />
-                      </button>
-                      {menuOpen === item.id && (
-                        <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-50">
-                          <button
-                            onClick={(e) => handleViewDetails(e, item.id)}
-                            className="w-full text-left px-4 py-2 rounded-lg transition-colors theme-dropdown-item text-sm"
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    {menuOpen === item.id && (
+                      <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
+                        <button
+                          onClick={(e) => handleViewDetails(e, item.id)}
+                          className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          View Details
+                        </button>
+                        <button
+                          onClick={(e) => handleTagClick(e, item.id)}
+                          className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                        >
+                          <TagIcon className="w-3.5 h-3.5" />
+                          Add Tag
+                        </button>
+                        <button
+                          onClick={(e) => handleRenameClick(e, item.id, item.filename)}
+                          className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Rename
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteClick(e, item.id)}
+                          className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -621,11 +627,12 @@ export default function Gallery() {
             <div
               key={item.id}
               onClick={() => handleCardClick(item)}
-              className={`theme-card rounded-lg p-2 transition-all ${
+              className={`relative theme-card rounded-lg p-2 transition-all ${
                 item.status === "ready"
                   ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
                   : "cursor-default"
-              }`}
+              } ${menuOpen === item.id ? "z-[110]" : ""}`}
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <div className="flex items-center gap-2">
                 {/* Media Type Icon */}
@@ -654,81 +661,81 @@ export default function Gallery() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-xs theme-text-muted mt-0.5">
-                    {item.duration && (
-                      <div className="flex items-center space-x-0.5">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatDuration(item.duration)}</span>
-                      </div>
-                    )}
-                    {(item.play_count ?? 0) > 0 && (
-                      <div className="flex items-center space-x-0.5">
-                        <Play className="w-3 h-3" />
-                        <span>{item.play_count} plays</span>
-                      </div>
-                    )}
-                    {/* Tags inline with metadata */}
-                    {item.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
-                        className="px-1.5 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-[10px] theme-text-secondary cursor-pointer transition-colors"
-                        title="Click to remove"
-                      >
-                        {tag.name} ×
-                      </span>
-                    ))}
-                  </div>
+                  {/* Tags on second line */}
+                  {item.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {item.tags.map((tag) => (
+                        <span
+                          key={tag.id}
+                          onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
+                          className="px-1 py-[1px] bg-white/10 hover:bg-red-500/20 rounded text-[10px] theme-text-secondary cursor-pointer transition-colors"
+                          title="Click to remove"
+                        >
+                          {tag.name} ×
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Duration and Play Count - Right aligned */}
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-[10px] sm:text-xs theme-text-muted">
+                  {item.duration && (
+                    <div className="flex items-center space-x-0.5">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatDuration(item.duration)}</span>
+                    </div>
+                  )}
+                  {(item.play_count ?? 0) > 0 && (
+                    <div className="flex items-center space-x-0.5">
+                      <Play className="w-3 h-3" />
+                      <span>{item.play_count} plays</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
-                <div className="flex space-x-0.5 flex-shrink-0 items-center">
+                <div className="flex-shrink-0 relative media-menu-container">
                   <button
-                    onClick={(e) => handleTagClick(e, item.id)}
+                    onClick={(e) => handleMenuClick(e, item.id)}
                     className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                    title="Add tag"
-                    aria-label="Add tag"
+                    title="More options"
+                    aria-label="More options"
                   >
-                    <TagIcon className="w-3.5 h-3.5 theme-text-muted" />
+                    <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
                   </button>
-                  <button
-                    onClick={(e) =>
-                      handleRenameClick(e, item.id, item.filename)
-                    }
-                    className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                    title="Rename"
-                    aria-label="Rename"
-                  >
-                    <Edit2 className="w-3.5 h-3.5 theme-text-muted" />
-                  </button>
-                  <button
-                    onClick={(e) => handleDeleteClick(e, item.id)}
-                    className="p-1.5 rounded hover:bg-red-500/20 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                    title="Delete"
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                  </button>
-                  <div className="relative">
-                    <button
-                      onClick={(e) => handleMenuClick(e, item.id)}
-                      className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
-                      title="More options"
-                      aria-label="More options"
-                    >
-                      <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
-                    </button>
-                    {menuOpen === item.id && (
-                      <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-50">
-                        <button
-                          onClick={(e) => handleViewDetails(e, item.id)}
-                          className="w-full text-left px-4 py-2 rounded-lg transition-colors theme-dropdown-item text-sm"
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {menuOpen === item.id && (
+                    <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
+                      <button
+                        onClick={(e) => handleViewDetails(e, item.id)}
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        View Details
+                      </button>
+                      <button
+                        onClick={(e) => handleTagClick(e, item.id)}
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                      >
+                        <TagIcon className="w-3.5 h-3.5" />
+                        Add Tag
+                      </button>
+                      <button
+                        onClick={(e) => handleRenameClick(e, item.id, item.filename)}
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        Rename
+                      </button>
+                      <button
+                        onClick={(e) => handleDeleteClick(e, item.id)}
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
