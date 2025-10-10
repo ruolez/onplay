@@ -19,6 +19,7 @@ export interface QueueContext {
 
 export type QueueEvent =
   | { type: "LOAD_TRACK"; mediaId: string; queueItems?: Media[] }
+  | { type: "UPDATE_QUEUE"; queueItems: Media[] }
   | { type: "PLAY" }
   | { type: "PAUSE" }
   | { type: "NEXT" }
@@ -56,6 +57,50 @@ export const queueMachine = setup({
         }
         return 0;
       },
+    }),
+    updateQueue: assign({
+      queue: ({ event, context }) => {
+        if (event.type !== "UPDATE_QUEUE") return context.queue;
+
+        const newQueue = event.queueItems;
+        const oldQueue = context.queue;
+        const currentMedia = context.currentMedia;
+
+        console.log("[queueMachine] 🔄 UPDATE_QUEUE triggered");
+        console.log("[queueMachine] Old queue size:", oldQueue.length);
+        console.log("[queueMachine] New queue size:", newQueue.length);
+        console.log("[queueMachine] Current media:", currentMedia?.filename);
+        console.log("[queueMachine] Old index:", context.currentIndex);
+
+        return newQueue;
+      },
+      currentIndex: ({ event, context }) => {
+        if (event.type !== "UPDATE_QUEUE") return context.currentIndex;
+
+        const newQueue = event.queueItems;
+        const currentMedia = context.currentMedia;
+
+        if (!currentMedia) {
+          console.log("[queueMachine] No current media, resetting index to -1");
+          return -1;
+        }
+
+        // Find current media in new queue
+        const newIndex = newQueue.findIndex((item) => item.id === currentMedia.id);
+
+        if (newIndex >= 0) {
+          console.log("[queueMachine] ✅ Current media found at new index:", newIndex);
+          return newIndex;
+        } else {
+          console.log("[queueMachine] ⚠️ Current media NOT in new queue, keeping old index:", context.currentIndex);
+          // Keep playing current track even if not in new queue
+          // This allows user to finish listening even if they filter it out
+          return context.currentIndex;
+        }
+      },
+      // Clear preloaded track when queue updates
+      nextMedia: null,
+      nextTrackPreloaded: false,
     }),
     setCurrentMedia: assign({
       currentMedia: ({ event }) =>
@@ -259,6 +304,9 @@ export const queueMachine = setup({
           target: "loading",
           actions: ["setQueue", "generateSessionId"],
         },
+        UPDATE_QUEUE: {
+          actions: ["updateQueue"],
+        },
         PLAY: "playing",
         PLAYBACK_STARTED: "playing",
         PAUSE: "paused",
@@ -295,6 +343,9 @@ export const queueMachine = setup({
         LOAD_TRACK: {
           target: "loading",
           actions: ["setQueue", "generateSessionId"],
+        },
+        UPDATE_QUEUE: {
+          actions: ["updateQueue"],
         },
         PAUSE: "paused",
         PLAYBACK_PAUSED: "paused",
@@ -352,6 +403,9 @@ export const queueMachine = setup({
           target: "loading",
           actions: ["setQueue", "generateSessionId"],
         },
+        UPDATE_QUEUE: {
+          actions: ["updateQueue"],
+        },
         PLAY: "playing",
         PLAYBACK_STARTED: "playing",
         PLAYBACK_ENDED: [
@@ -399,6 +453,9 @@ export const queueMachine = setup({
         LOAD_TRACK: {
           target: "loading",
           actions: ["setQueue", "generateSessionId"],
+        },
+        UPDATE_QUEUE: {
+          actions: ["updateQueue"],
         },
         BUFFER_END: "playing",
         UPDATE_TIME: {

@@ -16,6 +16,7 @@ import {
   useMediaSession,
   updateMediaSessionPosition,
 } from "../hooks/useMediaSession";
+import { useGallery } from "./GalleryContext";
 
 interface PlayerContextType {
   // State
@@ -64,6 +65,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
+  const { sortedMedia } = useGallery();
 
   // Extract state
   const { currentMedia, sessionId, playbackState, queue, currentIndex } =
@@ -172,6 +174,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     updateMediaSessionPosition(currentTime, duration);
   }, [currentTime, duration]);
+
+  // Subscribe to Gallery state changes (live queue updates)
+  useEffect(() => {
+    // Only update queue if player is open
+    if (!currentMedia) {
+      console.log("[PlayerContext] Skipping queue update - no media playing");
+      return;
+    }
+
+    // Only update if we have media in sortedMedia
+    if (sortedMedia.length === 0) {
+      console.log("[PlayerContext] Skipping queue update - sortedMedia is empty");
+      return;
+    }
+
+    console.log("[PlayerContext] 🔄 Gallery state changed, updating queue");
+    console.log("[PlayerContext] Current media:", currentMedia.filename);
+    console.log("[PlayerContext] Current queue size:", queue.length);
+    console.log("[PlayerContext] New sortedMedia size:", sortedMedia.length);
+    console.log("[PlayerContext] Current index:", currentIndex);
+
+    // Send UPDATE_QUEUE event to state machine
+    send({ type: "UPDATE_QUEUE", queueItems: sortedMedia });
+
+    console.log("[PlayerContext] ✅ UPDATE_QUEUE event sent");
+  }, [sortedMedia, currentMedia, send]);
 
   // Actions
   const openPlayer = useCallback(

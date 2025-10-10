@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { mediaApi, Media, Tag } from "../lib/api";
+import { mediaApi, Media } from "../lib/api";
 import { formatDuration, formatLongDuration } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
+import { useGallery } from "../contexts/GalleryContext";
 import SegmentedControl from "../components/SegmentedControl";
 import {
   Play,
@@ -20,24 +21,29 @@ import {
 } from "lucide-react";
 
 export default function Gallery() {
-  const [media, setMedia] = useState<Media[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "video" | "audio">(
-    () =>
-      (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") ||
-      "all",
-  );
-  const [searchQuery, setSearchQuery] = useState("");
+  // Use Gallery context for state management
+  const {
+    loading,
+    filter,
+    setFilter,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
+    selectedTags,
+    setSelectedTags,
+    filteredMedia,
+    sortedMedia,
+    allTags,
+    refreshMedia,
+    refreshTags,
+  } = useGallery();
+
+  // Local UI state (view mode, modals)
   const [viewMode, setViewMode] = useState<"grid" | "list">(
     () => (localStorage.getItem("gallery-view") as "grid" | "list") || "grid",
-  );
-  const [sortBy, setSortBy] = useState<"name" | "duration" | "popular" | "new">(
-    () =>
-      (localStorage.getItem("gallery-sort") as "name" | "duration" | "popular" | "new") ||
-      "name",
-  );
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
-    () => (localStorage.getItem("gallery-sort-order") as "asc" | "desc") || "asc",
   );
   const [deleteModal, setDeleteModal] = useState<{
     show: boolean;
@@ -52,15 +58,6 @@ export default function Gallery() {
   }>({ show: false, id: null, currentName: "" });
   const [newFilename, setNewFilename] = useState("");
   const [loadTime] = useState(Date.now());
-  const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [selectedTags, setSelectedTags] = useState<number[]>(() => {
-    try {
-      const saved = localStorage.getItem("gallery-tags");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
   const [tagModal, setTagModal] = useState<{
     show: boolean;
     mediaId: string | null;
@@ -80,24 +77,10 @@ export default function Gallery() {
     localStorage.setItem("gallery-view", mode);
   };
 
-  // Persist filter to localStorage
-  useEffect(() => {
-    localStorage.setItem("gallery-filter", filter);
-  }, [filter]);
-
-  // Persist sort settings to localStorage
-  useEffect(() => {
-    localStorage.setItem("gallery-sort", sortBy);
-  }, [sortBy]);
-
-  useEffect(() => {
-    localStorage.setItem("gallery-sort-order", sortOrder);
-  }, [sortOrder]);
-
-  // Sync URL search query to local state
+  // Sync URL search query to context state
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
-  }, [urlSearchQuery]);
+  }, [urlSearchQuery, setSearchQuery]);
 
   // Update URL when search changes (desktop only - mobile uses top bar)
   const handleSearchChange = (value: string) => {
@@ -110,16 +93,6 @@ export default function Gallery() {
     }
     setSearchParams(params, { replace: true });
   };
-
-  // Persist selected tags to localStorage
-  useEffect(() => {
-    localStorage.setItem("gallery-tags", JSON.stringify(selectedTags));
-  }, [selectedTags]);
-
-  useEffect(() => {
-    loadMedia();
-    loadTags();
-  }, [filter]);
 
   // Close sort menu when clicking outside
   useEffect(() => {
@@ -142,31 +115,6 @@ export default function Gallery() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
-
-  const loadMedia = async () => {
-    try {
-      setLoading(true);
-      const response = await mediaApi.getMedia(
-        0,
-        100,
-        filter === "all" ? undefined : filter,
-      );
-      setMedia(response.data.items);
-    } catch (error) {
-      console.error("Failed to load media:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadTags = async () => {
-    try {
-      const response = await mediaApi.getAllTags();
-      setAllTags(response.data);
-    } catch (error) {
-      console.error("Failed to load tags:", error);
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -195,7 +143,7 @@ export default function Gallery() {
       await mediaApi.deleteMedia(deleteModal.id, deletePassword);
       setDeleteModal({ show: false, id: null });
       setDeletePassword("");
-      loadMedia();
+      refreshMedia();
     } catch (error: any) {
       if (error.response?.status === 403) {
         setDeleteError("Invalid password");
@@ -221,7 +169,7 @@ export default function Gallery() {
     try {
       await mediaApi.renameMedia(renameModal.id, newFilename);
       setRenameModal({ show: false, id: null, currentName: "" });
-      loadMedia();
+      refreshMedia();
     } catch (error) {
       console.error("Failed to rename media:", error);
     }
@@ -234,8 +182,8 @@ export default function Gallery() {
       await mediaApi.addTagToMedia(tagModal.mediaId, tagInput.trim());
       setTagModal({ show: false, mediaId: null });
       setTagInput("");
-      loadMedia();
-      loadTags();
+      refreshMedia();
+      refreshTags();
     } catch (error) {
       console.error("Failed to add tag:", error);
     }
@@ -250,7 +198,7 @@ export default function Gallery() {
 
     try {
       await mediaApi.removeTagFromMedia(mediaId, tagId);
-      loadMedia();
+      refreshMedia();
     } catch (error) {
       console.error("Failed to remove tag:", error);
     }
@@ -302,40 +250,7 @@ export default function Gallery() {
     );
   }
 
-  // Filter media based on search query and tags (OR logic for tags)
-  const filteredMedia = media.filter((item) => {
-    const matchesSearch = item.filename
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesTags =
-      selectedTags.length === 0 ||
-      item.tags.some((tag) => selectedTags.includes(tag.id));
-    return matchesSearch && matchesTags;
-  });
-
-  // Sort filtered media
-  const sortedMedia = [...filteredMedia].sort((a, b) => {
-    let comparison = 0;
-
-    switch (sortBy) {
-      case "name":
-        comparison = a.filename.toLowerCase().localeCompare(b.filename.toLowerCase());
-        break;
-      case "duration":
-        comparison = (a.duration || 0) - (b.duration || 0);
-        break;
-      case "popular":
-        comparison = (a.play_count || 0) - (b.play_count || 0);
-        break;
-      case "new":
-        comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        break;
-    }
-
-    return sortOrder === "asc" ? comparison : -comparison;
-  });
-
-  // Calculate total duration
+  // Calculate total duration (filteredMedia and sortedMedia now come from context)
   const totalDuration = filteredMedia.reduce(
     (sum, item) => sum + (item.duration || 0),
     0,

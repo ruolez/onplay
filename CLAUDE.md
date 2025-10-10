@@ -128,8 +128,9 @@ media-player/
 │   │   │   ├── ThemeSelector.tsx       # Theme switcher UI
 │   │   │   └── SegmentedControl.tsx    # iOS-style segmented control for filters
 │   │   ├── contexts/
-│   │   │   ├── ThemeContext.tsx  # Theme management
-│   │   │   └── PlayerContext.tsx # Persistent player state management
+│   │   │   ├── ThemeContext.tsx   # Theme management
+│   │   │   ├── GalleryContext.tsx # Gallery state management (filters, search, tags, sort)
+│   │   │   └── PlayerContext.tsx  # Persistent player state management + queue subscription
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Axios API client
 │   │   │   ├── theme.ts          # Theme definitions
@@ -519,83 +520,313 @@ useEffect(() => {
 - **Queue Position**: Shows "3 / 15" indicator when queue is active
 - **Cross-Route**: Works seamlessly across Gallery, Upload, Stats pages
 
-### Autoplay Queue Architecture
+### Live Queue Updates Architecture
 
-**User Experience**: When a user clicks a media card in Gallery, the filtered list becomes a playback queue. After the current track finishes, the next item automatically plays.
+**Critical Feature**: Queue automatically rebuilds when user changes filters, search, tags, or sort order while media is playing.
 
-**Why This Pattern:** Filtered media list becomes the queue - simple, intuitive, and matches what user sees in Gallery.
+**Why:** Industry-standard pattern (Spotify, YouTube Music) - changing filters shouldn't require stopping playback. Queue adapts to match what user sees in Gallery.
 
 #### Implementation
 
-**1. PlayerContext State** (`contexts/PlayerContext.tsx`)
+**1. GalleryContext** (`contexts/GalleryContext.tsx`)
+
+Centralized state management for all Gallery filters and media data:
 
 ```typescript
-const [queue, setQueue] = useState<Media[]>([]);
-const [currentIndex, setCurrentIndex] = useState<number>(-1);
+interface GalleryContextType {
+  // Raw media list
+  media: Media[];
+  loading: boolean;
 
-// Updated openPlayer signature
-const openPlayer = useCallback(
-  async (mediaId: string, queueItems?: Media[]) => {
-    // Store queue and find current position
-    if (queueItems && queueItems.length > 0) {
-      const index = queueItems.findIndex((item) => item.id === mediaId);
-      setQueue(queueItems);
-      setCurrentIndex(index >= 0 ? index : 0);
+  // Filters
+  filter: "all" | "video" | "audio";
+  searchQuery: string;
+  selectedTags: number[];
+  sortBy: "name" | "duration" | "popular" | "new";
+  sortOrder: "asc" | "desc";
+
+  // Derived data (computed with useMemo)
+  filteredMedia: Media[];  // After search + tag filtering
+  sortedMedia: Media[];    // After sorting filteredMedia
+
+  // Actions
+  setFilter: (filter: "all" | "video" | "audio") => void;
+  setSearchQuery: (query: string) => void;
+  setSelectedTags: (tags: number[] | ((prev: number[]) => number[])) => void;
+  setSortBy: (sort: "name" | "duration" | "popular" | "new") => void;
+  setSortOrder: (order: "asc" | "desc") => void;
+  refreshMedia: () => Promise<void>;
+  refreshTags: () => Promise<void>;
+
+  // Tags
+  allTags: Tag[];
+}
+```
+
+**Key Features:**
+- `filteredMedia` computed via `useMemo` (search + tag filtering)
+- `sortedMedia` computed via `useMemo` (sorting filteredMedia)
+- All filter states persisted to `localStorage`
+- Comprehensive logging: `[GalleryContext]` prefix
+
+**2. Queue Machine Updates** (`machines/queueMachine.ts`)
+
+Added `UPDATE_QUEUE` event and action:
+
+```typescript
+export type QueueEvent =
+  | { type: "LOAD_TRACK"; mediaId: string; queueItems?: Media[] }
+  | { type: "UPDATE_QUEUE"; queueItems: Media[] }  // NEW
+  | { type: "PLAY" }
+  | { type: "PAUSE" }
+  // ... other events
+
+// Action: updateQueue
+updateQueue: assign({
+  queue: ({ event, context }) => {
+    if (event.type !== "UPDATE_QUEUE") return context.queue;
+    return event.queueItems;  // Replace entire queue
+  },
+  currentIndex: ({ event, context }) => {
+    if (event.type !== "UPDATE_QUEUE") return context.currentIndex;
+
+    const newQueue = event.queueItems;
+    const currentMedia = context.currentMedia;
+
+    if (!currentMedia) return -1;
+
+    // Find current media in new queue
+    const newIndex = newQueue.findIndex((item) => item.id === currentMedia.id);
+
+    if (newIndex >= 0) {
+      console.log("[queueMachine] ✅ Current media found at new index:", newIndex);
+      return newIndex;
     } else {
-      setQueue([]);
-      setCurrentIndex(-1);
+      console.log("[queueMachine] ⚠️ Current media NOT in new queue");
+      // Keep playing current track even if filtered out
+      return context.currentIndex;
+    }
+  },
+  // Clear preloaded tracks (may no longer be valid)
+  nextMedia: null,
+  nextTrackPreloaded: false,
+}),
+```
+
+**UPDATE_QUEUE handlers added to states:**
+- `ready`: Allows queue updates while paused
+- `playing`: Allows queue updates during playback
+- `paused`: Allows queue updates while paused
+- `buffering`: Allows queue updates while buffering
+
+**3. PlayerContext Subscription** (`contexts/PlayerContext.tsx`)
+
+Automatically updates queue when Gallery state changes:
+
+```typescript
+import { useGallery } from "./GalleryContext";
+
+export function PlayerProvider({ children }: { children: ReactNode }) {
+  const [state, send] = useMachine(queueMachine);
+  const { sortedMedia } = useGallery();  // Subscribe to Gallery
+
+  const { currentMedia, queue, currentIndex } = state.context;
+
+  // Subscribe to Gallery state changes (live queue updates)
+  useEffect(() => {
+    // Only update if player is open
+    if (!currentMedia) {
+      console.log("[PlayerContext] Skipping queue update - no media playing");
+      return;
     }
 
-    // Fetch full media details
-    const response = await mediaApi.getMediaById(mediaId);
-    setCurrentMedia(response.data);
-    setSessionId(Math.random().toString(36).substring(7));
-    setIsModalOpen(true);
+    // Only update if we have media
+    if (sortedMedia.length === 0) {
+      console.log("[PlayerContext] Skipping queue update - sortedMedia is empty");
+      return;
+    }
+
+    console.log("[PlayerContext] 🔄 Gallery state changed, updating queue");
+    console.log("[PlayerContext] Current media:", currentMedia.filename);
+    console.log("[PlayerContext] Current queue size:", queue.length);
+    console.log("[PlayerContext] New sortedMedia size:", sortedMedia.length);
+    console.log("[PlayerContext] Current index:", currentIndex);
+
+    // Send UPDATE_QUEUE event to state machine
+    send({ type: "UPDATE_QUEUE", queueItems: sortedMedia });
+
+    console.log("[PlayerContext] ✅ UPDATE_QUEUE event sent");
+  }, [sortedMedia, currentMedia, send]);
+
+  // ... rest of provider
+}
+```
+
+**4. Gallery Component Updates** (`pages/Gallery.tsx`)
+
+- Fully refactored to use `useGallery()` hook
+- Removed all local filter/search/sort state
+- Removed local `filteredMedia` and `sortedMedia` calculations
+- Uses `refreshMedia()` and `refreshTags()` from context
+
+```typescript
+export default function Gallery() {
+  const {
+    loading,
+    filter,
+    setFilter,
+    searchQuery,
+    setSearchQuery,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
+    selectedTags,
+    setSelectedTags,
+    filteredMedia,  // From context
+    sortedMedia,    // From context
+    allTags,
+    refreshMedia,
+    refreshTags,
+  } = useGallery();
+
+  // ... UI renders sortedMedia
+}
+```
+
+#### Behavior Examples
+
+**Example 1: Filter Change**
+1. User is playing track 5 of 20 (all media)
+2. User clicks "Video" filter
+3. Queue rebuilds to 12 videos
+4. Current track (if video) continues playing
+5. Queue position updates: "3 / 12" (track found at new index)
+6. Next/Previous navigation uses new queue
+
+**Example 2: Search**
+1. User is playing "song.mp3" (track 10 of 50)
+2. User searches "song"
+3. Queue rebuilds to 5 matching items
+4. "song.mp3" continues playing
+5. Queue position updates: "1 / 5"
+
+**Example 3: Current Track Filtered Out**
+1. User is playing video.mp4 (track 8 of 30)
+2. User filters to "Audio" only
+3. Queue rebuilds to 18 audio files
+4. video.mp4 continues playing (not in new queue)
+5. Queue position shows but navigation disabled
+6. When video ends, auto-advances to first audio track
+
+#### Logging Strategy
+
+All logs use prefixes for easy console filtering:
+
+- `[GalleryContext]` - Filter/search/sort state changes
+- `[PlayerContext]` - Queue update triggers
+- `[queueMachine]` - Queue rebuilding and index updates
+
+**Example Console Output:**
+```
+[GalleryContext] Filter changed: video
+[GalleryContext] Filtered media: 12 items (from 20 total)
+[GalleryContext] Sorted media: 12 items (sortBy: name, order: asc)
+[GalleryContext] 🔄 QUEUE UPDATE TRIGGER - sortedMedia changed
+[PlayerContext] 🔄 Gallery state changed, updating queue
+[PlayerContext] Current media: video5.mp4
+[PlayerContext] Current queue size: 20
+[PlayerContext] New sortedMedia size: 12
+[PlayerContext] Current index: 4
+[PlayerContext] ✅ UPDATE_QUEUE event sent
+[queueMachine] 🔄 UPDATE_QUEUE triggered
+[queueMachine] Old queue size: 20
+[queueMachine] New queue size: 12
+[queueMachine] Current media: video5.mp4
+[queueMachine] Old index: 4
+[queueMachine] ✅ Current media found at new index: 2
+```
+
+#### Provider Hierarchy
+
+**Critical**: GalleryProvider must wrap PlayerProvider (which needs `useGallery` hook):
+
+```typescript
+// main.tsx
+<ThemeProvider>
+  <GalleryProvider>  {/* Must be outside Router */}
+    <PlayerProvider>
+      <App />  {/* Router is inside App */}
+    </PlayerProvider>
+  </GalleryProvider>
+</ThemeProvider>
+```
+
+**Why GalleryContext doesn't use `useSearchParams`:**
+- GalleryProvider is mounted outside Router
+- Search param syncing handled by Gallery.tsx (inside Router)
+- GalleryContext only manages state via localStorage
+
+### Autoplay Queue Architecture
+
+**User Experience**: When a user clicks a media card in Gallery, the filtered list becomes a playback queue. After the current track finishes, the next item automatically plays. **Queue automatically updates when filters/search/tags/sort change** (see Live Queue Updates Architecture above).
+
+**Why This Pattern:** Filtered media list becomes the queue - simple, intuitive, and matches what user sees in Gallery. Queue stays synchronized with Gallery view.
+
+#### Implementation
+
+Queue management is handled by **XState state machine** (queueMachine.ts) with queue stored in machine context.
+
+**1. Queue Initialization** (`contexts/PlayerContext.tsx`)
+
+When user clicks media card, `openPlayer()` is called with initial queue:
+
+```typescript
+const openPlayer = useCallback(
+  (mediaId: string, queueItems?: Media[]) => {
+    requestWakeLock();
+    send({ type: "LOAD_TRACK", mediaId, queueItems });
   },
-  [],
+  [send, requestWakeLock],
 );
-
-// Navigation methods
-const playNext = useCallback(async () => {
-  if (currentIndex < queue.length - 1) {
-    const nextItem = queue[currentIndex + 1];
-    const response = await mediaApi.getMediaById(nextItem.id);
-    setCurrentMedia(response.data);
-    setSessionId(Math.random().toString(36).substring(7));
-    setCurrentIndex((prev) => prev + 1);
-  }
-}, [currentIndex, queue]);
-
-const playPrevious = useCallback(async () => {
-  if (currentIndex > 0) {
-    const prevItem = queue[currentIndex - 1];
-    const response = await mediaApi.getMediaById(prevItem.id);
-    setCurrentMedia(response.data);
-    setSessionId(Math.random().toString(36).substring(7));
-    setCurrentIndex((prev) => prev - 1);
-  }
-}, [currentIndex, queue]);
-
-// Computed values
-const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
-const hasPrevious = currentIndex > 0;
-const queuePosition =
-  queue.length > 0
-    ? { current: currentIndex + 1, total: queue.length }
-    : undefined;
 ```
 
 **2. Gallery Integration** (`pages/Gallery.tsx`)
 
 ```typescript
+const { sortedMedia } = useGallery();  // Reactive filtered/sorted list
+const { openPlayer } = usePlayer();
+
 const handleCardClick = (item: Media) => {
   if (item.status === "ready") {
-    openPlayer(item.id, filteredMedia); // Pass filtered list as queue
+    openPlayer(item.id, sortedMedia);  // Pass current filtered list as queue
   }
 };
 ```
 
-**3. PersistentPlayer Auto-Advance** (`components/PersistentPlayer.tsx`)
+**Note:** Queue automatically updates when `sortedMedia` changes (see Live Queue Updates Architecture).
+
+**3. Queue Navigation** (`contexts/PlayerContext.tsx`)
+
+```typescript
+const playNext = useCallback(() => {
+  requestWakeLock();
+
+  // Check if we have a preloaded next track
+  if (state.context.nextTrackPreloaded && playerRef.current) {
+    playerRef.current.swapToPreloaded();
+  }
+
+  send({ type: "NEXT" });
+}, [send, requestWakeLock, state.context.nextTrackPreloaded]);
+
+const playPrevious = useCallback(() => {
+  requestWakeLock();
+  send({ type: "PREVIOUS" });
+}, [send, requestWakeLock]);
+```
+
+**4. PersistentPlayer Auto-Advance** (`components/PersistentPlayer.tsx`)
 
 ```typescript
 const { playNext, hasNext, hasPrevious, queuePosition } = usePlayer();
@@ -1049,22 +1280,29 @@ VITE_API_URL=http://localhost:8080/api
 **UI & State:**
 4. **Thumbnail Caching**: Use cache-busting query params with timestamps
 5. **Filter Persistence**: Use lazy `useState(() => localStorage.getItem(...))` with try/catch for JSON parsing
-6. **Mobile Search State**: Sync via URL params (`?q=...`), not localStorage
+6. **Mobile Search State**: Sync via URL params (`?q=...`) in Gallery.tsx, not GalleryContext
+7. **Provider Hierarchy**: GalleryProvider must wrap PlayerProvider (PlayerContext needs `useGallery`)
+8. **GalleryContext Router**: GalleryContext cannot use `useSearchParams` (mounted outside Router)
 
 **Player:**
-7. **HLS Memory**: Set `backBufferLength: 30` to prevent memory leaks (see HLS Memory Management)
-8. **Wake Lock Timing**: Request in click handler, not `useEffect` (see Screen Wake Lock)
-9. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
-10. **Autoplay Requirements**: Start muted, unmute after play event
-11. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)
-12. **Persistent Player Data**: Fetch via `mediaApi.getMediaById()`, not Gallery list data
-13. **Event Listeners**: Separate listener attachment from player initialization to avoid stale closures
-14. **Auto-Advance**: Add PLAYBACK_ENDED handler to paused state (video.js pauses before ending)
+9. **HLS Memory**: Set `backBufferLength: 30` to prevent memory leaks (see HLS Memory Management)
+10. **Wake Lock Timing**: Request in click handler, not `useEffect` (see Screen Wake Lock)
+11. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
+12. **Autoplay Requirements**: Start muted, unmute after play event
+13. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)
+14. **Persistent Player Data**: Fetch via `mediaApi.getMediaById()`, not Gallery list data
+15. **Event Listeners**: Separate listener attachment from player initialization to avoid stale closures
+16. **Auto-Advance**: Add PLAYBACK_ENDED handler to paused state (video.js pauses before ending)
+
+**Queue Management:**
+17. **Live Updates**: Queue automatically rebuilds when filters/search/tags/sort change (via GalleryContext subscription)
+18. **State Machine**: Use XState `send()` for queue operations, don't manipulate queue directly
+19. **Index Preservation**: Queue updates preserve currentIndex by finding current media in new queue
 
 **Layout & Styling:**
-15. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
-16. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
-17. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
+20. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
+21. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
+22. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
 
 ## Future Enhancements
 
