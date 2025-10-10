@@ -249,20 +249,9 @@ def generate_thumbnail_at_timestamp(input_path: str, media_id: str, timestamp: f
         return None
 
 def generate_audio_thumbnail(media_id: str) -> str:
-    """Use static colorful space image for audio thumbnails"""
-    import shutil
-
-    thumbnail_dir = Path(MEDIA_ROOT) / "thumbnails"
-    thumbnail_dir.mkdir(parents=True, exist_ok=True)
-    thumbnail_path = thumbnail_dir / f"{media_id}.jpg"
-
-    # Path to static audio thumbnail image
-    static_thumbnail = Path(__file__).parent.parent / "assets" / "audio-default.jpg"
-
-    # Copy static image to media thumbnail location
-    shutil.copy(static_thumbnail, thumbnail_path)
-
-    return f"/media/thumbnails/{media_id}.jpg"
+    """Return static shared audio thumbnail path (no file copying)"""
+    # All audio files share the same optimized thumbnail for browser caching
+    return "/media/thumbnails/audio-default.jpg"
 
 
 # Bandwidth tracking state (stores last log file position)
