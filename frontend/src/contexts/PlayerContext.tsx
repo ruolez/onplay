@@ -5,7 +5,6 @@ import {
   ReactNode,
   useCallback,
   useRef,
-  useEffect,
 } from "react";
 import { mediaApi, type Media } from "../lib/api";
 import type { VideoPlayerRef } from "../components/VideoPlayer";
@@ -52,6 +51,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const openPlayer = useCallback(
     async (mediaId: string, queueItems?: Media[]) => {
       try {
+        // Request wake lock immediately (while user gesture is still active)
+        // This might fail on iOS if called too late, but user can click play button
+        requestWakeLock();
+
         // Store queue and find current position
         if (queueItems && queueItems.length > 0) {
           const index = queueItems.findIndex((item) => item.id === mediaId);
@@ -72,13 +75,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.error("Failed to load media:", error);
       }
     },
-    [],
+    [requestWakeLock],
   );
 
   const playNext = useCallback(async () => {
     if (currentIndex < queue.length - 1) {
       const nextItem = queue[currentIndex + 1];
       try {
+        // Keep wake lock active when auto-advancing
+        requestWakeLock();
         const response = await mediaApi.getMediaById(nextItem.id);
         setCurrentMedia(response.data);
         setSessionId(Math.random().toString(36).substring(7));
@@ -89,12 +94,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.error("Failed to load next media:", error);
       }
     }
-  }, [currentIndex, queue]);
+  }, [currentIndex, queue, requestWakeLock]);
 
   const playPrevious = useCallback(async () => {
     if (currentIndex > 0) {
       const prevItem = queue[currentIndex - 1];
       try {
+        // Keep wake lock active when going to previous
+        requestWakeLock();
         const response = await mediaApi.getMediaById(prevItem.id);
         setCurrentMedia(response.data);
         setSessionId(Math.random().toString(36).substring(7));
@@ -105,7 +112,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.error("Failed to load previous media:", error);
       }
     }
-  }, [currentIndex, queue]);
+  }, [currentIndex, queue, requestWakeLock]);
 
   const closePlayer = useCallback(() => {
     setCurrentMedia(null);
@@ -121,12 +128,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const player = playerRef.current?.getPlayer();
     if (player) {
       if (player.paused()) {
+        // Request wake lock BEFORE playing (must be in user gesture handler)
+        requestWakeLock();
         player.play();
       } else {
         player.pause();
       }
     }
-  }, []);
+  }, [requestWakeLock]);
 
   const seek = useCallback((time: number) => {
     const player = playerRef.current?.getPlayer();
@@ -152,13 +161,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       });
     }
   }, []);
-
-  // Activate wake lock when media starts playing
-  useEffect(() => {
-    if (isPlaying && currentMedia) {
-      requestWakeLock();
-    }
-  }, [isPlaying, currentMedia, requestWakeLock]);
 
   const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;
