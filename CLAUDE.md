@@ -1056,13 +1056,15 @@ VITE_API_URL=http://localhost:8080/api
 8. **Wake Lock Timing**: Request in click handler, not `useEffect` (see Screen Wake Lock)
 9. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
 10. **Autoplay Requirements**: Start muted, unmute after play event
-11. **Fullscreen Timing**: Trigger on play event to preserve user gesture
+11. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)
 12. **Persistent Player Data**: Fetch via `mediaApi.getMediaById()`, not Gallery list data
+13. **Event Listeners**: Separate listener attachment from player initialization to avoid stale closures
+14. **Auto-Advance**: Add PLAYBACK_ENDED handler to paused state (video.js pauses before ending)
 
 **Layout & Styling:**
-13. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
-14. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
-15. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
+15. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
+16. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
+17. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
 
 ## Future Enhancements
 
