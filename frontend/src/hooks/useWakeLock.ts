@@ -42,15 +42,9 @@ export function useWakeLock() {
 
       document.body.appendChild(video);
       noSleepVideoRef.current = video;
-      console.log("[WakeLock] Created fallback video element for iOS");
 
       // Try to play it immediately (won't work until user gesture, but prepares it)
-      video.play().catch((err) => {
-        console.log(
-          "[WakeLock] Initial video play blocked (expected):",
-          err.message,
-        );
-      });
+      video.play().catch(() => {});
     }
 
     return () => {
@@ -64,9 +58,6 @@ export function useWakeLock() {
 
   const requestWakeLock = useCallback(async () => {
     const iosDevice = isIOS();
-    console.log(
-      `[WakeLock] requestWakeLock called - iOS: ${iosDevice}, API supported: ${"wakeLock" in navigator}`,
-    );
 
     // Try Wake Lock API first (works on iOS 16.4+ Safari in some cases)
     if ("wakeLock" in navigator) {
@@ -83,34 +74,19 @@ export function useWakeLock() {
         isActiveRef.current = true;
         usingFallbackRef.current = false;
 
-        console.log("[WakeLock] ✅ Wake lock activated (native API)");
-
-        // Listen for release
-        wakeLock.addEventListener("release", () => {
-          console.log("[WakeLock] Wake lock released (native API)");
-        });
-
         return;
       } catch (err: any) {
-        console.warn(
-          `[WakeLock] ⚠️ Native API failed: ${err.name} - ${err.message}`,
-        );
+        // Native API failed, try fallback
       }
     }
 
     // Fallback for iOS or if Wake Lock API failed
     if (iosDevice) {
       if (!noSleepVideoRef.current) {
-        console.error(
-          "[WakeLock] ❌ Video fallback not ready (element not created)",
-        );
         return;
       }
 
       try {
-        console.log(
-          `[WakeLock] Attempting video fallback - video ready state: ${noSleepVideoRef.current.readyState}`,
-        );
         const playPromise = noSleepVideoRef.current.play();
 
         if (playPromise !== undefined) {
@@ -119,18 +95,11 @@ export function useWakeLock() {
 
         isActiveRef.current = true;
         usingFallbackRef.current = true;
-        console.log(
-          "[WakeLock] ✅ Wake lock activated (video fallback for iOS)",
-        );
       } catch (err: any) {
         console.error(
-          `[WakeLock] ❌ Fallback video failed: ${err.name} - ${err.message}`,
+          `[WakeLock] Failed: ${err.name} - ${err.message}`,
         );
       }
-    } else {
-      console.warn(
-        "[WakeLock] ⚠️ Wake Lock API not supported and not on iOS - no fallback available",
-      );
     }
   }, []);
 
@@ -142,7 +111,6 @@ export function useWakeLock() {
       try {
         await wakeLockRef.current.release();
         wakeLockRef.current = null;
-        console.log("[WakeLock] Wake lock manually released (native API)");
       } catch (err) {
         console.error("[WakeLock] Failed to release wake lock:", err);
       }
@@ -152,7 +120,6 @@ export function useWakeLock() {
     if (usingFallbackRef.current && noSleepVideoRef.current) {
       noSleepVideoRef.current.pause();
       usingFallbackRef.current = false;
-      console.log("[WakeLock] Wake lock manually released (video fallback)");
     }
   }, []);
 
@@ -160,10 +127,7 @@ export function useWakeLock() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isActiveRef.current) {
-        console.log("[WakeLock] Page visible again, re-requesting wake lock");
         requestWakeLock();
-      } else if (document.visibilityState === "hidden") {
-        console.log("[WakeLock] Page hidden");
       }
     };
 

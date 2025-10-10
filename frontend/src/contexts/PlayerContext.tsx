@@ -1,173 +1,273 @@
 import {
   createContext,
   useContext,
-  useState,
   ReactNode,
   useCallback,
   useRef,
+  useEffect,
 } from "react";
-import { mediaApi, type Media } from "../lib/api";
-import type { VideoPlayerRef } from "../components/VideoPlayer";
+import { useMachine } from "@xstate/react";
+import { queueMachine } from "../machines/queueMachine";
+import type { Media } from "../lib/api";
+import type { DualVideoPlayerRef } from "../components/DualVideoPlayer";
 import { useWakeLock } from "../hooks/useWakeLock";
+import { preloadService } from "../services/PreloadService";
+import {
+  useMediaSession,
+  updateMediaSessionPosition,
+} from "../hooks/useMediaSession";
 
 interface PlayerContextType {
+  // State
   currentMedia: Media | null;
   sessionId: string;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
   volume: number;
-  openPlayer: (mediaId: string, queueItems?: Media[]) => Promise<void>;
+  queue: Media[];
+  currentIndex: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  queuePosition?: { current: number; total: number };
+  machineState: string;
+  errorMessage?: string;
+
+  // Actions
+  openPlayer: (mediaId: string, queueItems?: Media[]) => void;
   closePlayer: () => void;
   togglePlayPause: () => void;
   seek: (time: number) => void;
   setVolume: (volume: number) => void;
-  playNext: () => Promise<void>;
-  playPrevious: () => Promise<void>;
-  hasNext: boolean;
-  hasPrevious: boolean;
-  queuePosition?: { current: number; total: number };
-  playerRef: React.RefObject<VideoPlayerRef>;
-  setIsPlaying: (playing: boolean) => void;
-  setCurrentTime: (time: number) => void;
-  setDuration: (duration: number) => void;
+  playNext: () => void;
+  playPrevious: () => void;
+  jumpToTrack: (index: number) => void;
   requestFullscreen: () => void;
+
+  // Refs
+  playerRef: React.RefObject<DualVideoPlayerRef>;
+
+  // Internal state setters (for VideoPlayer callbacks)
+  handlePlaybackStarted: () => void;
+  handlePlaybackPaused: () => void;
+  handlePlaybackEnded: () => void;
+  handleTimeUpdate: (time: number) => void;
+  handleDurationChange: (duration: number) => void;
+  handleBufferStart: () => void;
+  handleBufferEnd: () => void;
+  handleError: (message: string) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const [currentMedia, setCurrentMedia] = useState<Media | null>(null);
-  const [sessionId, setSessionId] = useState("");
-  const [queue, setQueue] = useState<Media[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(-1);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolumeState] = useState(1);
-  const playerRef = useRef<VideoPlayerRef>(null);
+  const [state, send] = useMachine(queueMachine);
+  const playerRef = useRef<DualVideoPlayerRef>(null);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
 
-  const openPlayer = useCallback(
-    async (mediaId: string, queueItems?: Media[]) => {
-      try {
-        // Request wake lock immediately (while user gesture is still active)
-        // This might fail on iOS if called too late, but user can click play button
-        requestWakeLock();
+  // Extract state
+  const { currentMedia, sessionId, playbackState, queue, currentIndex } =
+    state.context;
+  const { isPlaying, currentTime, duration, volume } = playbackState;
 
-        // Store queue and find current position
-        if (queueItems && queueItems.length > 0) {
-          const index = queueItems.findIndex((item) => item.id === mediaId);
-          setQueue(queueItems);
-          setCurrentIndex(index >= 0 ? index : 0);
-        } else {
-          setQueue([]);
-          setCurrentIndex(-1);
-        }
-
-        // Fetch full media details including variants
-        const response = await mediaApi.getMediaById(mediaId);
-        setCurrentMedia(response.data);
-        setSessionId(Math.random().toString(36).substring(7));
-        setCurrentTime(0);
-        setDuration(0);
-      } catch (error) {
-        console.error("Failed to load media:", error);
-      }
-    },
-    [requestWakeLock],
-  );
-
-  const playNext = useCallback(async () => {
-    if (currentIndex < queue.length - 1) {
-      const nextItem = queue[currentIndex + 1];
-      try {
-        // Keep wake lock active when auto-advancing
-        requestWakeLock();
-        const response = await mediaApi.getMediaById(nextItem.id);
-        setCurrentMedia(response.data);
-        setSessionId(Math.random().toString(36).substring(7));
-        setCurrentIndex((prev) => prev + 1);
-        setCurrentTime(0);
-        setDuration(0);
-      } catch (error) {
-        console.error("Failed to load next media:", error);
-      }
-    }
-  }, [currentIndex, queue, requestWakeLock]);
-
-  const playPrevious = useCallback(async () => {
-    if (currentIndex > 0) {
-      const prevItem = queue[currentIndex - 1];
-      try {
-        // Keep wake lock active when going to previous
-        requestWakeLock();
-        const response = await mediaApi.getMediaById(prevItem.id);
-        setCurrentMedia(response.data);
-        setSessionId(Math.random().toString(36).substring(7));
-        setCurrentIndex((prev) => prev - 1);
-        setCurrentTime(0);
-        setDuration(0);
-      } catch (error) {
-        console.error("Failed to load previous media:", error);
-      }
-    }
-  }, [currentIndex, queue, requestWakeLock]);
-
-  const closePlayer = useCallback(() => {
-    setCurrentMedia(null);
-    setQueue([]);
-    setCurrentIndex(-1);
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    releaseWakeLock();
-  }, [releaseWakeLock]);
-
-  const togglePlayPause = useCallback(() => {
-    const player = playerRef.current?.getPlayer();
-    if (player) {
-      if (player.paused()) {
-        // Request wake lock BEFORE playing (must be in user gesture handler)
-        requestWakeLock();
-        player.play();
-      } else {
-        player.pause();
-      }
-    }
-  }, [requestWakeLock]);
-
-  const seek = useCallback((time: number) => {
-    const player = playerRef.current?.getPlayer();
-    if (player) {
-      player.currentTime(time);
-      setCurrentTime(time);
-    }
-  }, []);
-
-  const setVolume = useCallback((vol: number) => {
-    const player = playerRef.current?.getPlayer();
-    if (player) {
-      player.volume(vol);
-      setVolumeState(vol);
-    }
-  }, []);
-
-  const requestFullscreen = useCallback(() => {
-    const player = playerRef.current?.getPlayer();
-    if (player) {
-      player.requestFullscreen().catch((err) => {
-        console.log("Fullscreen request:", err);
-      });
-    }
-  }, []);
-
+  // Computed values
   const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;
   const queuePosition =
     queue.length > 0
       ? { current: currentIndex + 1, total: queue.length }
       : undefined;
+
+  // Machine state for debugging
+  const machineState = state.value as string;
+  const errorMessage = state.context.errorMessage;
+
+  // Handle preload completion
+  const handlePreloadComplete = useCallback(
+    (media: Media) => {
+      send({ type: "NEXT_PRELOADED", media });
+    },
+    [send],
+  );
+
+  // Start preload service when playing
+  useEffect(() => {
+    if (String(state.value) === "playing" && queue.length > 0 && hasNext) {
+      preloadService.start(
+        queue,
+        currentIndex,
+        playerRef,
+        handlePreloadComplete,
+      );
+    } else {
+      preloadService.stop();
+    }
+
+    return () => {
+      preloadService.stop();
+    };
+  }, [state.value, queue, currentIndex, hasNext, handlePreloadComplete]);
+
+  // Media Session API integration
+  useMediaSession(currentMedia, hasNext, hasPrevious, {
+    onPlay: () => {
+      send({ type: "PLAY" });
+      playerRef.current?.play();
+    },
+    onPause: () => {
+      send({ type: "PAUSE" });
+      playerRef.current?.pause();
+    },
+    onNext: () => {
+      send({ type: "NEXT" });
+    },
+    onPrevious: () => {
+      send({ type: "PREVIOUS" });
+    },
+    onSeekBackward: (offset) => {
+      const newTime = Math.max(0, currentTime - offset);
+      playerRef.current?.seek(newTime);
+      send({ type: "SEEK", time: newTime });
+    },
+    onSeekForward: (offset) => {
+      const newTime = Math.min(duration, currentTime + offset);
+      playerRef.current?.seek(newTime);
+      send({ type: "SEEK", time: newTime });
+    },
+    onSeekTo: (time) => {
+      playerRef.current?.seek(time);
+      send({ type: "SEEK", time });
+    },
+  });
+
+  // Update Media Session position
+  useEffect(() => {
+    updateMediaSessionPosition(currentTime, duration);
+  }, [currentTime, duration]);
+
+  // Actions
+  const openPlayer = useCallback(
+    (mediaId: string, queueItems?: Media[]) => {
+      requestWakeLock();
+      send({ type: "LOAD_TRACK", mediaId, queueItems });
+    },
+    [send, requestWakeLock],
+  );
+
+  const closePlayer = useCallback(() => {
+    releaseWakeLock();
+    preloadService.stop();
+    send({ type: "CLOSE" });
+  }, [send, releaseWakeLock]);
+
+  const togglePlayPause = useCallback(() => {
+    const player = playerRef.current?.getPlayer();
+    if (player) {
+      if (player.paused()) {
+        requestWakeLock();
+        player.play();
+        send({ type: "PLAY" });
+      } else {
+        player.pause();
+        send({ type: "PAUSE" });
+      }
+    }
+  }, [send, requestWakeLock]);
+
+  const seek = useCallback(
+    (time: number) => {
+      playerRef.current?.seek(time);
+      send({ type: "SEEK", time });
+    },
+    [send],
+  );
+
+  const setVolume = useCallback(
+    (vol: number) => {
+      playerRef.current?.setVolume(vol);
+      send({ type: "SET_VOLUME", volume: vol });
+    },
+    [send],
+  );
+
+  const playNext = useCallback(() => {
+    requestWakeLock();
+
+    // Check if we have a preloaded next track
+    if (state.context.nextTrackPreloaded && playerRef.current) {
+      playerRef.current.swapToPreloaded();
+    }
+
+    send({ type: "NEXT" });
+  }, [send, requestWakeLock, state.context.nextTrackPreloaded]);
+
+  const playPrevious = useCallback(() => {
+    requestWakeLock();
+    send({ type: "PREVIOUS" });
+  }, [send, requestWakeLock]);
+
+  const jumpToTrack = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= queue.length) {
+        return;
+      }
+
+      const track = queue[index];
+      requestWakeLock();
+      send({ type: "LOAD_TRACK", mediaId: track.id, queueItems: queue });
+    },
+    [queue, send, requestWakeLock],
+  );
+
+  const requestFullscreen = useCallback(() => {
+    const player = playerRef.current?.getPlayer();
+    if (player) {
+      player.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  // VideoPlayer event handlers
+  const handlePlaybackStarted = useCallback(() => {
+    send({ type: "PLAYBACK_STARTED" });
+  }, [send]);
+
+  const handlePlaybackPaused = useCallback(() => {
+    send({ type: "PLAYBACK_PAUSED" });
+  }, [send]);
+
+  const handlePlaybackEnded = useCallback(() => {
+    send({ type: "PLAYBACK_ENDED" });
+  }, [send]);
+
+  const handleTimeUpdate = useCallback(
+    (time: number) => {
+      send({ type: "UPDATE_TIME", time });
+    },
+    [send],
+  );
+
+  const handleDurationChange = useCallback(
+    (dur: number) => {
+      send({ type: "UPDATE_DURATION", duration: dur });
+    },
+    [send],
+  );
+
+  const handleBufferStart = useCallback(() => {
+    send({ type: "BUFFER_START" });
+  }, [send]);
+
+  const handleBufferEnd = useCallback(() => {
+    send({ type: "BUFFER_END" });
+  }, [send]);
+
+  const handleError = useCallback(
+    (message: string) => {
+      console.error("[PlayerContext] Error:", message);
+      send({ type: "ERROR", message });
+    },
+    [send],
+  );
 
   return (
     <PlayerContext.Provider
@@ -178,6 +278,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         currentTime,
         duration,
         volume,
+        queue,
+        currentIndex,
+        hasNext,
+        hasPrevious,
+        queuePosition,
+        machineState,
+        errorMessage,
         openPlayer,
         closePlayer,
         togglePlayPause,
@@ -185,14 +292,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setVolume,
         playNext,
         playPrevious,
-        hasNext,
-        hasPrevious,
-        queuePosition,
-        playerRef,
-        setIsPlaying,
-        setCurrentTime,
-        setDuration,
+        jumpToTrack,
         requestFullscreen,
+        playerRef,
+        handlePlaybackStarted,
+        handlePlaybackPaused,
+        handlePlaybackEnded,
+        handleTimeUpdate,
+        handleDurationChange,
+        handleBufferStart,
+        handleBufferEnd,
+        handleError,
       }}
     >
       {children}

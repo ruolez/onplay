@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
-import VideoPlayer from "./VideoPlayer";
+import DualVideoPlayer from "./DualVideoPlayer";
+import QueuePanel from "./QueuePanel";
 import { mediaApi } from "../lib/api";
 import { formatDuration } from "../lib/utils";
 import {
@@ -13,6 +14,7 @@ import {
   X,
   Maximize,
   Minimize,
+  List,
 } from "lucide-react";
 
 export default function PersistentPlayer() {
@@ -33,9 +35,18 @@ export default function PersistentPlayer() {
     queuePosition,
     closePlayer,
     playerRef,
-    setIsPlaying,
-    setCurrentTime,
-    setDuration,
+    handlePlaybackStarted,
+    handlePlaybackPaused,
+    handlePlaybackEnded,
+    handleTimeUpdate,
+    handleDurationChange,
+    handleBufferStart,
+    handleBufferEnd,
+    handleError,
+    queue,
+    currentIndex,
+    jumpToTrack,
+    machineState,
   } = usePlayer();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -43,65 +54,23 @@ export default function PersistentPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const shouldMaintainFullscreen = useRef(false);
-  const requestFullscreenOnPlay = useRef(false);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
 
-  // Slide up animation when media loads and trigger playback
+  // Slide up animation when media loads
   useEffect(() => {
     if (currentMedia) {
       setTimeout(() => setIsVisible(true), 50);
-
-      // Ensure playback starts after player is ready
-      const attemptPlay = () => {
-        const player = playerRef.current?.getPlayer();
-        if (player && player.readyState() >= 2) {
-          player.play().catch((err) => {
-            console.log("Auto-play prevented:", err);
-            // Autoplay was blocked, user will need to click play
-          });
-        } else if (player) {
-          // Wait for player to be ready
-          setTimeout(attemptPlay, 100);
-        }
-      };
-
-      // Give VideoPlayer time to initialize
-      setTimeout(attemptPlay, 500);
     } else {
       setIsVisible(false);
+      setIsQueueOpen(false);
     }
   }, [currentMedia]);
-
-  // Reset playing state when media changes and handle fullscreen persistence
-  useEffect(() => {
-    setIsPlaying(false);
-
-    // If we should maintain fullscreen and new media is video, request it on play
-    if (
-      shouldMaintainFullscreen.current &&
-      currentMedia?.media_type === "video"
-    ) {
-      requestFullscreenOnPlay.current = true;
-    }
-  }, [currentMedia?.id, currentMedia?.media_type]);
 
   // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       const inFullscreen = !!document.fullscreenElement;
       setIsFullscreen(inFullscreen);
-
-      // Update intent: if user manually exits fullscreen, stop maintaining it
-      if (!inFullscreen && shouldMaintainFullscreen.current) {
-        // Check if this was a manual exit (not during media change)
-        // If we have current media and it's a video, this was likely manual
-        if (currentMedia?.media_type === "video") {
-          shouldMaintainFullscreen.current = false;
-        }
-      } else if (inFullscreen) {
-        // Entered fullscreen, remember to maintain it
-        shouldMaintainFullscreen.current = true;
-      }
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -124,7 +93,7 @@ export default function PersistentPlayer() {
         handleFullscreenChange,
       );
     };
-  }, [currentMedia?.media_type]);
+  }, []);
 
   const trackEvent = async (eventType: string, data?: any) => {
     if (!currentMedia) return;
@@ -137,7 +106,7 @@ export default function PersistentPlayer() {
         data,
       );
     } catch (error) {
-      console.error("Failed to track event:", error);
+      console.error("[PersistentPlayer] Failed to track event:", error);
     }
   };
 
@@ -170,23 +139,17 @@ export default function PersistentPlayer() {
     if (!player) return;
 
     if (isFullscreen) {
-      // User manually exiting fullscreen
-      shouldMaintainFullscreen.current = false;
       if (document.exitFullscreen) {
         document.exitFullscreen();
       }
     } else {
-      // User manually entering fullscreen
-      shouldMaintainFullscreen.current = true;
-      player
-        .requestFullscreen()
-        .catch((err) => console.log("Fullscreen request:", err));
+      player.requestFullscreen().catch(() => {});
     }
   };
 
-  const handleTimeUpdate = (time: number) => {
+  const handleTimeUpdateWithTracking = (time: number) => {
     if (!isDragging) {
-      setCurrentTime(time);
+      handleTimeUpdate(time);
     }
     // Track progress milestones
     if (duration) {
@@ -197,11 +160,25 @@ export default function PersistentPlayer() {
     }
   };
 
-  const handleEnded = async () => {
-    await trackEvent("complete");
-    if (hasNext) {
-      playNext();
+  const handlePlayWithTracking = () => {
+    handlePlaybackStarted();
+    trackEvent("play");
+
+    // Auto-fullscreen for videos on first play
+    if (currentMedia?.media_type === "video" && !isFullscreen) {
+      const player = playerRef.current?.getPlayer();
+      player?.requestFullscreen().catch(() => {});
     }
+  };
+
+  const handlePauseWithTracking = () => {
+    handlePlaybackPaused();
+    trackEvent("pause");
+  };
+
+  const handleEndedWithTracking = async () => {
+    await trackEvent("complete");
+    handlePlaybackEnded();
   };
 
   if (!currentMedia) return null;
@@ -217,7 +194,7 @@ export default function PersistentPlayer() {
     <>
       {/* Video Player - positioned off-screen but not hidden (required for fullscreen to work) */}
       <div className="fixed -top-[9999px] -left-[9999px] pointer-events-none">
-        <VideoPlayer
+        <DualVideoPlayer
           ref={playerRef}
           src={playerSrc}
           poster={
@@ -226,30 +203,26 @@ export default function PersistentPlayer() {
               : undefined
           }
           autoplay={true}
-          onPlay={() => {
-            setIsPlaying(true);
-            trackEvent("play");
-
-            // Re-enter fullscreen if we should maintain it
-            if (requestFullscreenOnPlay.current && playerRef.current) {
-              const player = playerRef.current.getPlayer();
-              if (player) {
-                requestFullscreenOnPlay.current = false;
-                player
-                  .requestFullscreen()
-                  .catch((err) => console.log("Fullscreen request:", err));
-              }
-            }
-          }}
-          onPause={() => {
-            setIsPlaying(false);
-            trackEvent("pause");
-          }}
-          onEnded={handleEnded}
-          onTimeUpdate={handleTimeUpdate}
-          onDurationChange={setDuration}
+          onPlay={handlePlayWithTracking}
+          onPause={handlePauseWithTracking}
+          onEnded={handleEndedWithTracking}
+          onTimeUpdate={handleTimeUpdateWithTracking}
+          onDurationChange={handleDurationChange}
+          onBufferStart={handleBufferStart}
+          onBufferEnd={handleBufferEnd}
+          onError={handleError}
         />
       </div>
+
+      {/* Queue Panel */}
+      <QueuePanel
+        isOpen={isQueueOpen}
+        onClose={() => setIsQueueOpen(false)}
+        queue={queue}
+        currentIndex={currentIndex}
+        isPlaying={isPlaying}
+        onTrackClick={jumpToTrack}
+      />
 
       {/* Bottom Bar */}
       <div
@@ -317,13 +290,6 @@ export default function PersistentPlayer() {
               className={`p-2 rounded-full transition-colors theme-text-primary ${
                 !hasPrevious && "opacity-30 cursor-not-allowed"
               }`}
-              style={
-                hasPrevious
-                  ? {
-                      ["--tw-hover-bg" as any]: "var(--player-bar-button-hover)",
-                    }
-                  : {}
-              }
               onMouseEnter={(e) =>
                 hasPrevious &&
                 (e.currentTarget.style.background =
@@ -349,7 +315,10 @@ export default function PersistentPlayer() {
               {isPlaying ? (
                 <Pause className="w-6 h-6" fill="currentColor" />
               ) : (
-                <Play className="w-6 h-6 translate-x-[1px]" fill="currentColor" />
+                <Play
+                  className="w-6 h-6 translate-x-[1px]"
+                  fill="currentColor"
+                />
               )}
             </button>
 
@@ -373,13 +342,41 @@ export default function PersistentPlayer() {
             </button>
           </div>
 
-          {/* Right: Volume + Queue Position + Close */}
+          {/* Right: Queue + Volume + Fullscreen + Close */}
           <div className="flex items-center gap-2 sm:gap-4 sm:flex-1 justify-end">
             {/* Queue Position */}
             {queuePosition && (
               <span className="text-sm theme-text-muted whitespace-nowrap hidden sm:block">
                 {queuePosition.current} / {queuePosition.total}
               </span>
+            )}
+
+            {/* Queue Button */}
+            {queue.length > 0 && (
+              <button
+                onClick={() => setIsQueueOpen(!isQueueOpen)}
+                className={`p-2 rounded-full transition-colors ${
+                  isQueueOpen
+                    ? "theme-text-primary"
+                    : "theme-text-muted hover:theme-text-primary"
+                }`}
+                style={
+                  isQueueOpen
+                    ? { background: "var(--player-bar-button-hover)" }
+                    : {}
+                }
+                onMouseEnter={(e) =>
+                  !isQueueOpen &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  !isQueueOpen && (e.currentTarget.style.background = "")
+                }
+                title="Queue"
+              >
+                <List className="w-5 h-5" />
+              </button>
             )}
 
             {/* Volume Control (Desktop only) */}

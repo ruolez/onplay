@@ -281,14 +281,8 @@ video.setAttribute("loop", "");
 - Failure: `⚠️ Native API failed: [error]` or `❌ Fallback video failed: [error]`
 
 **Wake Lock Release:**
-- Automatically released when player is closed
-- Automatically released when page visibility changes (tab switch)
-- Re-acquired when user returns to tab (if media still playing)
-
-**Common Issues:**
-1. **User gesture expired**: Must call `requestWakeLock()` directly in click handler, not `useEffect`
-2. **Video off-screen**: iOS Safari ignores videos positioned with `left: -9999px` - must be on-screen
-3. **Autoplay blocked**: Video fallback won't work until user interacts with page
+- Auto-released when player closed or tab switched
+- Re-acquired when returning to tab (if media still playing)
 
 ### Audio Thumbnail Design Principles
 
@@ -383,25 +377,13 @@ useEffect(() => {
 }, [selectedTags]);
 ```
 
-#### Key Considerations
-
-- **Lazy Initialization**: Use function form of `useState` to read localStorage only once
-- **JSON Serialization**: Arrays (tags) must be stringified/parsed
-- **Error Handling**: Catch JSON parse errors for corrupted localStorage data
-- **Performance**: Each state has its own `useEffect` hook (avoids unnecessary updates)
-- **Type Safety**: Cast localStorage values to proper union types
+**Key Points:** Use lazy initialization with `useState(() => ...)`, wrap JSON.parse in try/catch, separate `useEffect` per state for performance.
 
 ### Persistent Player Architecture
 
 **UX Pattern**: Spotify-style persistent player that stays at the bottom of the screen across all routes, providing uninterrupted playback.
 
-#### Why Persistent Bottom Bar
-
-- **Continuous Playback**: Audio and video continue playing while browsing
-- **Always Accessible**: Controls visible at all times without modal overlay
-- **Natural UX**: Industry-standard pattern (Spotify, YouTube Music, Apple Music)
-- **Video Fullscreen**: Auto-enters browser fullscreen for videos, with manual toggle
-- **Route Independence**: Works across all pages (Gallery, Upload, Stats)
+**Why:** Industry-standard pattern (Spotify, YouTube) enabling continuous playback across all routes with always-accessible controls.
 
 #### Implementation
 
@@ -537,24 +519,11 @@ useEffect(() => {
 - **Queue Position**: Shows "3 / 15" indicator when queue is active
 - **Cross-Route**: Works seamlessly across Gallery, Upload, Stats pages
 
-#### Common Issues
-
-1. **Fullscreen Timing**: Use play event trigger (not timer) to avoid expired user gesture
-2. **Hidden Element**: VideoPlayer must be positioned off-screen (not `display: none`) for fullscreen to work
-3. **Autoplay Policy**: Must start muted, then unmute after play event
-4. **Undefined Variants**: Always fetch full media via API, don't use Gallery list data
-5. **Analytics Preserved**: All tracking events work identically to modal player
-
 ### Autoplay Queue Architecture
 
 **User Experience**: When a user clicks a media card in Gallery, the filtered list becomes a playback queue. After the current track finishes, the next item automatically plays.
 
-#### Why Queue Snapshot Pattern
-
-- **Simple**: Filtered media list becomes the queue when user clicks any item
-- **Intuitive**: Queue matches exactly what user sees in Gallery
-- **No Staleness**: Modal blocks the Gallery, so filters can't change mid-playback
-- **Minimal Code**: Extends existing PlayerContext without new contexts
+**Why This Pattern:** Filtered media list becomes the queue - simple, intuitive, and matches what user sees in Gallery.
 
 #### Implementation
 
@@ -652,12 +621,10 @@ onEnded={async () => {
 <span>{queuePosition.current} / {queuePosition.total}</span>
 ```
 
-#### Key Features
-
-- **Respects Filters**: Queue = exactly what user sees (search + tags + type filter)
-- **New Session Per Track**: Each track gets unique session ID for analytics
-- **Works in Both Views**: Grid and list view use same code path
-- **Graceful Handling**: Last item doesn't auto-advance, single item shows no queue UI
+**Key Points:**
+- Queue respects active filters (search + tags + type filter)
+- Each track gets unique session ID for analytics
+- Works in both grid and list view
 
 ### Mobile Navigation Architecture
 
@@ -718,24 +685,17 @@ useEffect(() => {
 </div>
 ```
 
-#### Mobile UI Optimizations
-
-- **Compact Theme Selector**: 2-column grid on mobile vs single column on desktop
-- **Tighter Spacing**: Reduced top padding in Gallery (12px vs 24px on mobile)
-- **Smaller Touch Targets**: 36px min-height on mobile vs 44px on desktop for dropdowns
-- **Responsive Text**: `text-sm` on mobile, `text-base` on desktop
+**Mobile UI Optimizations:**
+- Compact theme selector with 2-column grid
+- Reduced spacing (12px top padding)
+- Smaller touch targets (36px min-height)
+- Responsive text sizing
 
 ### Segmented Control Architecture
 
 **Design Pattern**: iOS-style segmented control for mutually exclusive filter options, providing superior visual hierarchy over individual buttons.
 
-#### Why Segmented Control
-
-- **Visual Hierarchy**: Clear distinction between primary filters (media type) and secondary filters (tags)
-- **Space Efficiency**: 30% less horizontal space than separate buttons
-- **Professional Pattern**: Industry standard (Apple Music, Spotify, Figma) for exclusive choices
-- **Mobile Optimized**: Touch-friendly but visually compact
-- **Accessibility**: Single tab stop with arrow key navigation
+**Why:** Industry-standard pattern (Apple Music, Spotify) providing superior visual hierarchy, 30% space savings, and better accessibility than separate buttons.
 
 #### Implementation
 
@@ -780,31 +740,13 @@ interface SegmentedControlProps<T extends string> {
 />
 ```
 
-#### Visual Hierarchy Strategy
-
-**Gallery Filter Layout:**
-
-1. **Primary Filter** (Segmented Control): Orange accent, single-unit design
-2. **Secondary Filter** (Tag Pills): Same blue as view toggles, separate rounded pills
-3. **View Toggle**: Blue accent, icon-only buttons
-
-This creates clear visual distinction between:
-
-- **What you're filtering** (media type - orange segmented control)
-- **How you're filtering** (tags - blue pills)
-- **How you're viewing** (grid/list - blue icon buttons)
+**Visual Hierarchy:** Orange for primary filter (media type), blue for secondary filters (tags) and view toggles - creates clear distinction between filter types.
 
 ### Gallery Card Actions Architecture
 
 **Design Pattern**: Consolidated three-dots dropdown menu for all media card actions, providing cleaner UI with better mobile UX.
 
-#### Why Consolidate into Three-Dots Menu
-
-- **Space Efficiency**: ~70% less horizontal space than individual action buttons
-- **Cleaner Design**: Reduces visual clutter on media cards
-- **Better Mobile UX**: Fewer cramped touch targets, prevents accidental taps
-- **Professional Standard**: Industry pattern (YouTube, Gmail, Google Drive)
-- **Focus on Content**: More space for thumbnails and metadata
+**Why:** Industry pattern (YouTube, Gmail) saving ~70% space, reducing clutter, and improving mobile UX by eliminating cramped touch targets.
 
 #### Implementation
 
@@ -872,24 +814,11 @@ This creates clear visual distinction between:
    - Add `media-menu-container` class to menu wrapper
    - Enables click-outside detection without interfering with clicks inside menu
 
-#### Common Issues
-
-1. **Dropdown Hidden**: Must remove `overflow-hidden` from card, only apply to thumbnail
-2. **Z-Index Stacking**: List items need conditional `z-[110]` when menu is active
-3. **Menu Stays Open**: Add click-outside listener with proper container class
-4. **Mobile Tap Flash**: Disable WebKit tap highlight color
-5. **Text Size Hierarchy**: Dropdown text (`text-xs`) must be smaller than card title (`text-xs sm:text-sm`)
-
 ### Sorting UI Architecture
 
 **Design Pattern**: Compact dropdown control for sorting options, minimizing UI footprint while providing clear state indication.
 
-#### Why Dropdown Over Buttons
-
-- **Space Efficiency**: ~70% less horizontal space than separate buttons
-- **Scalability**: Easy to add more sort options without cluttering UI
-- **Professional Standard**: Used by Linear, GitHub, Notion for data tables
-- **State Clarity**: Always shows current sort field and direction
+**Why:** Professional pattern (Linear, GitHub, Notion) saving ~70% space while clearly showing current sort field and direction.
 
 #### Implementation
 
@@ -906,27 +835,9 @@ const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
 );
 ```
 
-**Sort Options (in order):**
-1. **New** - Sort by date added (created_at field)
-2. **Name** - Alphabetical sort (case-insensitive)
-3. **Popular** - Sort by play count
-4. **Duration** - Sort by media length
+**Sort Options:** New (date), Name (alphabetical), Popular (play count), Duration (length)
 
-**Click Behavior:**
-- Click different option: Switch to that field, reset to ascending
-- Click same option: Toggle between ascending/descending
-
-**UI Components:**
-- Compact button showing: Icon + Field name (desktop) + Arrow direction
-- Dropdown menu with all 4 options
-- Active option shows current arrow direction (↑/↓)
-- Click-outside listener to close dropdown
-
-**Total Duration Display:**
-- Shows at bottom of filtered gallery
-- Format: "X items • Xh Xm Xs"
-- Minimalistic design (text-xs, theme-text-muted)
-- Uses `formatLongDuration()` utility for human-readable format
+**Behavior:** Click different option to switch, click same to toggle asc/desc. Total duration shown at bottom in minimalistic format.
 
 #### Styling
 
@@ -954,19 +865,7 @@ const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
 }
 ```
 
-**Alignment Considerations:**
-
-- Use `items-center` for container alignment with view toggle buttons
-- Consistent height (`min-h-[38px]`) ensures perfect baseline alignment
-- Padding `p-1` (4px) creates visual separation between segments
-- Active state gets subtle shadow: `0 1px 3px rgba(0, 0, 0, 0.1)`
-
-#### Common Issues
-
-1. **Height Misalignment**: Ensure segmented control and adjacent buttons have matching `min-h` values
-2. **Orange Color Clash**: Each theme's orange is chosen to complement (not clash with) primary blue/teal
-3. **Keyboard Focus**: Container needs `onKeyDown` handler, buttons need `role="radio"` for screen readers
-4. **TypeScript Generics**: Use `<T extends string>` to preserve union type narrowing
+**Styling:** Consistent `min-h-[38px]` height, `p-1` padding, subtle shadow on active state.
 
 ### Bandwidth Tracking Architecture
 
@@ -1142,32 +1041,28 @@ VITE_API_URL=http://localhost:8080/api
 
 ## Common Pitfalls
 
+**Media Processing:**
 1. **FFmpeg Audio Loss**: Always separate video/audio streams before filtering
-2. **Thumbnail Caching**: Use cache-busting query params
-3. **Worker Updates**: Restart Celery workers after task.py changes
-4. **File Deletion**: Use glob patterns for original files (extension unknown)
-5. **Theme Consistency**: Update both theme.ts and ThemeContext.tsx
-6. **Tag Creation**: Backend uses case-insensitive matching to prevent duplicates
-7. **Bandwidth Calculation**: Uses HLS variant sizes, not original file sizes (more accurate)
-8. **Hostname Resolution**: May be slow with many IPs; done at query time to avoid delays during tracking
-9. **Persistent Player Data**: Always fetch full media via `mediaApi.getMediaById()`, Gallery list lacks variants
-10. **Autoplay Requirements**: Must start muted (`muted: true`) then unmute after play event to bypass browser restrictions
-11. **Fullscreen Timing**: Trigger fullscreen on play event (not timer) to ensure user gesture is still fresh and hasn't expired
-12. **VideoPlayer Positioning**: VideoPlayer must be positioned off-screen (not `display: none`) for fullscreen API to work properly; use `fixed -top-[9999px] -left-[9999px]`
-13. **Filter Persistence**: Use lazy initialization `useState(() => localStorage.getItem(...))` to avoid reading on every render; wrap JSON.parse in try/catch for safety
-14. **Autoplay Queue**: Always pass `filteredMedia` (not `media`) to `openPlayer()` to respect active filters; each track needs new session ID
-15. **Mobile Search State**: Use URL params (`?q=...`) for search state, not localStorage, to sync between mobile top bar and desktop Gallery input
-16. **Theme Selector Mobile**: Use 2-column grid with `grid-cols-2 sm:grid-cols-1` and handle odd-numbered items with `col-span-2` on last item
-17. **Segmented Control Alignment**: Use consistent `min-h-[38px]` height and `items-center` alignment; each theme needs orange color that complements (not clashes with) primary button color
-18. **Filter Visual Hierarchy**: Primary filters (media type) use orange segmented control; secondary filters (tags) and view toggles use blue to create clear distinction
-19. **Three-Dots Menu Overflow**: Remove `overflow-hidden` from card container, apply only to thumbnail; prevents dropdown clipping while keeping rounded corners
-20. **Three-Dots Menu Z-Index**: Use `z-[100]` for dropdown and conditional `z-[110]` on active card to prevent stacking issues in list view
-21. **Click-Outside Handler**: Add `media-menu-container` class to menu wrapper for proper click-outside detection without interfering with menu clicks
-22. **Mobile Tap Highlight**: Disable with `style={{ WebkitTapHighlightColor: 'transparent' }}` to prevent purple flash on mobile browsers
-23. **List View Layout**: Right-align duration/play count metadata to efficiently use horizontal space; keep tags under filename for better visual grouping
-24. **HLS Memory Leaks**: MUST set `backBufferLength: 30` in Video.js VHS config; default infinite buffer causes 1.5GB+ memory growth after 15-20 minutes, leading to browser crashes and production auto-refreshes. See HLS Memory Management section for details.
-25. **Wake Lock Timing**: iOS Safari requires wake lock to be requested **synchronously in user gesture handler** (e.g., `onClick`), NOT in `useEffect` - user gesture permission expires after ~100ms; call `requestWakeLock()` directly in `togglePlayPause`, `openPlayer`, etc.; see Screen Wake Lock section for details.
-26. **Wake Lock Video Fallback**: Fallback video element must be **visible on-screen** for iOS Safari to count it; positioning with `left: -9999px` (off-screen) fails; use `bottom: 0; right: 0; width: 10px; opacity: 0.01` instead.
+2. **Worker Updates**: Restart Celery workers after task.py changes
+3. **File Deletion**: Use glob patterns for original files (extension unknown)
+
+**UI & State:**
+4. **Thumbnail Caching**: Use cache-busting query params with timestamps
+5. **Filter Persistence**: Use lazy `useState(() => localStorage.getItem(...))` with try/catch for JSON parsing
+6. **Mobile Search State**: Sync via URL params (`?q=...`), not localStorage
+
+**Player:**
+7. **HLS Memory**: Set `backBufferLength: 30` to prevent memory leaks (see HLS Memory Management)
+8. **Wake Lock Timing**: Request in click handler, not `useEffect` (see Screen Wake Lock)
+9. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
+10. **Autoplay Requirements**: Start muted, unmute after play event
+11. **Fullscreen Timing**: Trigger on play event to preserve user gesture
+12. **Persistent Player Data**: Fetch via `mediaApi.getMediaById()`, not Gallery list data
+
+**Layout & Styling:**
+13. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
+14. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
+15. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
 
 ## Future Enhancements
 
