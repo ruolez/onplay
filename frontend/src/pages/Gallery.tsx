@@ -536,11 +536,9 @@ export default function Gallery() {
                     {item.tags.map((tag) => (
                       <span
                         key={tag.id}
-                        onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
-                        className="px-1.5 sm:px-2 py-0.5 bg-white/10 hover:bg-red-500/20 rounded text-xs theme-text-secondary cursor-pointer transition-colors"
-                        title="Click to remove"
+                        className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-xs theme-text-secondary"
                       >
-                        {tag.name} ×
+                        {tag.name}
                       </span>
                     ))}
                   </div>
@@ -608,11 +606,9 @@ export default function Gallery() {
                       {item.tags.map((tag) => (
                         <span
                           key={tag.id}
-                          onClick={(e) => handleRemoveTag(e, item.id, tag.id)}
-                          className="px-1 py-[1px] bg-white/10 hover:bg-red-500/20 rounded text-[10px] theme-text-secondary cursor-pointer transition-colors"
-                          title="Click to remove"
+                          className="px-1 py-[1px] bg-white/10 rounded text-[10px] theme-text-secondary"
                         >
-                          {tag.name} ×
+                          {tag.name}
                         </span>
                       ))}
                     </div>
