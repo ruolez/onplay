@@ -315,3 +315,15 @@
   background: var(--btn-orange-bg);
   color: var(--btn-orange-text);
 }
+
+/* Logo Font - Montserrat */
+.logo-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.logo-text .middle-dot {
+  font-size: 0.8em;
+  opacity: 0.8;
+}

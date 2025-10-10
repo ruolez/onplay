@@ -7,7 +7,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Gallery from "./pages/Gallery";
 import Player from "./pages/Player";
 import Upload from "./pages/Upload";
@@ -17,14 +17,7 @@ import ThemeSelector from "./components/ThemeSelector";
 import PersistentPlayer from "./components/PersistentPlayer";
 import { useTheme } from "./contexts/ThemeContext";
 import { themes, applyTheme } from "./lib/theme";
-import {
-  Home,
-  Upload as UploadIcon,
-  BarChart3,
-  Menu,
-  X,
-  Search,
-} from "lucide-react";
+import { Upload as UploadIcon, BarChart3, Menu, X, Search } from "lucide-react";
 
 function AppContent() {
   const { theme } = useTheme();
@@ -32,9 +25,11 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [mobileSearchQuery, setMobileSearchQuery] = useState(
-    searchParams.get("q") || "",
-  );
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const desktopSearchRef = useRef<HTMLInputElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const themeConfig = themes[theme];
@@ -48,14 +43,14 @@ function AppContent() {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  // Sync mobile search with URL params
+  // Sync search with URL params
   useEffect(() => {
-    setMobileSearchQuery(searchParams.get("q") || "");
+    setSearchQuery(searchParams.get("q") || "");
   }, [searchParams]);
 
-  // Update URL when mobile search changes
-  const handleMobileSearchChange = (value: string) => {
-    setMobileSearchQuery(value);
+  // Update URL when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
     const params = new URLSearchParams(searchParams);
     if (value) {
       params.set("q", value);
@@ -65,6 +60,68 @@ function AppContent() {
     navigate(`?${params.toString()}`, { replace: true });
   };
 
+  // Auto-open search if query exists
+  useEffect(() => {
+    if (searchParams.get("q")) {
+      setIsDesktopSearchOpen(true);
+      setIsMobileSearchOpen(true);
+    }
+  }, [searchParams]);
+
+  // Auto-focus desktop search when opened
+  useEffect(() => {
+    if (isDesktopSearchOpen && desktopSearchRef.current) {
+      desktopSearchRef.current.focus();
+    }
+  }, [isDesktopSearchOpen]);
+
+  // Auto-focus mobile search when opened
+  useEffect(() => {
+    if (isMobileSearchOpen && mobileSearchRef.current) {
+      mobileSearchRef.current.focus();
+    }
+  }, [isMobileSearchOpen]);
+
+  // Click-outside handler for desktop search (only close if empty)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        isDesktopSearchOpen &&
+        desktopSearchRef.current &&
+        !desktopSearchRef.current.contains(e.target as Node) &&
+        !searchQuery
+      ) {
+        setIsDesktopSearchOpen(false);
+      }
+    };
+
+    if (isDesktopSearchOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isDesktopSearchOpen, searchQuery]);
+
+  // Click-outside handler for mobile search (only close if empty)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        isMobileSearchOpen &&
+        mobileSearchRef.current &&
+        !mobileSearchRef.current.contains(e.target as Node) &&
+        !searchQuery
+      ) {
+        setIsMobileSearchOpen(false);
+      }
+    };
+
+    if (isMobileSearchOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMobileSearchOpen, searchQuery]);
+
   return (
     <div className="min-h-screen theme-bg pb-24">
       {/* Navigation */}
@@ -73,7 +130,7 @@ function AppContent() {
           <div className="flex items-center justify-between h-14 sm:h-16">
             <Link
               to="/"
-              className="flex items-center space-x-1.5 sm:space-x-2 font-bold text-base sm:text-lg lg:text-xl theme-text-primary flex-shrink-0"
+              className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0"
               onClick={() => setMobileMenuOpen(false)}
             >
               <svg
@@ -105,66 +162,102 @@ function AppContent() {
                   opacity="0.4"
                 />
               </svg>
-              <span>On·Play</span>
+              <span className="logo-text text-base sm:text-lg lg:text-xl theme-text-primary">
+                On<span className="middle-dot"> · </span>Play
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
               <Link
-                to="/"
-                className="transition-colors flex items-center space-x-2 theme-nav-link min-h-[44px] px-2"
-              >
-                <Home className="w-5 h-5" />
-                <span>Home</span>
-              </Link>
-              <Link
                 to="/upload"
-                className="transition-colors flex items-center space-x-2 theme-nav-link min-h-[44px] px-2"
+                className="transition-colors theme-nav-link p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                title="Upload"
+                aria-label="Upload"
               >
                 <UploadIcon className="w-5 h-5" />
-                <span>Upload</span>
               </Link>
               <Link
                 to="/stats"
-                className="transition-colors flex items-center space-x-2 theme-nav-link min-h-[44px] px-2"
+                className="transition-colors theme-nav-link p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                title="Stats"
+                aria-label="Stats"
               >
                 <BarChart3 className="w-5 h-5" />
-                <span>Stats</span>
               </Link>
+
+              {/* Desktop Search (Gallery only) */}
+              {location.pathname === "/" && (
+                <>
+                  {isDesktopSearchOpen ? (
+                    <div className="relative w-64 lg:w-80 transition-all duration-300 ease-in-out">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 theme-text-muted pointer-events-none" />
+                      <input
+                        ref={desktopSearchRef}
+                        type="text"
+                        placeholder="Search..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        className="w-full pl-9 pr-9 py-2 rounded-lg text-sm theme-input focus:outline-none focus:ring-1 focus:ring-offset-1"
+                        style={{
+                          background: "var(--input-bg)",
+                          color: "var(--text-primary)",
+                          borderColor: "var(--card-border)",
+                        }}
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => handleSearchChange("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                          aria-label="Clear search"
+                        >
+                          <X className="w-3.5 h-3.5 theme-text-muted" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsDesktopSearchOpen(true)}
+                      className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                      aria-label="Search"
+                      title="Search"
+                    >
+                      <Search className="w-5 h-5" />
+                    </button>
+                  )}
+                </>
+              )}
+
               <ThemeSelector />
             </div>
 
-            {/* Mobile Search Input (Gallery only) */}
-            {location.pathname === "/" && (
-              <div className="md:hidden flex-1 mx-2 relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 theme-text-muted pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={mobileSearchQuery}
-                  onChange={(e) => handleMobileSearchChange(e.target.value)}
-                  className="w-full pl-8 pr-2 py-1.5 rounded-lg text-sm theme-input focus:outline-none focus:ring-1 focus:ring-offset-1"
-                  style={{
-                    background: "var(--input-bg)",
-                    color: "var(--text-primary)",
-                    borderColor: "var(--card-border)",
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center flex-shrink-0"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
+            {/* Mobile Actions (right side) */}
+            <div className="md:hidden flex items-center space-x-2">
+              {/* Mobile Search Icon (Gallery only) */}
+              {location.pathname === "/" && (
+                <button
+                  onClick={() => setIsMobileSearchOpen(true)}
+                  className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                  aria-label="Search"
+                  title="Search"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
               )}
-            </button>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -172,14 +265,6 @@ function AppContent() {
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 theme-dropdown border-t border-white/10">
             <div className="container mx-auto px-4 py-4 space-y-2">
-              <Link
-                to="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center space-x-3 theme-nav-link p-3 rounded-lg hover:bg-white/5 transition-colors min-h-[44px]"
-              >
-                <Home className="w-5 h-5" />
-                <span>Home</span>
-              </Link>
               <Link
                 to="/upload"
                 onClick={() => setMobileMenuOpen(false)}
@@ -198,6 +283,49 @@ function AppContent() {
               </Link>
               <div className="pt-2 border-t border-white/10">
                 <ThemeSelector />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Search Modal */}
+        {isMobileSearchOpen && (
+          <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start pt-20">
+            <div className="container mx-auto px-4">
+              <div className="theme-card rounded-lg p-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 theme-text-muted pointer-events-none" />
+                  <input
+                    ref={mobileSearchRef}
+                    type="text"
+                    placeholder="Search media..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="w-full pl-11 pr-11 py-3 rounded-lg text-base theme-input focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    style={{
+                      background: "var(--input-bg)",
+                      color: "var(--text-primary)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  />
+                  {searchQuery ? (
+                    <button
+                      onClick={() => handleSearchChange("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/10 rounded transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-5 h-5 theme-text-muted" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setIsMobileSearchOpen(false)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/10 rounded transition-colors"
+                      aria-label="Close search"
+                    >
+                      <X className="w-5 h-5 theme-text-muted" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
