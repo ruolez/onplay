@@ -50,8 +50,9 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
     const playerRef = useRef<Player | null>(null);
     const preloadPlayerRef = useRef<Player | null>(null);
     const isWaitingRef = useRef(false);
+    const isFirstRender = useRef(true);
 
-    // Initialize main player
+    // Initialize main player (only once)
     useEffect(() => {
       if (!playerRef.current && videoRef.current) {
         const videoElement = document.createElement("video-js");
@@ -99,51 +100,25 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           },
         });
 
-        // Handle autoplay - unmute after play starts
+        // Handle autoplay - start muted then unmute after first play
         if (autoplay) {
-          player.one("play", () => {
-            player.muted(false);
+          // Explicitly trigger play to ensure autoplay works
+          player.ready(() => {
+            player.play().catch((err) => {
+              console.error("[DualPlayer] Autoplay failed:", err);
+            });
+          });
+
+          // Unmute after first play event (ensures autoplay policy satisfied)
+          player.one("playing", () => {
+            setTimeout(() => {
+              if (player.muted()) {
+                player.muted(false);
+                player.volume(1);
+              }
+            }, 100);
           });
         }
-
-        // Event listeners
-        if (onPlay) player.on("play", onPlay);
-        if (onPause) player.on("pause", onPause);
-        if (onEnded) player.on("ended", onEnded);
-        if (onTimeUpdate) {
-          player.on("timeupdate", () => {
-            onTimeUpdate(player.currentTime() || 0);
-          });
-        }
-        if (onDurationChange) {
-          player.on("durationchange", () => {
-            onDurationChange(player.duration() || 0);
-          });
-        }
-
-        // Buffer events
-        player.on("waiting", () => {
-          if (!isWaitingRef.current) {
-            isWaitingRef.current = true;
-            onBufferStart?.();
-          }
-        });
-
-        player.on("canplay", () => {
-          if (isWaitingRef.current) {
-            isWaitingRef.current = false;
-            onBufferEnd?.();
-          }
-        });
-
-        player.on("error", () => {
-          const error = player.error();
-          const message = error
-            ? `${error.code}: ${error.message}`
-            : "Unknown playback error";
-          console.error("[DualPlayer] Error:", message);
-          onError?.(message);
-        });
 
         playerRef.current = player;
       }
@@ -154,7 +129,103 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           playerRef.current = null;
         }
       };
-    }, [src]);
+    }, []); // Only create once
+
+    // Update source when src changes (without recreating player)
+    useEffect(() => {
+      // Skip first render (initial source already set)
+      if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+      }
+
+      const player = playerRef.current;
+      if (player && !player.isDisposed()) {
+        console.log("[DualPlayer] Changing source to:", src);
+
+        // Change source without exiting fullscreen
+        player.src({
+          src,
+          type: "application/x-mpegURL",
+        });
+
+        // Update poster if provided
+        if (poster) {
+          player.poster(poster);
+        }
+
+        // Auto-play after source change (maintains fullscreen)
+        player.ready(() => {
+          player.play().catch((err) => {
+            console.error("[DualPlayer] Failed to play after source change:", err);
+          });
+        });
+      }
+    }, [src, poster]);
+
+    // Update event listeners when callbacks change (without recreating player)
+    useEffect(() => {
+      const player = playerRef.current;
+      if (!player) return;
+
+      // Clear all old listeners
+      player.off("play");
+      player.off("pause");
+      player.off("ended");
+      player.off("timeupdate");
+      player.off("durationchange");
+      player.off("waiting");
+      player.off("canplay");
+      player.off("error");
+
+      // Attach new listeners with current callbacks
+      if (onPlay) player.on("play", onPlay);
+      if (onPause) player.on("pause", onPause);
+      if (onEnded) player.on("ended", onEnded);
+      if (onTimeUpdate) {
+        player.on("timeupdate", () => {
+          onTimeUpdate(player.currentTime() || 0);
+        });
+      }
+      if (onDurationChange) {
+        player.on("durationchange", () => {
+          onDurationChange(player.duration() || 0);
+        });
+      }
+
+      // Buffer events
+      player.on("waiting", () => {
+        if (!isWaitingRef.current) {
+          isWaitingRef.current = true;
+          onBufferStart?.();
+        }
+      });
+
+      player.on("canplay", () => {
+        if (isWaitingRef.current) {
+          isWaitingRef.current = false;
+          onBufferEnd?.();
+        }
+      });
+
+      player.on("error", () => {
+        const error = player.error();
+        const message = error
+          ? `${error.code}: ${error.message}`
+          : "Unknown playback error";
+        console.error("[DualPlayer] Error:", message);
+        onError?.(message);
+      });
+    }, [
+      onPlay,
+      onPause,
+      onEnded,
+      onTimeUpdate,
+      onDurationChange,
+      onBufferStart,
+      onBufferEnd,
+      onError,
+    ]);
 
     useImperativeHandle(ref, () => ({
       getCurrentTime: () => playerRef.current?.currentTime() || 0,

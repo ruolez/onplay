@@ -164,11 +164,9 @@ export default function PersistentPlayer() {
     handlePlaybackStarted();
     trackEvent("play");
 
-    // Auto-fullscreen for videos on first play
-    if (currentMedia?.media_type === "video" && !isFullscreen) {
-      const player = playerRef.current?.getPlayer();
-      player?.requestFullscreen().catch(() => {});
-    }
+    // Note: Fullscreen is now maintained automatically by keeping same Video.js player instance
+    // First video fullscreen is handled by Gallery.tsx setTimeout
+    // Subsequent videos maintain fullscreen naturally without needing requestFullscreen()
   };
 
   const handlePauseWithTracking = () => {

@@ -71,7 +71,7 @@ export const queueMachine = setup({
     moveToNext: assign({
       currentIndex: ({ context }) => context.currentIndex + 1,
       currentMedia: ({ context }) =>
-        context.nextTrackPreloaded ? context.nextMedia : null,
+        context.nextTrackPreloaded ? context.nextMedia : context.currentMedia,
       nextMedia: null,
       nextTrackPreloaded: false,
       playbackState: ({ context }) => ({
@@ -82,6 +82,7 @@ export const queueMachine = setup({
     }),
     moveToPrevious: assign({
       currentIndex: ({ context }) => context.currentIndex - 1,
+      currentMedia: ({ context }) => context.currentMedia,
       nextMedia: null,
       nextTrackPreloaded: false,
       playbackState: ({ context }) => ({
@@ -213,6 +214,12 @@ export const queueMachine = setup({
       },
     },
     loading: {
+      on: {
+        LOAD_TRACK: {
+          target: "loading",
+          actions: ["setQueue", "generateSessionId"],
+        },
+      },
       invoke: {
         src: "loadMedia",
         input: ({ event, context }) => {
@@ -254,6 +261,19 @@ export const queueMachine = setup({
         },
         PLAY: "playing",
         PLAYBACK_STARTED: "playing",
+        PAUSE: "paused",
+        PLAYBACK_PAUSED: "paused",
+        PLAYBACK_ENDED: [
+          {
+            target: "loading",
+            actions: ["moveToNext", "generateSessionId"],
+            guard: { type: "hasNext" },
+          },
+          {
+            target: "paused",
+            actions: ["setPausedState"],
+          },
+        ],
         UPDATE_DURATION: {
           actions: ["updateDuration"],
         },
@@ -278,11 +298,17 @@ export const queueMachine = setup({
         },
         PAUSE: "paused",
         PLAYBACK_PAUSED: "paused",
-        PLAYBACK_ENDED: {
-          target: "loading",
-          actions: ["moveToNext", "generateSessionId"],
-          guard: { type: "hasNext" },
-        },
+        PLAYBACK_ENDED: [
+          {
+            target: "loading",
+            actions: ["moveToNext", "generateSessionId"],
+            guard: { type: "hasNext" },
+          },
+          {
+            target: "paused",
+            actions: ["setPausedState"],
+          },
+        ],
         BUFFER_START: "buffering",
         UPDATE_TIME: {
           actions: ["updateTime"],
@@ -328,6 +354,17 @@ export const queueMachine = setup({
         },
         PLAY: "playing",
         PLAYBACK_STARTED: "playing",
+        PLAYBACK_ENDED: [
+          {
+            target: "loading",
+            actions: ["moveToNext", "generateSessionId"],
+            guard: { type: "hasNext" },
+          },
+          {
+            target: "paused",
+            actions: ["setPausedState"],
+          },
+        ],
         NEXT: {
           target: "loading",
           actions: ["moveToNext", "generateSessionId"],

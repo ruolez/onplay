@@ -82,6 +82,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const machineState = state.value as string;
   const errorMessage = state.context.errorMessage;
 
+  // Auto-play when transitioning to ready state (for auto-advance)
+  const prevStateRef = useRef<string>(machineState);
+  useEffect(() => {
+    const prevState = prevStateRef.current;
+    const currentState = machineState;
+
+    // If we just transitioned from loading to ready, explicitly start playback
+    if (prevState === "loading" && currentState === "ready") {
+      const player = playerRef.current?.getPlayer();
+      if (player && player.paused()) {
+        // Force unmute and full volume for auto-advance tracks
+        player.muted(false);
+        player.volume(1);
+
+        player.play().catch((err) => {
+          console.error("[PlayerContext] Failed to auto-play:", err);
+        });
+      }
+    }
+
+    prevStateRef.current = currentState;
+  }, [machineState]);
+
   // Handle preload completion
   const handlePreloadComplete = useCallback(
     (media: Media) => {
@@ -111,6 +134,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Media Session API integration
   useMediaSession(currentMedia, hasNext, hasPrevious, {
     onPlay: () => {
+      const player = playerRef.current?.getPlayer();
+      if (player) {
+        player.muted(false);
+        player.volume(1);
+      }
       send({ type: "PLAY" });
       playerRef.current?.play();
     },
@@ -165,6 +193,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (player) {
       if (player.paused()) {
         requestWakeLock();
+        // Ensure unmuted when user manually plays
+        player.muted(false);
+        player.volume(1);
         player.play();
         send({ type: "PLAY" });
       } else {
@@ -198,11 +229,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playerRef.current.swapToPreloaded();
     }
 
+    // Ensure next track is unmuted
+    const player = playerRef.current?.getPlayer();
+    if (player) {
+      player.muted(false);
+      player.volume(1);
+    }
+
     send({ type: "NEXT" });
   }, [send, requestWakeLock, state.context.nextTrackPreloaded]);
 
   const playPrevious = useCallback(() => {
     requestWakeLock();
+
+    // Ensure previous track is unmuted
+    const player = playerRef.current?.getPlayer();
+    if (player) {
+      player.muted(false);
+      player.volume(1);
+    }
+
     send({ type: "PREVIOUS" });
   }, [send, requestWakeLock]);
 
@@ -214,6 +260,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       const track = queue[index];
       requestWakeLock();
+
+      // Ensure jumped track is unmuted
+      const player = playerRef.current?.getPlayer();
+      if (player) {
+        player.muted(false);
+        player.volume(1);
+      }
+
       send({ type: "LOAD_TRACK", mediaId: track.id, queueItems: queue });
     },
     [queue, send, requestWakeLock],
