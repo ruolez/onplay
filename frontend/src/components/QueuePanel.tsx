@@ -98,10 +98,7 @@ export default function QueuePanel({
               <p>No tracks in queue</p>
             </div>
           ) : (
-            <div
-              className="divide-y"
-              style={{ borderColor: "var(--card-border)" }}
-            >
+            <div>
               {queue.map((track, index) => {
                 const isCurrent = index === currentIndex;
                 const isLoading = loadingTrack === index;
