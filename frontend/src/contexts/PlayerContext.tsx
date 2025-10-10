@@ -5,9 +5,11 @@ import {
   ReactNode,
   useCallback,
   useRef,
+  useEffect,
 } from "react";
 import { mediaApi, type Media } from "../lib/api";
 import type { VideoPlayerRef } from "../components/VideoPlayer";
+import { useWakeLock } from "../hooks/useWakeLock";
 
 interface PlayerContextType {
   currentMedia: Media | null;
@@ -45,6 +47,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const playerRef = useRef<VideoPlayerRef>(null);
+  const { requestWakeLock, releaseWakeLock } = useWakeLock();
 
   const openPlayer = useCallback(
     async (mediaId: string, queueItems?: Media[]) => {
@@ -111,7 +114,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-  }, []);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
 
   const togglePlayPause = useCallback(() => {
     const player = playerRef.current?.getPlayer();
@@ -148,6 +152,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       });
     }
   }, []);
+
+  // Activate wake lock when media starts playing
+  useEffect(() => {
+    if (isPlaying && currentMedia) {
+      requestWakeLock();
+    }
+  }, [isPlaying, currentMedia, requestWakeLock]);
 
   const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
   const hasPrevious = currentIndex > 0;
