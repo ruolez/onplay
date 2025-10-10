@@ -219,6 +219,77 @@ media-player/
   - Smooth playback for hours
 - **References**: Mux blog "An HLS.js cautionary tale", hls.js GitHub issues #5402, #1220, #939
 
+### Screen Wake Lock (Prevent Mobile Screen Sleep)
+
+**Purpose**: Keep mobile device screen awake during media playback to prevent dimming/locking while browsing or playing audio.
+
+- **Implementation**: `useWakeLock` hook in `frontend/src/hooks/useWakeLock.ts`
+- **Browser Support**:
+  - Chrome/Edge Android: Native Wake Lock API
+  - Safari iOS 16.4+: Native Wake Lock API
+  - Brave iOS: Native Wake Lock API (uses WebKit)
+  - Older browsers: Silent video fallback (iOS only)
+
+**Critical Timing Requirement:**
+
+iOS Safari requires wake lock to be requested **synchronously during user gesture handler**, not in `useEffect`:
+
+```typescript
+// ✅ CORRECT - Request immediately in click handler
+const togglePlayPause = useCallback(() => {
+  if (player.paused()) {
+    requestWakeLock(); // Still within user gesture
+    player.play();
+  }
+}, [requestWakeLock]);
+
+// ❌ WRONG - Too late, user gesture expired
+useEffect(() => {
+  if (isPlaying) {
+    requestWakeLock(); // Fails on iOS Safari
+  }
+}, [isPlaying]);
+```
+
+**Wake Lock Activation Points:**
+- `openPlayer()`: When user clicks media card
+- `togglePlayPause()`: When user clicks play button
+- `playNext()` / `playPrevious()`: When navigating queue
+
+**Fallback Strategy for iOS:**
+1. Try native Wake Lock API first (works on iOS 16.4+)
+2. If fails, play invisible 10x10px looping video at bottom-right corner
+3. Video must be **visible** (not off-screen) for iOS to count it
+
+**Video Fallback Details:**
+```typescript
+// Must be on-screen (iOS ignores off-screen videos)
+video.style.position = "fixed";
+video.style.bottom = "0";
+video.style.right = "0";
+video.style.width = "10px";
+video.style.height = "10px";
+video.style.opacity = "0.01";
+video.setAttribute("playsinline", "");
+video.setAttribute("muted", "");
+video.setAttribute("loop", "");
+```
+
+**Logging:**
+- All logs prefixed with `[WakeLock]` for easy debugging
+- Success: `✅ Wake lock activated (native API)` or `✅ Wake lock activated (video fallback for iOS)`
+- Failure: `⚠️ Native API failed: [error]` or `❌ Fallback video failed: [error]`
+
+**Wake Lock Release:**
+- Automatically released when player is closed
+- Automatically released when page visibility changes (tab switch)
+- Re-acquired when user returns to tab (if media still playing)
+
+**Common Issues:**
+1. **User gesture expired**: Must call `requestWakeLock()` directly in click handler, not `useEffect`
+2. **Video off-screen**: iOS Safari ignores videos positioned with `left: -9999px` - must be on-screen
+3. **Autoplay blocked**: Video fallback won't work until user interacts with page
+
 ### Audio Thumbnail Design Principles
 
 - **Smooth Mesh Gradients**: Multi-point distance-based blending
@@ -1095,6 +1166,8 @@ VITE_API_URL=http://localhost:8080/api
 22. **Mobile Tap Highlight**: Disable with `style={{ WebkitTapHighlightColor: 'transparent' }}` to prevent purple flash on mobile browsers
 23. **List View Layout**: Right-align duration/play count metadata to efficiently use horizontal space; keep tags under filename for better visual grouping
 24. **HLS Memory Leaks**: MUST set `backBufferLength: 30` in Video.js VHS config; default infinite buffer causes 1.5GB+ memory growth after 15-20 minutes, leading to browser crashes and production auto-refreshes. See HLS Memory Management section for details.
+25. **Wake Lock Timing**: iOS Safari requires wake lock to be requested **synchronously in user gesture handler** (e.g., `onClick`), NOT in `useEffect` - user gesture permission expires after ~100ms; call `requestWakeLock()` directly in `togglePlayPause`, `openPlayer`, etc.; see Screen Wake Lock section for details.
+26. **Wake Lock Video Fallback**: Fallback video element must be **visible on-screen** for iOS Safari to count it; positioning with `left: -9999px` (off-screen) fails; use `bottom: 0; right: 0; width: 10px; opacity: 0.01` instead.
 
 ## Future Enhancements
 
