@@ -69,8 +69,11 @@ export default function Gallery() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const navigate = useNavigate();
-  const { openPlayer, requestFullscreen } = usePlayer();
+  const { openPlayer, requestFullscreen, currentMedia } = usePlayer();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Refs for auto-scrolling to current track
+  const mediaRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Read search from URL params
   const urlSearchQuery = searchParams.get("q") || "";
@@ -135,6 +138,16 @@ export default function Gallery() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
+
+  // Auto-scroll to current track when it changes
+  useEffect(() => {
+    if (currentMedia) {
+      const element = mediaRefs.current.get(currentMedia.id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [currentMedia?.id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -522,94 +535,265 @@ export default function Gallery() {
         <>
           {viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-              {sortedMedia.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleCardClick(item)}
-                  className={`group relative theme-card rounded-lg sm:rounded-xl transition-transform active:scale-95 sm:hover:scale-105 ${
-                    item.status === "ready"
-                      ? "cursor-pointer"
-                      : "cursor-default"
-                  } ${menuOpen === item.id ? "z-[110]" : ""}`}
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  {/* Thumbnail */}
+              {sortedMedia.map((item) => {
+                const isCurrentTrack = currentMedia?.id === item.id;
+                return (
                   <div
-                    className="relative aspect-video overflow-hidden rounded-t-lg sm:rounded-t-xl"
-                    style={{ background: "var(--card-bg)" }}
+                    key={item.id}
+                    ref={(el) => el && mediaRefs.current.set(item.id, el)}
+                    onClick={() => handleCardClick(item)}
+                    className={`group relative theme-card rounded-lg sm:rounded-xl transition-all active:scale-95 sm:hover:scale-105 ${
+                      item.status === "ready"
+                        ? "cursor-pointer"
+                        : "cursor-default"
+                    } ${menuOpen === item.id ? "z-[110]" : ""}`}
+                    style={{
+                      WebkitTapHighlightColor: "transparent",
+                      ...(isCurrentTrack
+                        ? {
+                            border: "2px solid var(--btn-primary-bg)",
+                            boxShadow: "0 0 0 1px var(--btn-primary-bg)",
+                          }
+                        : {}),
+                    }}
                   >
-                    {item.thumbnail_path ? (
-                      <img
-                        src={`${item.thumbnail_path}?t=${loadTime}`}
-                        alt={item.filename}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
+                    {/* Thumbnail */}
+                    <div
+                      className="relative aspect-video overflow-hidden rounded-t-lg sm:rounded-t-xl"
+                      style={{ background: "var(--card-bg)" }}
+                    >
+                      {item.thumbnail_path ? (
+                        <img
+                          src={`${item.thumbnail_path}?t=${loadTime}`}
+                          alt={item.filename}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          {item.media_type === "video" ? (
+                            <Play
+                              className="w-16 h-16 opacity-50"
+                              style={{ color: "var(--icon-video)" }}
+                            />
+                          ) : (
+                            <Music
+                              className="w-16 h-16 opacity-50"
+                              style={{ color: "var(--icon-audio)" }}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Play overlay */}
+                      {item.status === "ready" && (
+                        <div
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                          style={{ background: "var(--card-overlay)" }}
+                        >
+                          <Play className="w-16 h-16 theme-text-primary drop-shadow-lg" />
+                        </div>
+                      )}
+
+                      {/* Status badge - only show if not ready */}
+                      {item.status !== "ready" && (
+                        <div className="absolute top-2 right-2">
+                          <div
+                            className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(item.status)}`}
+                          >
+                            {item.status}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-2 sm:p-4">
+                      {/* Filename - First Line */}
+                      <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
+                        {item.filename}
+                      </h3>
+
+                      {/* Duration and Three-Dots Menu - Second Line */}
+                      <div className="flex items-center justify-between mb-1 sm:mb-2">
+                        {/* Duration - Left aligned */}
+                        <div className="flex items-center space-x-2 text-xs sm:text-sm theme-text-muted">
+                          {item.duration && (
+                            <>
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <span>{formatDuration(item.duration)}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Three-Dots Menu - Right aligned */}
+                        <div className="relative media-menu-container">
+                          <button
+                            onClick={(e) => handleMenuClick(e, item.id)}
+                            className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                            title="More options"
+                          >
+                            <MoreVertical className="w-4 h-4 theme-text-muted" />
+                          </button>
+                          {menuOpen === item.id && (
+                            <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
+                              <button
+                                onClick={(e) => handleViewDetails(e, item.id)}
+                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
+                              >
+                                <Play className="w-3.5 h-3.5" />
+                                View Details
+                              </button>
+                              <button
+                                onClick={(e) => handleTagClick(e, item.id)}
+                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                              >
+                                <TagIcon className="w-3.5 h-3.5" />
+                                Add Tag
+                              </button>
+                              <button
+                                onClick={(e) =>
+                                  handleRenameClick(e, item.id, item.filename)
+                                }
+                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                                Rename
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteClick(e, item.id)}
+                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      {item.tags.length > 0 && (
+                        <div className="mt-2 sm:mt-3 flex flex-wrap gap-1">
+                          {item.tags.map((tag) => (
+                            <span
+                              key={tag.id}
+                              className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
+                            >
+                              {tag.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {sortedMedia.map((item, index) => {
+                const isCurrentTrack = currentMedia?.id === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    ref={(el) => el && mediaRefs.current.set(item.id, el)}
+                    onClick={() => handleCardClick(item)}
+                    className={`relative theme-card rounded-lg p-2 transition-all ${
+                      item.status === "ready"
+                        ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
+                        : "cursor-default"
+                    } ${menuOpen === item.id ? "z-[110]" : ""}`}
+                    style={{
+                      WebkitTapHighlightColor: "transparent",
+                      ...(isCurrentTrack
+                        ? {
+                            borderLeft: "3px solid var(--btn-primary-bg)",
+                            backgroundColor: "rgba(255, 255, 255, 0.03)",
+                          }
+                        : {}),
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* Number */}
+                      <div className="flex-shrink-0 w-6 text-right">
+                        <span className="text-xs theme-text-muted font-mono">
+                          {index + 1}
+                        </span>
+                      </div>
+
+                      {/* Media Type Icon */}
+                      <div className="flex-shrink-0">
                         {item.media_type === "video" ? (
                           <Play
-                            className="w-16 h-16 opacity-50"
+                            className="w-4 h-4"
                             style={{ color: "var(--icon-video)" }}
                           />
                         ) : (
                           <Music
-                            className="w-16 h-16 opacity-50"
+                            className="w-4 h-4"
                             style={{ color: "var(--icon-audio)" }}
                           />
                         )}
                       </div>
-                    )}
 
-                    {/* Play overlay */}
-                    {item.status === "ready" && (
-                      <div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                        style={{ background: "var(--card-overlay)" }}
-                      >
-                        <Play className="w-16 h-16 theme-text-primary drop-shadow-lg" />
-                      </div>
-                    )}
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="theme-text-primary font-medium text-sm sm:text-base truncate flex-1">
+                            {item.filename}
+                          </h3>
 
-                    {/* Status badge - only show if not ready */}
-                    {item.status !== "ready" && (
-                      <div className="absolute top-2 right-2">
-                        <div
-                          className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(item.status)}`}
-                        >
-                          {item.status}
+                          {/* Status badge inline */}
+                          {item.status !== "ready" && (
+                            <div
+                              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white flex-shrink-0 ${getStatusColor(item.status)}`}
+                            >
+                              {item.status}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Info */}
-                  <div className="p-2 sm:p-4">
-                    {/* Filename - First Line */}
-                    <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
-                      {item.filename}
-                    </h3>
-
-                    {/* Duration and Three-Dots Menu - Second Line */}
-                    <div className="flex items-center justify-between mb-1 sm:mb-2">
-                      {/* Duration - Left aligned */}
-                      <div className="flex items-center space-x-2 text-xs sm:text-sm theme-text-muted">
-                        {item.duration && (
-                          <>
-                            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span>{formatDuration(item.duration)}</span>
-                          </>
+                        {/* Tags on second line */}
+                        {item.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {item.tags.map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="px-1 py-[1px] bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
+                              >
+                                {tag.name}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
 
-                      {/* Three-Dots Menu - Right aligned */}
-                      <div className="relative media-menu-container">
+                      {/* Duration and Play Count - Right aligned */}
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-xs sm:text-sm theme-text-muted">
+                        {item.duration && (
+                          <div className="flex items-center space-x-0.5">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatDuration(item.duration)}</span>
+                          </div>
+                        )}
+                        {(item.play_count ?? 0) > 0 && (
+                          <div className="hidden sm:flex items-center space-x-0.5">
+                            <Play className="w-3 h-3" />
+                            <span>{item.play_count} plays</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex-shrink-0 relative media-menu-container">
                         <button
                           onClick={(e) => handleMenuClick(e, item.id)}
                           className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                           title="More options"
+                          aria-label="More options"
                         >
-                          <MoreVertical className="w-4 h-4 theme-text-muted" />
+                          <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
                         </button>
                         {menuOpen === item.id && (
                           <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
@@ -647,156 +831,9 @@ export default function Gallery() {
                         )}
                       </div>
                     </div>
-
-                    {/* Tags */}
-                    {item.tags.length > 0 && (
-                      <div className="mt-2 sm:mt-3 flex flex-wrap gap-1">
-                        {item.tags.map((tag) => (
-                          <span
-                            key={tag.id}
-                            className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
-                          >
-                            {tag.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {sortedMedia.map((item, index) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleCardClick(item)}
-                  className={`relative theme-card rounded-lg p-2 transition-all ${
-                    item.status === "ready"
-                      ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
-                      : "cursor-default"
-                  } ${menuOpen === item.id ? "z-[110]" : ""}`}
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                >
-                  <div className="flex items-center gap-2">
-                    {/* Number */}
-                    <div className="flex-shrink-0 w-6 text-right">
-                      <span className="text-xs theme-text-muted font-mono">
-                        {index + 1}
-                      </span>
-                    </div>
-
-                    {/* Media Type Icon */}
-                    <div className="flex-shrink-0">
-                      {item.media_type === "video" ? (
-                        <Play
-                          className="w-4 h-4"
-                          style={{ color: "var(--icon-video)" }}
-                        />
-                      ) : (
-                        <Music
-                          className="w-4 h-4"
-                          style={{ color: "var(--icon-audio)" }}
-                        />
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="theme-text-primary font-medium text-sm sm:text-base truncate flex-1">
-                          {item.filename}
-                        </h3>
-
-                        {/* Status badge inline */}
-                        {item.status !== "ready" && (
-                          <div
-                            className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white flex-shrink-0 ${getStatusColor(item.status)}`}
-                          >
-                            {item.status}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Tags on second line */}
-                      {item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {item.tags.map((tag) => (
-                            <span
-                              key={tag.id}
-                              className="px-1 py-[1px] bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
-                            >
-                              {tag.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Duration and Play Count - Right aligned */}
-                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-xs sm:text-sm theme-text-muted">
-                      {item.duration && (
-                        <div className="flex items-center space-x-0.5">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatDuration(item.duration)}</span>
-                        </div>
-                      )}
-                      {(item.play_count ?? 0) > 0 && (
-                        <div className="hidden sm:flex items-center space-x-0.5">
-                          <Play className="w-3 h-3" />
-                          <span>{item.play_count} plays</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex-shrink-0 relative media-menu-container">
-                      <button
-                        onClick={(e) => handleMenuClick(e, item.id)}
-                        className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                        title="More options"
-                        aria-label="More options"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
-                      </button>
-                      {menuOpen === item.id && (
-                        <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
-                          <button
-                            onClick={(e) => handleViewDetails(e, item.id)}
-                            className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
-                          >
-                            <Play className="w-3.5 h-3.5" />
-                            View Details
-                          </button>
-                          <button
-                            onClick={(e) => handleTagClick(e, item.id)}
-                            className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
-                          >
-                            <TagIcon className="w-3.5 h-3.5" />
-                            Add Tag
-                          </button>
-                          <button
-                            onClick={(e) =>
-                              handleRenameClick(e, item.id, item.filename)
-                            }
-                            className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                            Rename
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteClick(e, item.id)}
-                            className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

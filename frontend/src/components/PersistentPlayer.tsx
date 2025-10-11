@@ -343,7 +343,10 @@ export default function PersistentPlayer() {
                 aria-label={isPlaying ? "Pause playback" : "Play media"}
               >
                 {isPlaying ? (
-                  <Pause className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" />
+                  <Pause
+                    className="w-5 h-5 sm:w-6 sm:h-6"
+                    fill="currentColor"
+                  />
                 ) : (
                   <Play
                     className="w-5 h-5 sm:w-6 sm:h-6 translate-x-[1px]"
@@ -382,11 +385,11 @@ export default function PersistentPlayer() {
                 </span>
               )}
 
-              {/* Queue Button */}
+              {/* Queue Button - Desktop only (mobile uses Gallery as queue) */}
               {queue.length > 0 && (
                 <button
                   onClick={() => setIsQueueOpen(!isQueueOpen)}
-                  className={`p-2 sm:p-3 rounded-full transition-colors ${
+                  className={`hidden md:flex p-2 sm:p-3 rounded-full transition-colors ${
                     isQueueOpen
                       ? "theme-text-primary"
                       : "theme-text-muted hover:theme-text-primary"
