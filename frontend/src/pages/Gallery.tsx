@@ -292,10 +292,36 @@ export default function Gallery() {
     0,
   );
 
+  // Calculate active filters count
+  const activeFiltersCount =
+    (filter !== "all" ? 1 : 0) +
+    selectedTags.length +
+    (searchQuery ? 1 : 0);
+
   return (
     <div className="container mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-6 sm:pb-8">
-      {/* Controls */}
-      <div className="mb-6 sm:mb-8 space-y-2 sm:space-y-6">
+      {/* Controls - Sticky below nav */}
+      <div className="sticky top-[65px] z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 sm:space-y-6 py-3 -mx-4 sm:-mx-6 px-4 sm:px-6">
+        {/* Active Filters Indicator */}
+        {activeFiltersCount > 0 && (
+          <div className="flex items-center justify-between text-xs theme-text-muted pb-1">
+            <span>
+              {activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""}{" "}
+              active
+            </span>
+            <button
+              onClick={() => {
+                setFilter("all");
+                setSelectedTags([]);
+                handleSearchChange("");
+              }}
+              className="theme-text-muted hover:theme-text-primary transition-colors underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
         {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
 
         {/* Row 1: Media Type Filter (full-width on mobile) */}

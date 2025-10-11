@@ -37,6 +37,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Search query
   - Selected tags
   - View mode (grid/list)
+  - Sort type and order
 - **Responsive Design**: Mobile-first with Tailwind CSS
 - **Mobile Navigation**: Optimized top bar for mobile devices
   - Logo + "On·Play" text always visible
@@ -72,7 +73,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Used for "Popular" sorting option
   - Batch query optimization prevents N+1 performance issues
 - **Bandwidth Tracking**:
-  - Calculated using average HLS variant size (not original file)
+  - Calculated using actual bytes from Nginx logs (not estimates)
   - Aggregated by time period (7/30/90 days)
   - Breakdown by IP address with reverse DNS hostname resolution
   - Top sources display showing bandwidth consumers
@@ -144,52 +145,28 @@ media-player/
 
 ### FFmpeg Video Processing
 
-- **Stream Separation**: Always separate video and audio streams
-  ```python
-  input_stream = ffmpeg.input(input_path)
-  video = input_stream.video.filter('scale', -2, variant["height"])
-  audio = input_stream.audio
-  stream = ffmpeg.output(video, audio, str(playlist_path), ...)
-  ```
-- **Prevent Audio Loss**: Never apply video filters to combined stream
+- **Stream Separation**: Always separate video and audio streams before applying filters
+- **Prevent Audio Loss**: Never apply video filters to combined stream (causes audio loss)
 
 ### Cache-busting Strategy
 
 - **Problem**: Browser caches thumbnail images after update
-- **Solution**: Append timestamp query param `?t=${timestamp}`
-  ```tsx
-  src={`http://localhost:9090${item.thumbnail_path}?t=${loadTime}`}
-  ```
+- **Solution**: Append timestamp query param `?t=${timestamp}` to image URLs
 
 ### Theme System
 
 - **CSS Variables**: Dynamic theming without page reload
 - **Type Safety**: Union type for all theme names
-  ```typescript
-  export type ThemeType = "slate" | "jade" | "midnight" | ...
-  ```
 - **Color Palette**: Each theme includes three button color systems:
   - `btnPrimary`: Primary actions (view toggles, important CTAs) - typically blue/teal
   - `btnSecondary`: Secondary actions (filters, less emphasis) - muted grays
   - `btnOrange`: Accent actions (segmented controls) - complementary orange tones
 - **Orange Accent Strategy**: Each theme has a carefully chosen orange that complements its primary color
-  - Jade (teal): `#ff7849` coral orange for warm contrast
-  - Midnight (blue): `#ff8c42` warm orange for classic complementary pairing
-  - Charcoal (Vercel blue): `#ff8800` pure orange for high contrast
-  - Graphite (cyan): `#ffb86c` peachy orange for cool palette warmth
-  - Onyx (white): `#ff8c00` dark orange for monochrome accent
-  - Steel (sky blue): `#ff8c5a` coral for warm/cool contrast
-  - Eclipse (grayscale): `#ff9f1c` amber gold for grayscale warmth
 
 ### VideoPlayer Ref Pattern
 
-- **Expose Methods**: Use `forwardRef` + `useImperativeHandle`
-  ```typescript
-  export interface VideoPlayerRef {
-    getCurrentTime: () => number;
-    getPlayer: () => Player | null;
-  }
-  ```
+- **Expose Methods**: Use `forwardRef` + `useImperativeHandle` to expose player control methods
+- Interface includes: `getCurrentTime()`, `getPlayer()`, `play()`, `pause()`, `seek()`, `setVolume()`
 
 ### HLS Memory Management
 
@@ -200,16 +177,7 @@ media-player/
   - Memory grows to 1.5GB+ after 15-20 minutes of playback
   - Browser crashes with "Oops could not load page" error
   - Page auto-refreshes unexpectedly in production
-- **Solution**: Set explicit back buffer limit in Video.js configuration
-  ```typescript
-  html5: {
-    vhs: {
-      overrideNative: true,
-      bandwidth: 4194304,
-      backBufferLength: 30, // Keep 30 seconds (YouTube standard)
-    },
-  }
-  ```
+- **Solution**: Set explicit back buffer limit in Video.js configuration: `backBufferLength: 30`
 - **Recommended Values**:
   - **30 seconds**: Standard for VOD (allows backward seeking, stable memory)
   - **10 seconds**: Live streams without DVR (minimal memory footprint)
@@ -218,7 +186,6 @@ media-player/
   - Memory stays stable at ~200-300MB regardless of playback duration
   - No browser crashes or auto-refreshes
   - Smooth playback for hours
-- **References**: Mux blog "An HLS.js cautionary tale", hls.js GitHub issues #5402, #1220, #939
 
 ### Screen Wake Lock (Prevent Mobile Screen Sleep)
 
@@ -231,7 +198,7 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 - Chrome/Edge (all platforms): Native Wake Lock API
 - Older browsers: Feature disabled, clear error message shown
 
-**User Control** (added 2025-01-11):
+**User Control**:
 - Toggle button in persistent player bottom bar (Monitor/MonitorOff icon)
 - Located in first row, right side next to time display
 - Preference persists to localStorage (`player-wake-lock`, default: enabled)
@@ -243,13 +210,6 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 - Wake lock requested at: `openPlayer()`, `togglePlayPause()`, `playNext()`, `playPrevious()`
 - Auto-released when: player closed, tab switched, user disables toggle
 - Auto-reacquired when: tab becomes visible again (if still enabled)
-
-**Logging** (`[WakeLock]` prefix):
-- `🔧 Initializing wake lock hook` - Browser capabilities on mount
-- `📱 Device info: { isIOS, hasNativeAPI, userAgent }` - Device detection
-- `✅ Native API activated` - Success
-- `❌ Wake Lock not supported on this iOS version` - iOS < 16.4
-- `⚠️ Wake Lock API not supported on this browser` - No native API
 
 **Auto-Reacquisition**:
 - Listens for browser `release` events (tab switch, battery saver, etc.)
@@ -266,467 +226,65 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 
 ### Tagging System Architecture
 
-- **Database Models** (models.py):
-  - `Tag` table with unique name constraint and index
-  - `media_tags` junction table for many-to-many relationship
-  - Cascade deletion when media or tag is removed
+- **Database Models**: `Tag` table with unique name constraint, `media_tags` junction table for many-to-many
 - **Tag Creation**: Case-insensitive matching using SQL `func.lower()`
-  ```python
-  tag = db.query(Tag).filter(func.lower(Tag.name) == func.lower(tag_data.name)).first()
-  ```
 - **Filtering Logic**: OR operation - shows media with ANY selected tag
-  ```typescript
-  item.tags.some((tag) => selectedTags.includes(tag.id));
-  ```
 - **UI Pattern**: Modal-based tag addition with existing tag quick-select
 
 ### Gallery Filter Persistence
 
 **User Experience**: All gallery filter settings are preserved when users navigate away and return, maintaining their exact view state.
 
-#### Persisted State
+**Persisted State**: All filter states stored in `localStorage` and restored on component mount:
+1. Media Type Filter (`gallery-filter`): "all" | "video" | "audio"
+2. Search Query (`gallery-search`)
+3. Selected Tags (`gallery-tags`): Array of tag IDs (JSON serialized)
+4. View Mode (`gallery-view`): "grid" | "list"
+5. Sort Type (`gallery-sort`): "new" | "name" | "popular" | "duration"
+6. Sort Order (`gallery-sort-order`): "asc" | "desc"
 
-All filter states are stored in `localStorage` and restored on component mount:
-
-1. **Media Type Filter** (`gallery-filter`)
-   - Values: "all" | "video" | "audio"
-   - Lazy initialization from localStorage with default "all"
-
-2. **Search Query** (`gallery-search`)
-   - String value of current search input
-   - Restored exactly as typed
-
-3. **Selected Tags** (`gallery-tags`)
-   - Array of tag IDs (JSON serialized)
-   - Graceful error handling for parse failures
-
-4. **View Mode** (`gallery-view`)
-   - Values: "grid" | "list"
-   - Previously implemented
-
-5. **Sort Type** (`gallery-sort`)
-   - Values: "new" | "name" | "popular" | "duration"
-   - Default: "name"
-
-6. **Sort Order** (`gallery-sort-order`)
-   - Values: "asc" | "desc"
-   - Default: "asc"
-
-#### Implementation Pattern
-
-```typescript
-// Lazy initialization (runs once on mount)
-const [filter, setFilter] = useState<"all" | "video" | "audio">(
-  () =>
-    (localStorage.getItem("gallery-filter") as "all" | "video" | "audio") ||
-    "all",
-);
-
-const [searchQuery, setSearchQuery] = useState(
-  () => localStorage.getItem("gallery-search") || "",
-);
-
-const [selectedTags, setSelectedTags] = useState<number[]>(() => {
-  try {
-    const saved = localStorage.getItem("gallery-tags");
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-});
-
-// Sync to localStorage on state changes
-useEffect(() => {
-  localStorage.setItem("gallery-filter", filter);
-}, [filter]);
-
-useEffect(() => {
-  localStorage.setItem("gallery-search", searchQuery);
-}, [searchQuery]);
-
-useEffect(() => {
-  localStorage.setItem("gallery-tags", JSON.stringify(selectedTags));
-}, [selectedTags]);
-```
-
-**Key Points:** Use lazy initialization with `useState(() => ...)`, wrap JSON.parse in try/catch, separate `useEffect` per state for performance.
+**Implementation**: Use lazy initialization with `useState(() => localStorage.getItem(...))`, wrap JSON.parse in try/catch, separate `useEffect` per state for performance.
 
 ### Persistent Player Architecture
 
 **UX Pattern**: Spotify-style persistent player that stays at the bottom of the screen across all routes, providing uninterrupted playback.
 
-**Why:** Industry-standard pattern (Spotify, YouTube) enabling continuous playback across all routes with always-accessible controls.
+**Why**: Industry-standard pattern (Spotify, YouTube) enabling continuous playback across all routes with always-accessible controls.
 
-#### Implementation
+**Architecture Components**:
+1. **PlayerContext**: Global state management with playback controls and queue management
+2. **PersistentPlayer Component**: Fixed bottom bar (85px height) with controls
+3. **VideoPlayer**: Positioned off-screen (`fixed -top-[9999px]`) for fullscreen to work properly
+4. **Gallery Integration**: Card click loads into persistent player with filtered media as queue
+5. **App Layout**: `pb-24` padding to main container for bottom bar clearance
 
-**1. PlayerContext** (`contexts/PlayerContext.tsx`)
-
-- Global state management with playback controls
-- Manages: current media, session ID, playback state (isPlaying, currentTime, duration, volume)
-- `openPlayer(mediaId, queueItems)`: Fetches full media details + variants via API
-- `closePlayer()`: Stops playback and hides bottom bar
-- `togglePlayPause()`, `seek()`, `setVolume()`: Playback control methods
-- Exposes `playerRef` for direct VideoPlayer access
-- **Important**: Fetch media by ID, don't accept partial Media objects (Gallery list lacks variants)
-
-```typescript
-interface PlayerContextType {
-  currentMedia: Media | null;
-  sessionId: string;
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-  volume: number;
-  isWakeLockEnabled: boolean;  // Wake lock toggle state
-  setWakeLockEnabled: (enabled: boolean) => void;
-  openPlayer: (mediaId: string, queueItems?: Media[]) => Promise<void>;
-  closePlayer: () => void;
-  togglePlayPause: () => void;
-  seek: (time: number) => void;
-  setVolume: (volume: number) => void;
-  // ... queue methods
-}
-```
-
-**2. PersistentPlayer Component** (`components/PersistentPlayer.tsx`)
-
-- Fixed bottom bar (`fixed bottom-0`) with 85px height
-- VideoPlayer positioned off-screen (not hidden) for fullscreen to work properly
-  - `className="fixed -top-[9999px] -left-[9999px] pointer-events-none"`
-  - Prevents fullscreen from showing empty wrapper
-- Smooth slide-up animation on media load
-- **Layout sections** (mobile: 2 rows, desktop: 1 row):
-  - **Row 1**: Thumbnail + Title + Time + Wake Lock Toggle
-  - **Row 2**: Previous/Play-Pause/Next + Queue Position + Queue Button (desktop) + Fullscreen (video)
-  - **Desktop Right**: Volume slider + Mute toggle
-- Auto-fullscreen for video files on first play event
-- Fullscreen state tracking across browser vendors (fullscreenchange events)
-- Preserves all analytics tracking (play, pause, complete, progress milestones)
-
-```typescript
-// Auto-fullscreen on play event (not timer - ensures user gesture is fresh)
-onPlay={() => {
-  setIsPlaying(true);
-  trackEvent("play");
-
-  if (currentMedia?.media_type === "video" && !hasTriggeredFullscreen) {
-    const player = playerRef.current.getPlayer();
-    player?.requestFullscreen();
-    setHasTriggeredFullscreen(true);
-  }
-}}
-```
-
-**3. VideoPlayer Enhancements** (`components/VideoPlayer.tsx`)
-
-- Added `play()`, `pause()`, `seek()`, `setVolume()` methods to ref
-- Added `onDurationChange` callback prop
-- **Autoplay Requirement**: Start muted for browser autoplay policy
-- Unmute after playback begins to restore audio
-
-```typescript
-export interface VideoPlayerRef {
-  getCurrentTime: () => number;
-  getPlayer: () => Player | null;
-  play: () => Promise<void>;
-  pause: () => void;
-  seek: (time: number) => void;
-  setVolume: (volume: number) => void;
-}
-```
-
-**4. Gallery Integration** (`pages/Gallery.tsx`)
-
-- Card click loads into persistent player: `openPlayer(item.id, filteredMedia)`
-- Passes filtered media list as queue for autoplay
-- 3-dot menu (`MoreVertical` icon) with "View Details" option for full Player page
-- Desktop only (grid view), also available in list view
-
-**5. App Layout** (`App.tsx`)
-
-- Add `pb-24` (96px padding) to main container for bottom bar clearance
-- Add `<PersistentPlayer />` at root level (outside Router, inside providers)
-- Always rendered, visibility controlled by PlayerContext state
-
-```typescript
-<div className="min-h-screen theme-bg pb-24">
-  <Routes>...</Routes>
-  <PersistentPlayer />
-</div>
-```
-
-**6. Fullscreen Behavior**
-
-- **Auto-fullscreen**: Videos trigger fullscreen on first play event
-- **Manual Toggle**: Fullscreen button (Maximize/Minimize icon) for re-entering
-- **Exit Fullscreen**: Press ESC or click Minimize button
-- **After Exit**: Video continues in bottom bar as small preview
-- **State Tracking**: Listens to fullscreenchange events across browsers
-
-```typescript
-// Fullscreen toggle
-const toggleFullscreen = () => {
-  const player = playerRef.current?.getPlayer();
-  if (isFullscreen) {
-    document.exitFullscreen();
-  } else {
-    player?.requestFullscreen();
-  }
-};
-
-// Track fullscreen state
-useEffect(() => {
-  const handleFullscreenChange = () => {
-    setIsFullscreen(!!document.fullscreenElement);
-  };
-  document.addEventListener("fullscreenchange", handleFullscreenChange);
-  // ... other vendor prefixes
-}, []);
-```
-
-#### Key Features
-
+**Key Behaviors**:
 - **Audio Files**: Play in background, controls always visible, never fullscreen
 - **Video Files**: Auto-fullscreen on play, continue in bar after exit, manual fullscreen toggle
-- **Seekable Progress**: Click progress bar to jump to any position, hover shows dot indicator
-- **Volume Control**: Slider with mute toggle (desktop only, hidden on mobile)
-- **Wake Lock Control**: Toggle to keep screen awake during playback (iOS 16.4+, Chrome/Edge)
-- **Queue Position**: Shows "3 / 15" indicator when queue is active
-- **Cross-Route**: Works seamlessly across Gallery, Upload, Stats pages
+- **Auto-fullscreen**: Triggered on first play event (not timer - ensures user gesture is fresh)
+- **Fullscreen State**: Tracks across browser vendors using fullscreenchange events
+- **Data Loading**: Fetch media by ID via API, don't accept partial Media objects (Gallery list lacks variants)
 
 ### Live Queue Updates Architecture
 
 **Critical Feature**: Queue automatically rebuilds when user changes filters, search, tags, or sort order while media is playing.
 
-**Why:** Industry-standard pattern (Spotify, YouTube Music) - changing filters shouldn't require stopping playback. Queue adapts to match what user sees in Gallery.
+**Why**: Industry-standard pattern (Spotify, YouTube Music) - changing filters shouldn't require stopping playback. Queue adapts to match what user sees in Gallery.
 
-#### Implementation
+**Implementation**:
+1. **GalleryContext**: Centralized state management for all Gallery filters and media data
+   - Computes `filteredMedia` (search + tag filtering) and `sortedMedia` (sorting) via `useMemo`
+   - All filter states persisted to `localStorage`
+2. **Queue Machine**: XState machine with `UPDATE_QUEUE` event
+   - Replaces entire queue when Gallery state changes
+   - Preserves currentIndex by finding current media in new queue
+   - Clears preloaded tracks (may no longer be valid)
+3. **PlayerContext Subscription**: Automatically updates queue when `sortedMedia` changes
+   - Only updates if player is open and media list is not empty
+4. **Gallery Component**: Fully refactored to use `useGallery()` hook
 
-**1. GalleryContext** (`contexts/GalleryContext.tsx`)
-
-Centralized state management for all Gallery filters and media data:
-
-```typescript
-interface GalleryContextType {
-  // Raw media list
-  media: Media[];
-  loading: boolean;
-
-  // Filters
-  filter: "all" | "video" | "audio";
-  searchQuery: string;
-  selectedTags: number[];
-  sortBy: "name" | "duration" | "popular" | "new";
-  sortOrder: "asc" | "desc";
-
-  // Derived data (computed with useMemo)
-  filteredMedia: Media[];  // After search + tag filtering
-  sortedMedia: Media[];    // After sorting filteredMedia
-
-  // Actions
-  setFilter: (filter: "all" | "video" | "audio") => void;
-  setSearchQuery: (query: string) => void;
-  setSelectedTags: (tags: number[] | ((prev: number[]) => number[])) => void;
-  setSortBy: (sort: "name" | "duration" | "popular" | "new") => void;
-  setSortOrder: (order: "asc" | "desc") => void;
-  refreshMedia: () => Promise<void>;
-  refreshTags: () => Promise<void>;
-
-  // Tags
-  allTags: Tag[];
-}
+**Provider Hierarchy** (Critical):
 ```
-
-**Key Features:**
-- `filteredMedia` computed via `useMemo` (search + tag filtering)
-- `sortedMedia` computed via `useMemo` (sorting filteredMedia)
-- All filter states persisted to `localStorage`
-- Comprehensive logging: `[GalleryContext]` prefix
-
-**2. Queue Machine Updates** (`machines/queueMachine.ts`)
-
-Added `UPDATE_QUEUE` event and action:
-
-```typescript
-export type QueueEvent =
-  | { type: "LOAD_TRACK"; mediaId: string; queueItems?: Media[] }
-  | { type: "UPDATE_QUEUE"; queueItems: Media[] }  // NEW
-  | { type: "PLAY" }
-  | { type: "PAUSE" }
-  // ... other events
-
-// Action: updateQueue
-updateQueue: assign({
-  queue: ({ event, context }) => {
-    if (event.type !== "UPDATE_QUEUE") return context.queue;
-    return event.queueItems;  // Replace entire queue
-  },
-  currentIndex: ({ event, context }) => {
-    if (event.type !== "UPDATE_QUEUE") return context.currentIndex;
-
-    const newQueue = event.queueItems;
-    const currentMedia = context.currentMedia;
-
-    if (!currentMedia) return -1;
-
-    // Find current media in new queue
-    const newIndex = newQueue.findIndex((item) => item.id === currentMedia.id);
-
-    if (newIndex >= 0) {
-      console.log("[queueMachine] ✅ Current media found at new index:", newIndex);
-      return newIndex;
-    } else {
-      console.log("[queueMachine] ⚠️ Current media NOT in new queue");
-      // Keep playing current track even if filtered out
-      return context.currentIndex;
-    }
-  },
-  // Clear preloaded tracks (may no longer be valid)
-  nextMedia: null,
-  nextTrackPreloaded: false,
-}),
-```
-
-**UPDATE_QUEUE handlers added to states:**
-- `ready`: Allows queue updates while paused
-- `playing`: Allows queue updates during playback
-- `paused`: Allows queue updates while paused
-- `buffering`: Allows queue updates while buffering
-
-**3. PlayerContext Subscription** (`contexts/PlayerContext.tsx`)
-
-Automatically updates queue when Gallery state changes:
-
-```typescript
-import { useGallery } from "./GalleryContext";
-
-export function PlayerProvider({ children }: { children: ReactNode }) {
-  const [state, send] = useMachine(queueMachine);
-  const { sortedMedia } = useGallery();  // Subscribe to Gallery
-
-  const { currentMedia, queue, currentIndex } = state.context;
-
-  // Subscribe to Gallery state changes (live queue updates)
-  useEffect(() => {
-    // Only update if player is open
-    if (!currentMedia) {
-      console.log("[PlayerContext] Skipping queue update - no media playing");
-      return;
-    }
-
-    // Only update if we have media
-    if (sortedMedia.length === 0) {
-      console.log("[PlayerContext] Skipping queue update - sortedMedia is empty");
-      return;
-    }
-
-    console.log("[PlayerContext] 🔄 Gallery state changed, updating queue");
-    console.log("[PlayerContext] Current media:", currentMedia.filename);
-    console.log("[PlayerContext] Current queue size:", queue.length);
-    console.log("[PlayerContext] New sortedMedia size:", sortedMedia.length);
-    console.log("[PlayerContext] Current index:", currentIndex);
-
-    // Send UPDATE_QUEUE event to state machine
-    send({ type: "UPDATE_QUEUE", queueItems: sortedMedia });
-
-    console.log("[PlayerContext] ✅ UPDATE_QUEUE event sent");
-  }, [sortedMedia, currentMedia, send]);
-
-  // ... rest of provider
-}
-```
-
-**4. Gallery Component Updates** (`pages/Gallery.tsx`)
-
-- Fully refactored to use `useGallery()` hook
-- Removed all local filter/search/sort state
-- Removed local `filteredMedia` and `sortedMedia` calculations
-- Uses `refreshMedia()` and `refreshTags()` from context
-
-```typescript
-export default function Gallery() {
-  const {
-    loading,
-    filter,
-    setFilter,
-    searchQuery,
-    setSearchQuery,
-    sortBy,
-    setSortBy,
-    sortOrder,
-    setSortOrder,
-    selectedTags,
-    setSelectedTags,
-    filteredMedia,  // From context
-    sortedMedia,    // From context
-    allTags,
-    refreshMedia,
-    refreshTags,
-  } = useGallery();
-
-  // ... UI renders sortedMedia
-}
-```
-
-#### Behavior Examples
-
-**Example 1: Filter Change**
-1. User is playing track 5 of 20 (all media)
-2. User clicks "Video" filter
-3. Queue rebuilds to 12 videos
-4. Current track (if video) continues playing
-5. Queue position updates: "3 / 12" (track found at new index)
-6. Next/Previous navigation uses new queue
-
-**Example 2: Search**
-1. User is playing "song.mp3" (track 10 of 50)
-2. User searches "song"
-3. Queue rebuilds to 5 matching items
-4. "song.mp3" continues playing
-5. Queue position updates: "1 / 5"
-
-**Example 3: Current Track Filtered Out**
-1. User is playing video.mp4 (track 8 of 30)
-2. User filters to "Audio" only
-3. Queue rebuilds to 18 audio files
-4. video.mp4 continues playing (not in new queue)
-5. Queue position shows but navigation disabled
-6. When video ends, auto-advances to first audio track
-
-#### Logging Strategy
-
-All logs use prefixes for easy console filtering:
-
-- `[GalleryContext]` - Filter/search/sort state changes
-- `[PlayerContext]` - Queue update triggers
-- `[queueMachine]` - Queue rebuilding and index updates
-
-**Example Console Output:**
-```
-[GalleryContext] Filter changed: video
-[GalleryContext] Filtered media: 12 items (from 20 total)
-[GalleryContext] Sorted media: 12 items (sortBy: name, order: asc)
-[GalleryContext] 🔄 QUEUE UPDATE TRIGGER - sortedMedia changed
-[PlayerContext] 🔄 Gallery state changed, updating queue
-[PlayerContext] Current media: video5.mp4
-[PlayerContext] Current queue size: 20
-[PlayerContext] New sortedMedia size: 12
-[PlayerContext] Current index: 4
-[PlayerContext] ✅ UPDATE_QUEUE event sent
-[queueMachine] 🔄 UPDATE_QUEUE triggered
-[queueMachine] Old queue size: 20
-[queueMachine] New queue size: 12
-[queueMachine] Current media: video5.mp4
-[queueMachine] Old index: 4
-[queueMachine] ✅ Current media found at new index: 2
-```
-
-#### Provider Hierarchy
-
-**Critical**: GalleryProvider must wrap PlayerProvider (which needs `useGallery` hook):
-
-```typescript
-// main.tsx
 <ThemeProvider>
   <GalleryProvider>  {/* Must be outside Router */}
     <PlayerProvider>
@@ -736,161 +294,40 @@ All logs use prefixes for easy console filtering:
 </ThemeProvider>
 ```
 
-**Why GalleryContext doesn't use `useSearchParams`:**
+**Why GalleryContext doesn't use `useSearchParams`**:
 - GalleryProvider is mounted outside Router
 - Search param syncing handled by Gallery.tsx (inside Router)
 - GalleryContext only manages state via localStorage
 
+**Logging Strategy**: All logs use prefixes for easy filtering:
+- `[GalleryContext]` - Filter/search/sort state changes
+- `[PlayerContext]` - Queue update triggers
+- `[queueMachine]` - Queue rebuilding and index updates
+
 ### Autoplay Queue Architecture
 
-**User Experience**: When a user clicks a media card in Gallery, the filtered list becomes a playback queue. After the current track finishes, the next item automatically plays. **Queue automatically updates when filters/search/tags/sort change** (see Live Queue Updates Architecture above).
+**User Experience**: When a user clicks a media card in Gallery, the filtered list becomes a playback queue. After the current track finishes, the next item automatically plays. Queue automatically updates when filters/search/tags/sort change (see Live Queue Updates Architecture).
 
-**Why This Pattern:** Filtered media list becomes the queue - simple, intuitive, and matches what user sees in Gallery. Queue stays synchronized with Gallery view.
+**Why This Pattern**: Filtered media list becomes the queue - simple, intuitive, and matches what user sees in Gallery. Queue stays synchronized with Gallery view.
 
-#### Implementation
+**Implementation**: Queue management handled by XState state machine (queueMachine.ts) with queue stored in machine context.
 
-Queue management is handled by **XState state machine** (queueMachine.ts) with queue stored in machine context.
-
-**1. Queue Initialization** (`contexts/PlayerContext.tsx`)
-
-When user clicks media card, `openPlayer()` is called with initial queue:
-
-```typescript
-const openPlayer = useCallback(
-  (mediaId: string, queueItems?: Media[]) => {
-    requestWakeLock();
-    send({ type: "LOAD_TRACK", mediaId, queueItems });
-  },
-  [send, requestWakeLock],
-);
-```
-
-**2. Gallery Integration** (`pages/Gallery.tsx`)
-
-```typescript
-const { sortedMedia } = useGallery();  // Reactive filtered/sorted list
-const { openPlayer } = usePlayer();
-
-const handleCardClick = (item: Media) => {
-  if (item.status === "ready") {
-    openPlayer(item.id, sortedMedia);  // Pass current filtered list as queue
-  }
-};
-```
-
-**Note:** Queue automatically updates when `sortedMedia` changes (see Live Queue Updates Architecture).
-
-**3. Queue Navigation** (`contexts/PlayerContext.tsx`)
-
-```typescript
-const playNext = useCallback(() => {
-  requestWakeLock();
-
-  // Check if we have a preloaded next track
-  if (state.context.nextTrackPreloaded && playerRef.current) {
-    playerRef.current.swapToPreloaded();
-  }
-
-  send({ type: "NEXT" });
-}, [send, requestWakeLock, state.context.nextTrackPreloaded]);
-
-const playPrevious = useCallback(() => {
-  requestWakeLock();
-  send({ type: "PREVIOUS" });
-}, [send, requestWakeLock]);
-```
-
-**4. PersistentPlayer Auto-Advance** (`components/PersistentPlayer.tsx`)
-
-```typescript
-const { playNext, hasNext, hasPrevious, queuePosition } = usePlayer();
-
-// Auto-play next track when current ends
-onEnded={async () => {
-  await trackEvent("complete");
-  if (hasNext) {
-    playNext();
-  }
-}}
-
-// UI: Previous/Next buttons and position indicator
-<button onClick={playPrevious} disabled={!hasPrevious}>
-  <SkipBack />
-</button>
-<button onClick={togglePlayPause}>
-  {isPlaying ? <Pause /> : <Play />}
-</button>
-<button onClick={playNext} disabled={!hasNext}>
-  <SkipForward />
-</button>
-<span>{queuePosition.current} / {queuePosition.total}</span>
-```
-
-**Key Points:**
+**Key Points**:
 - Queue respects active filters (search + tags + type filter)
 - Each track gets unique session ID for analytics
 - Works in both grid and list view
+- Auto-advance triggered in `onEnded` event handler
 
 ### Mobile Navigation Architecture
 
 **Mobile-First Search**: Full-width search input integrated into top navigation bar for instant access.
 
-#### State Management via URL Params
-
+**State Management via URL Params**:
 - **Mobile**: Search input in top bar (App.tsx) - only visible on Gallery route
 - **Desktop**: Search input in Gallery controls (Gallery.tsx)
 - **Shared State**: Both use URL query parameter `?q=...` for synchronization
 
-**App.tsx (Mobile Navigation)**
-
-```typescript
-const [mobileSearchQuery, setMobileSearchQuery] = useState(
-  searchParams.get("q") || ""
-);
-
-const handleMobileSearchChange = (value: string) => {
-  setMobileSearchQuery(value);
-  const params = new URLSearchParams(searchParams);
-  if (value) {
-    params.set("q", value);
-  } else {
-    params.delete("q");
-  }
-  navigate(`?${params.toString()}`, { replace: true });
-};
-
-// Mobile search input (Gallery route only)
-{location.pathname === "/" && (
-  <div className="md:hidden flex-1 mx-2 relative">
-    <input
-      value={mobileSearchQuery}
-      onChange={(e) => handleMobileSearchChange(e.target.value)}
-      placeholder="Search..."
-    />
-  </div>
-)}
-```
-
-**Gallery.tsx (Desktop + State Sync)**
-
-```typescript
-const urlSearchQuery = searchParams.get("q") || "";
-
-// Sync URL query to local state
-useEffect(() => {
-  setSearchQuery(urlSearchQuery);
-}, [urlSearchQuery]);
-
-// Desktop search input (hidden on mobile)
-<div className="hidden md:block">
-  <input
-    value={searchQuery}
-    onChange={(e) => handleSearchChange(e.target.value)}
-  />
-</div>
-```
-
-**Mobile UI Optimizations:**
+**Mobile UI Optimizations**:
 - Compact theme selector with 2-column grid
 - Reduced spacing (12px top padding)
 - Smaller touch targets (36px min-height)
@@ -900,296 +337,70 @@ useEffect(() => {
 
 **Design Pattern**: iOS-style segmented control for mutually exclusive filter options, providing superior visual hierarchy over individual buttons.
 
-**Why:** Industry-standard pattern (Apple Music, Spotify) providing superior visual hierarchy, 30% space savings, and better accessibility than separate buttons.
+**Why**: Industry-standard pattern (Apple Music, Spotify) providing superior visual hierarchy, 30% space savings, and better accessibility than separate buttons.
 
-#### Implementation
+**Key Features**:
+- TypeScript Generics for type-safe values
+- Keyboard Navigation: Arrow keys, Home/End keys
+- ARIA Attributes: `role="radiogroup"`, `role="radio"`, `aria-checked`
+- Theme Integration: Uses `--btn-orange-bg` CSS variables for active state
+- Visual Design: Single-unit container with 1px padding, rounded-md internal segments
 
-**Component** (`components/SegmentedControl.tsx`)
-
-```typescript
-interface SegmentedOption<T extends string> {
-  value: T;
-  label: string;
-}
-
-interface SegmentedControlProps<T extends string> {
-  options: SegmentedOption<T>[];
-  value: T;
-  onChange: (value: T) => void;
-  label?: string;
-  className?: string;
-}
-```
-
-**Key Features:**
-
-- **TypeScript Generics**: Type-safe values for any string union type
-- **Keyboard Navigation**: Arrow keys (Left/Right/Up/Down), Home/End keys
-- **ARIA Attributes**: `role="radiogroup"`, `role="radio"`, `aria-checked`
-- **Theme Integration**: Uses `--btn-orange-bg` CSS variables for active state
-- **Responsive**: `min-h-[38px]` consistent height, full width on mobile
-- **Visual Design**: Single-unit container with 1px padding, rounded-md internal segments
-
-**Usage Pattern:**
-
-```typescript
-<SegmentedControl
-  options={[
-    { value: "all", label: "All" },
-    { value: "video", label: "Video" },
-    { value: "audio", label: "Audio" },
-  ]}
-  value={filter}
-  onChange={setFilter}
-  className="flex-1 sm:flex-initial"
-/>
-```
-
-**Visual Hierarchy:** Orange for primary filter (media type), blue for secondary filters (tags) and view toggles - creates clear distinction between filter types.
+**Visual Hierarchy**: Orange for primary filter (media type), blue for secondary filters (tags) and view toggles - creates clear distinction between filter types.
 
 ### Gallery Card Actions Architecture
 
 **Design Pattern**: Consolidated three-dots dropdown menu for all media card actions, providing cleaner UI with better mobile UX.
 
-**Why:** Industry pattern (YouTube, Gmail) saving ~70% space, reducing clutter, and improving mobile UX by eliminating cramped touch targets.
+**Why**: Industry pattern (YouTube, Gmail) saving ~70% space, reducing clutter, and improving mobile UX by eliminating cramped touch targets.
 
-#### Implementation
+**Layout**:
+- **Grid View**: Filename → Duration + Three-dots → Tags
+- **List View**: Media icon | Filename + Tags | Duration + Play count | Three-dots
 
-**Grid View Layout:**
-- **Line 1**: Filename
-- **Line 2**: Duration (left) + Three-dots menu (right)
-- **Line 3**: Tags (if any)
+**Menu Items**: View Details, Add Tag, Rename, Delete (styled in red)
 
-**List View Layout:**
-- **Row**: Media icon | Filename + Tags | Duration + Play count | Three-dots menu
-- All metadata right-aligned for efficient use of horizontal space
-
-**Three-Dots Menu Items (both views):**
-1. **View Details** - Play icon, opens full player page
-2. **Add Tag** - Tag icon, opens tag modal
-3. **Rename** - Edit icon, opens rename modal
-4. **Delete** - Trash icon (styled in red with `text-red-500 hover:bg-red-500/10`)
-
-**Dropdown Styling:**
-```typescript
-// Grid and list view dropdown
-<div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
-  <button className="text-xs flex items-center gap-2">
-    <Icon className="w-3.5 h-3.5" />
-    Action Label
-  </button>
-</div>
-```
-
-**Key Technical Details:**
-
-1. **Z-Index Management:**
-   - Dropdown: `z-[100]`
-   - Active card gets `z-[110]` when menu is open (prevents overlap in list view)
-   - Conditional class: `${menuOpen === item.id ? "z-[110]" : ""}`
-
-2. **Click-Outside Handler:**
-   ```typescript
-   useEffect(() => {
-     const handleClickOutside = (e: MouseEvent) => {
-       if (menuOpen && !(e.target as Element).closest('.media-menu-container')) {
-         setMenuOpen(null);
-       }
-     };
-     document.addEventListener('mousedown', handleClickOutside);
-     return () => document.removeEventListener('mousedown', handleClickOutside);
-   }, [menuOpen]);
-   ```
-
-3. **Grid View Overflow:**
-   - Remove `overflow-hidden` from card container
-   - Add `overflow-hidden rounded-t-lg` to thumbnail container only
-   - Allows dropdown to overflow while keeping image corners rounded
-
-4. **Mobile Tap Highlight:**
-   - Disable with `style={{ WebkitTapHighlightColor: 'transparent' }}`
-   - Prevents purple flash on mobile when tapping menu
-
-5. **List View Tag Spacing:**
-   - Tight tag borders: `px-1 py-[1px]` instead of `px-1.5 py-0.5`
-   - More space from title: `mt-1.5` instead of `mt-0.5`
-   - Reduced gap between tags: `gap-1` instead of `gap-1.5`
-
-6. **Container Class Pattern:**
-   - Add `media-menu-container` class to menu wrapper
-   - Enables click-outside detection without interfering with clicks inside menu
+**Key Technical Details**:
+- **Z-Index Management**: Dropdown `z-[100]`, active card `z-[110]` when menu open
+- **Click-Outside Handler**: Uses `media-menu-container` class for detection
+- **Grid View Overflow**: Remove `overflow-hidden` from card, apply to thumbnail only
+- **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
 
 ### Sorting UI Architecture
 
 **Design Pattern**: Compact dropdown control for sorting options, minimizing UI footprint while providing clear state indication.
 
-**Why:** Professional pattern (Linear, GitHub, Notion) saving ~70% space while clearly showing current sort field and direction.
+**Why**: Professional pattern (Linear, GitHub, Notion) saving ~70% space while clearly showing current sort field and direction.
 
-#### Implementation
+**Sort Options**: New (date), Name (alphabetical), Popular (play count), Duration (length)
 
-**Sort State Management:**
-
-```typescript
-const [sortBy, setSortBy] = useState<"name" | "duration" | "popular" | "new">(
-  () =>
-    (localStorage.getItem("gallery-sort") as "name" | "duration" | "popular" | "new") ||
-    "name",
-);
-const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
-  () => (localStorage.getItem("gallery-sort-order") as "asc" | "desc") || "asc",
-);
-```
-
-**Sort Options:** New (date), Name (alphabetical), Popular (play count), Duration (length)
-
-**Behavior:** Click different option to switch, click same to toggle asc/desc. Total duration shown at bottom in minimalistic format.
-
-#### Styling
-
-**CSS Classes** (`index.css`):
-
-```css
-.theme-segmented-control {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-}
-
-.theme-segmented-option {
-  color: var(--text-muted);
-  transition: all 0.2s ease;
-}
-
-.theme-segmented-option:hover {
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.theme-segmented-option-active {
-  background: var(--btn-orange-bg);
-  color: var(--btn-orange-text);
-}
-```
-
-**Styling:** Consistent `min-h-[38px]` height, `p-1` padding, subtle shadow on active state.
+**Behavior**: Click different option to switch, click same to toggle asc/desc. Total duration shown at bottom in minimalistic format.
 
 ### Bandwidth Tracking Architecture
 
 OnPlay tracks **actual bandwidth** consumed by parsing Nginx access logs, providing precise real-world usage data instead of estimates.
 
-#### How It Works
+**How It Works**:
+1. **Nginx Logging**: Custom log format captures every HLS segment (.ts file) request
+2. **Celery Beat Scheduler**: Runs task every 60 seconds, incremental processing
+3. **Database Storage**: Two-tier strategy - raw logs (90 days) + aggregated stats (hourly buckets, kept forever)
+4. **Analytics API**: Queries `BandwidthStats` for dashboard, real-time accurate bandwidth per IP
 
-**1. Nginx Logging**
+**Advantages Over Estimates**: 100% accurate (vs ~50-70%), counts partial plays, tracks quality switching, accounts for buffering/seeking
 
-- Custom log format captures every HLS segment (.ts file) request
-- Log format: `IP|Timestamp|URI|Bytes|Status|RequestTime`
-- Separate bandwidth log: `/var/log/nginx/bandwidth.log`
-- Shared Docker volume allows worker containers to read logs
-
-**2. Celery Beat Scheduler**
-
-- Runs `process_bandwidth_logs_task` every 60 seconds
-- Incremental processing (tracks file position between runs)
-- Parses logs and extracts: IP, media_id, bytes_sent, timestamp
-
-**3. Database Storage**
-Two-tier storage strategy:
-
-```python
-# Raw logs (detailed, cleaned up after 90 days)
-class BandwidthLog(Base):
-    ip_address: str
-    bytes_sent: int
-    request_uri: str
-    media_id: str (extracted from URI)
-    timestamp: datetime
-
-# Aggregated stats (hourly buckets, kept forever)
-class BandwidthStats(Base):
-    media_id: str
-    ip_address: str
-    date: datetime  # Hourly bucket
-    total_bytes: int
-    request_count: int
+**Architecture Flow**:
+```
+User watches video → Nginx serves HLS segments → Nginx writes to bandwidth.log
+→ Celery Beat (every 60s) → Parse new log entries → Store in BandwidthLog + BandwidthStats
+→ Analytics API queries BandwidthStats → Dashboard shows real bandwidth
 ```
 
-**4. Analytics API**
-
-- Queries `BandwidthStats` for dashboard
-- Real-time accurate bandwidth per IP
-- No estimation - actual bytes served
-- Groups by hour for performance
-
-#### Advantages Over Previous System
-
-| Aspect                | Old (Estimates)              | New (Actual)               |
-| --------------------- | ---------------------------- | -------------------------- |
-| **Data Source**       | Media variant sizes          | Nginx access logs          |
-| **Accuracy**          | ~50-70% accurate             | 100% accurate              |
-| **Method**            | Median variant × completions | Sum of actual bytes served |
-| **Partial Plays**     | Ignored                      | Counted accurately         |
-| **Quality Switching** | Assumed one quality          | Tracks all switches        |
-| **Buffering/Seeking** | Not accounted for            | Fully accounted for        |
-
-#### Architecture
-
-```
-User watches video
-    ↓
-Nginx serves HLS segments (.ts files)
-    ↓
-Nginx writes to bandwidth.log
-    ↓
-Celery Beat (every 60s)
-    ↓
-Parse new log entries
-    ↓
-Store in BandwidthLog + BandwidthStats
-    ↓
-Analytics API queries BandwidthStats
-    ↓
-Dashboard shows real bandwidth
-```
-
-#### Performance Optimizations
-
-- **Incremental Processing**: Only reads new log entries since last position
-- **Hourly Aggregation**: BandwidthStats reduces database size
-- **Log Cleanup**: Raw logs deleted after 90 days (aggregates kept)
-- **Read-only Mounts**: Workers have read-only access to logs
-- **Indexed Queries**: IP, media_id, and date columns indexed
-
-#### Configuration
-
-```yaml
-# docker-compose.yml
-volumes:
-  nginx_logs: # Shared between nginx, worker, and beat
-
-nginx:
-  volumes:
-    - nginx_logs:/var/log/nginx
-
-worker:
-  volumes:
-    - nginx_logs:/var/log/nginx:ro # Read-only
-
-beat:
-  volumes:
-    - nginx_logs:/var/log/nginx:ro # Read-only
-```
-
-#### Monitoring
-
-```bash
-# Check if logs are being processed
-docker compose logs beat | grep "Processed"
-
-# View recent bandwidth logs
-docker compose exec nginx tail -f /var/log/nginx/bandwidth.log
-
-# Check database stats
-docker compose exec api python -c "from app.database import SessionLocal; from app.models import BandwidthStats; from sqlalchemy import func; db = SessionLocal(); print(f'Total bandwidth: {db.query(func.sum(BandwidthStats.total_bytes)).scalar()} bytes')"
-```
+**Performance Optimizations**:
+- Incremental processing (only new log entries)
+- Hourly aggregation reduces database size
+- Log cleanup after 90 days
+- Read-only mounts for workers
+- Indexed queries
 
 ## API Endpoints
 
@@ -1277,14 +488,3 @@ VITE_API_URL=http://localhost:8080/api
 20. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
 21. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
 22. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
-
-## Future Enhancements
-
-- [ ] Subtitle/caption support
-- [ ] Playlist creation
-- [ ] Social sharing with embedded players
-- [ ] Advanced analytics dashboard
-- [ ] User authentication and authorization
-- [ ] CDN integration for static media
-- [ ] Automated thumbnail selection (ML-based)
-- [ ] Live streaming support
