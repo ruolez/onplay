@@ -90,28 +90,36 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const prevState = prevStateRef.current;
     const currentState = machineState;
 
-    // If we just transitioned from loading to ready, explicitly start playback
+    // If we just transitioned from loading to ready, ensure playback state is synced
     if (prevState === "loading" && currentState === "ready") {
       const player = playerRef.current?.getPlayer();
-      if (player && player.paused()) {
-        console.log("[PlayerContext] 🎵 Auto-playing next track");
-
+      if (player) {
         // Force unmute and full volume for auto-advance tracks
         player.muted(false);
         player.volume(1);
 
-        player
-          .play()
-          ?.then(() => {
-            console.log(
-              "[PlayerContext] ✅ Auto-play successful, sending PLAY event",
-            );
-            // Explicitly send PLAY event to update state machine
-            send({ type: "PLAY" });
-          })
-          .catch((err) => {
-            console.error("[PlayerContext] Failed to auto-play:", err);
-          });
+        if (player.paused()) {
+          // Player is paused, need to start playback
+          console.log("[PlayerContext] 🎵 Auto-playing next track (paused)");
+          player
+            .play()
+            ?.then(() => {
+              console.log(
+                "[PlayerContext] ✅ Auto-play successful, sending PLAY event",
+              );
+              send({ type: "PLAY" });
+            })
+            .catch((err) => {
+              console.error("[PlayerContext] Failed to auto-play:", err);
+            });
+        } else {
+          // Player is already playing (DualVideoPlayer auto-played it)
+          // Just sync the state machine
+          console.log(
+            "[PlayerContext] ✅ Player already playing, syncing state machine",
+          );
+          send({ type: "PLAY" });
+        }
       }
     }
 
