@@ -14,6 +14,8 @@ import {
   Maximize,
   Minimize,
   List,
+  Monitor,
+  MonitorOff,
 } from "lucide-react";
 
 export default function PersistentPlayer() {
@@ -44,6 +46,8 @@ export default function PersistentPlayer() {
     queue,
     currentIndex,
     jumpToTrack,
+    isWakeLockEnabled,
+    setWakeLockEnabled,
   } = usePlayer();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -399,6 +403,43 @@ export default function PersistentPlayer() {
                   )}
                 </button>
               )}
+
+              {/* Wake Lock Toggle - 48px touch target */}
+              <button
+                onClick={() => setWakeLockEnabled(!isWakeLockEnabled)}
+                className={`p-3 rounded-full transition-colors ${
+                  isWakeLockEnabled
+                    ? "theme-text-primary"
+                    : "theme-text-muted hover:theme-text-primary"
+                }`}
+                style={
+                  isWakeLockEnabled
+                    ? { background: "var(--player-bar-button-hover)" }
+                    : {}
+                }
+                onMouseEnter={(e) =>
+                  !isWakeLockEnabled &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  !isWakeLockEnabled && (e.currentTarget.style.background = "")
+                }
+                title={
+                  isWakeLockEnabled ? "Keep screen awake" : "Allow screen sleep"
+                }
+                aria-label={
+                  isWakeLockEnabled
+                    ? "Keep screen awake (enabled)"
+                    : "Allow screen sleep (disabled)"
+                }
+              >
+                {isWakeLockEnabled ? (
+                  <Monitor className="w-6 h-6" />
+                ) : (
+                  <MonitorOff className="w-6 h-6" />
+                )}
+              </button>
             </div>
           </div>
 

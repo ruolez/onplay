@@ -5,6 +5,7 @@ import {
   useCallback,
   useRef,
   useEffect,
+  useState,
 } from "react";
 import { useMachine } from "@xstate/react";
 import { queueMachine } from "../machines/queueMachine";
@@ -33,6 +34,10 @@ interface PlayerContextType {
   queuePosition?: { current: number; total: number };
   machineState: string;
   errorMessage?: string;
+
+  // Wake Lock
+  isWakeLockEnabled: boolean;
+  setWakeLockEnabled: (enabled: boolean) => void;
 
   // Actions
   openPlayer: (mediaId: string, queueItems?: Media[]) => void;
@@ -66,6 +71,45 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playerRef = useRef<DualVideoPlayerRef>(null);
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
   const { sortedMedia } = useGallery();
+
+  // Wake Lock toggle state (persisted to localStorage)
+  const [isWakeLockEnabled, setIsWakeLockEnabledState] = useState<boolean>(
+    () => {
+      const saved = localStorage.getItem("player-wake-lock");
+      return saved !== null ? saved === "true" : true; // Default: enabled
+    },
+  );
+
+  // Persist wake lock preference
+  useEffect(() => {
+    localStorage.setItem("player-wake-lock", String(isWakeLockEnabled));
+  }, [isWakeLockEnabled]);
+
+  // Wrapper to conditionally request wake lock
+  const conditionalRequestWakeLock = useCallback(() => {
+    if (isWakeLockEnabled) {
+      requestWakeLock();
+    }
+  }, [isWakeLockEnabled, requestWakeLock]);
+
+  // Public setter that also releases wake lock when disabled
+  const setWakeLockEnabled = useCallback(
+    (enabled: boolean) => {
+      setIsWakeLockEnabledState(enabled);
+
+      if (!enabled) {
+        // Immediately release wake lock when user disables
+        releaseWakeLock();
+      } else {
+        // Request wake lock when user enables (if media is playing)
+        const player = playerRef.current?.getPlayer();
+        if (player && !player.paused()) {
+          requestWakeLock();
+        }
+      }
+    },
+    [releaseWakeLock, requestWakeLock],
+  );
 
   // Extract state
   const { currentMedia, sessionId, playbackState, queue, currentIndex } =
@@ -225,10 +269,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Actions
   const openPlayer = useCallback(
     (mediaId: string, queueItems?: Media[]) => {
-      requestWakeLock();
+      conditionalRequestWakeLock();
       send({ type: "LOAD_TRACK", mediaId, queueItems });
     },
-    [send, requestWakeLock],
+    [send, conditionalRequestWakeLock],
   );
 
   const closePlayer = useCallback(() => {
@@ -241,7 +285,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const player = playerRef.current?.getPlayer();
     if (player) {
       if (player.paused()) {
-        requestWakeLock();
+        conditionalRequestWakeLock();
         // Ensure unmuted when user manually plays
         player.muted(false);
         player.volume(1);
@@ -252,7 +296,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         send({ type: "PAUSE" });
       }
     }
-  }, [send, requestWakeLock]);
+  }, [send, conditionalRequestWakeLock]);
 
   const seek = useCallback(
     (time: number) => {
@@ -271,7 +315,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const playNext = useCallback(() => {
-    requestWakeLock();
+    conditionalRequestWakeLock();
 
     // Check if we have a preloaded next track
     if (state.context.nextTrackPreloaded && playerRef.current) {
@@ -286,10 +330,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     send({ type: "NEXT" });
-  }, [send, requestWakeLock, state.context.nextTrackPreloaded]);
+  }, [send, conditionalRequestWakeLock, state.context.nextTrackPreloaded]);
 
   const playPrevious = useCallback(() => {
-    requestWakeLock();
+    conditionalRequestWakeLock();
 
     // Ensure previous track is unmuted
     const player = playerRef.current?.getPlayer();
@@ -299,7 +343,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     send({ type: "PREVIOUS" });
-  }, [send, requestWakeLock]);
+  }, [send, conditionalRequestWakeLock]);
 
   const jumpToTrack = useCallback(
     (index: number) => {
@@ -308,7 +352,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       const track = queue[index];
-      requestWakeLock();
+      conditionalRequestWakeLock();
 
       // Ensure jumped track is unmuted
       const player = playerRef.current?.getPlayer();
@@ -319,7 +363,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       send({ type: "LOAD_TRACK", mediaId: track.id, queueItems: queue });
     },
-    [queue, send, requestWakeLock],
+    [queue, send, conditionalRequestWakeLock],
   );
 
   const requestFullscreen = useCallback(() => {
@@ -388,6 +432,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         queuePosition,
         machineState,
         errorMessage,
+        isWakeLockEnabled,
+        setWakeLockEnabled,
         openPlayer,
         closePlayer,
         togglePlayPause,
