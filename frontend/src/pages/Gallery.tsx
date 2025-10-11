@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
   ChevronDown,
   Check,
+  Filter,
 } from "lucide-react";
 
 export default function Gallery() {
@@ -71,6 +72,7 @@ export default function Gallery() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [tagFilterOpen, setTagFilterOpen] = useState(false);
+  const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { openPlayer, requestFullscreen, currentMedia } = usePlayer();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -130,6 +132,20 @@ export default function Gallery() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [tagFilterOpen]);
+
+  // Close media type menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        mediaTypeMenuOpen &&
+        !(e.target as Element).closest(".media-type-menu-container")
+      ) {
+        setMediaTypeMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [mediaTypeMenuOpen]);
 
   // Close three-dots menu when clicking outside
   useEffect(() => {
@@ -298,8 +314,59 @@ export default function Gallery() {
       <div className="sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
         {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
 
-        {/* Row 1: Media Type Filter (full-width on mobile) */}
+        {/* Row 1: Media Type Filter + Tag Filter (mobile) + Sort + View */}
         <div className="flex items-center justify-between gap-2 sm:gap-4">
+          {/* Mobile: Media Type Dropdown */}
+          <div className="sm:hidden relative media-type-menu-container flex-shrink-0">
+            <button
+              onClick={() => setMediaTypeMenuOpen(!mediaTypeMenuOpen)}
+              className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
+              title="Filter by media type"
+            >
+              {filter === "all" ? (
+                <>
+                  <Filter className="w-3.5 h-3.5" />
+                  <span className="capitalize">{filter}</span>
+                  <ChevronDown className="w-3 h-3" />
+                </>
+              ) : filter === "video" ? (
+                <Play className="w-3.5 h-3.5" />
+              ) : (
+                <Music className="w-3.5 h-3.5" />
+              )}
+            </button>
+            {mediaTypeMenuOpen && (
+              <div className="absolute left-0 mt-1 w-32 rounded-lg shadow-xl theme-dropdown z-50">
+                {[
+                  { value: "all" as const, label: "All", icon: Filter },
+                  { value: "video" as const, label: "Video", icon: Play },
+                  { value: "audio" as const, label: "Audio", icon: Music },
+                ].map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setFilter(option.value);
+                        setMediaTypeMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Icon className="w-3.5 h-3.5" />
+                        {option.label}
+                      </span>
+                      {filter === option.value && (
+                        <Check className="w-3.5 h-3.5 theme-text-primary" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: SegmentedControl */}
           <SegmentedControl
             options={[
               { value: "all", label: "All" },
@@ -308,11 +375,62 @@ export default function Gallery() {
             ]}
             value={filter}
             onChange={setFilter}
-            className="w-full sm:flex-initial"
+            className="hidden sm:flex flex-initial"
           />
 
-          {/* Desktop: Sort + View Toggle (same row as filter) */}
-          <div className="hidden sm:flex items-center space-x-2 flex-shrink-0">
+          {/* Mobile: Tag Filter (middle) - Compact icon only */}
+          {allTags.length > 0 && (
+            <div className="sm:hidden relative tag-filter-container flex-shrink-0">
+              <button
+                onClick={() => setTagFilterOpen(!tagFilterOpen)}
+                className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1 theme-btn-secondary hover:theme-btn-secondary relative"
+                title="Filter by tags"
+              >
+                <TagIcon className="w-3.5 h-3.5" />
+                {selectedTags.length > 0 && (
+                  <span className="text-[10px]">{selectedTags.length}</span>
+                )}
+              </button>
+              {tagFilterOpen && (
+                <div className="absolute left-0 mt-1 w-56 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
+                  {/* All option */}
+                  <button
+                    onClick={() => {
+                      setSelectedTags([]);
+                      setTagFilterOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg"
+                  >
+                    <span>All</span>
+                    {selectedTags.length === 0 && (
+                      <Check className="w-3.5 h-3.5 theme-text-primary" />
+                    )}
+                  </button>
+                  {/* Divider */}
+                  <div className="h-px bg-white/10 my-1" />
+                  {/* Tag options with checkboxes */}
+                  {allTags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        onClick={() => toggleTagFilter(tag.id)}
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between last:rounded-b-lg"
+                      >
+                        <span>{tag.name}</span>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 theme-text-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sort + View Toggle (both mobile and desktop) */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
             {/* Sort Dropdown */}
             <div className="relative sort-menu-container">
               <button
@@ -389,140 +507,61 @@ export default function Gallery() {
           </div>
         </div>
 
-        {/* Row 2: Tag Filter Dropdown + Sort/View (right aligned) */}
-        <div className="flex items-center justify-between gap-2">
-          {/* Tag Filter Dropdown - Left aligned */}
-          {allTags.length > 0 && (
-            <div className="relative tag-filter-container flex-1">
-              <button
-                onClick={() => setTagFilterOpen(!tagFilterOpen)}
-                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[32px] sm:min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary w-full sm:w-auto max-w-[200px] sm:max-w-none"
-                title="Filter by tags"
-              >
-                <TagIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span className="truncate flex-1 text-left">
-                  {selectedTags.length === 0
-                    ? "All"
-                    : selectedTags.length === 1
-                      ? allTags.find((t) => t.id === selectedTags[0])?.name
-                      : `${selectedTags.length} selected`}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-              </button>
-              {tagFilterOpen && (
-                <div className="absolute left-0 mt-1 w-56 sm:w-64 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
-                  {/* All option */}
-                  <button
-                    onClick={() => {
-                      setSelectedTags([]);
-                      setTagFilterOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between first:rounded-t-lg"
-                  >
-                    <span>All</span>
-                    {selectedTags.length === 0 && (
-                      <Check className="w-4 h-4 theme-text-primary" />
-                    )}
-                  </button>
-                  {/* Divider */}
-                  <div className="h-px bg-white/10 my-1" />
-                  {/* Tag options with checkboxes */}
-                  {allTags.map((tag) => {
-                    const isSelected = selectedTags.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        onClick={() => toggleTagFilter(tag.id)}
-                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between last:rounded-b-lg"
-                      >
-                        <span>{tag.name}</span>
-                        {isSelected && (
-                          <Check className="w-4 h-4 theme-text-primary" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Mobile: Sort + View Toggle (second row, right-aligned) */}
-          <div className="sm:hidden flex items-center space-x-2 flex-shrink-0">
-            {/* Sort Dropdown */}
-            <div className="relative sort-menu-container">
-              <button
-                onClick={() => setSortMenuOpen(!sortMenuOpen)}
-                className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
-                title="Sort options"
-              >
-                <ArrowUpDown className="w-3.5 h-3.5" />
-                <span className="text-[10px]">
-                  {sortOrder === "asc" ? "↑" : "↓"}
-                </span>
-              </button>
-              {sortMenuOpen && (
-                <div className="absolute right-0 mt-1 w-36 rounded-lg shadow-xl theme-dropdown z-50">
-                  {[
-                    { value: "new" as const, label: "New" },
-                    { value: "name" as const, label: "Name" },
-                    { value: "popular" as const, label: "Popular" },
-                    { value: "duration" as const, label: "Duration" },
-                  ].map((option) => (
+        {/* Row 2: Tag Filter Dropdown (Desktop only) */}
+        {allTags.length > 0 && (
+          <div className="hidden sm:block relative tag-filter-container">
+            <button
+              onClick={() => setTagFilterOpen(!tagFilterOpen)}
+              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary w-auto"
+              title="Filter by tags"
+            >
+              <TagIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate flex-1 text-left">
+                {selectedTags.length === 0
+                  ? "All"
+                  : selectedTags.length === 1
+                    ? allTags.find((t) => t.id === selectedTags[0])?.name
+                    : `${selectedTags.length} selected`}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+            </button>
+            {tagFilterOpen && (
+              <div className="absolute left-0 mt-1 w-56 sm:w-64 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
+                {/* All option */}
+                <button
+                  onClick={() => {
+                    setSelectedTags([]);
+                    setTagFilterOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between first:rounded-t-lg"
+                >
+                  <span>All</span>
+                  {selectedTags.length === 0 && (
+                    <Check className="w-4 h-4 theme-text-primary" />
+                  )}
+                </button>
+                {/* Divider */}
+                <div className="h-px bg-white/10 my-1" />
+                {/* Tag options with checkboxes */}
+                {allTags.map((tag) => {
+                  const isSelected = selectedTags.includes(tag.id);
+                  return (
                     <button
-                      key={option.value}
-                      onClick={() => {
-                        if (sortBy === option.value) {
-                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                        } else {
-                          setSortBy(option.value);
-                          setSortOrder("desc");
-                        }
-                        setSortMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
+                      key={tag.id}
+                      onClick={() => toggleTagFilter(tag.id)}
+                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between last:rounded-b-lg"
                     >
-                      <span>{option.label}</span>
-                      {sortBy === option.value && (
-                        <span className="text-[10px]">
-                          {sortOrder === "asc" ? "↑" : "↓"}
-                        </span>
+                      <span>{tag.name}</span>
+                      {isSelected && (
+                        <Check className="w-4 h-4 theme-text-primary" />
                       )}
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex space-x-2">
-              <button
-                onClick={() => toggleViewMode("grid")}
-                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                  viewMode === "grid"
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-                title="Grid view"
-                aria-label="Grid view"
-              >
-                <Grid3x3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => toggleViewMode("list")}
-                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                  viewMode === "list"
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-                title="List view"
-                aria-label="List view"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Media Grid/List */}
