@@ -12,7 +12,6 @@ import {
   Trash2,
   Edit2,
   X,
-  Search,
   Grid3x3,
   List,
   Tag as TagIcon,
@@ -20,7 +19,6 @@ import {
   ArrowUpDown,
   ChevronDown,
   Check,
-  Filter,
 } from "lucide-react";
 
 export default function Gallery() {
@@ -75,7 +73,7 @@ export default function Gallery() {
   const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { openPlayer, requestFullscreen, currentMedia } = usePlayer();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // Refs for auto-scrolling to current track
   const mediaRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -92,18 +90,6 @@ export default function Gallery() {
   useEffect(() => {
     setSearchQuery(urlSearchQuery);
   }, [urlSearchQuery, setSearchQuery]);
-
-  // Update URL when search changes (desktop only - mobile uses top bar)
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set("q", value);
-    } else {
-      params.delete("q");
-    }
-    setSearchParams(params, { replace: true });
-  };
 
   // Close sort menu when clicking outside
   useEffect(() => {
@@ -238,21 +224,6 @@ export default function Gallery() {
       refreshTags();
     } catch (error) {
       console.error("Failed to add tag:", error);
-    }
-  };
-
-  const handleRemoveTag = async (
-    e: React.MouseEvent,
-    mediaId: string,
-    tagId: number,
-  ) => {
-    e.stopPropagation();
-
-    try {
-      await mediaApi.removeTagFromMedia(mediaId, tagId);
-      refreshMedia();
-    } catch (error) {
-      console.error("Failed to remove tag:", error);
     }
   };
 
