@@ -1,9 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
-import { useNavigate } from "react-router-dom";
 import DualVideoPlayer from "./DualVideoPlayer";
 import QueuePanel from "./QueuePanel";
-import ThemeSelector from "./ThemeSelector";
 import { mediaApi } from "../lib/api";
 import { formatDuration } from "../lib/utils";
 import {
@@ -18,13 +16,9 @@ import {
   List,
   Monitor,
   MonitorOff,
-  Menu,
-  Upload as UploadIcon,
-  BarChart3,
 } from "lucide-react";
 
 export default function PersistentPlayer() {
-  const navigate = useNavigate();
   const {
     currentMedia,
     sessionId,
@@ -62,7 +56,6 @@ export default function PersistentPlayer() {
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Slide up animation when media loads
   useEffect(() => {
@@ -71,23 +64,8 @@ export default function PersistentPlayer() {
     } else {
       setIsVisible(false);
       setIsQueueOpen(false);
-      setIsMobileMenuOpen(false);
     }
   }, [currentMedia]);
-
-  // Close mobile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        isMobileMenuOpen &&
-        !(e.target as Element).closest(".mobile-menu-container")
-      ) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMobileMenuOpen]);
 
   // Listen for fullscreen changes
   useEffect(() => {
@@ -335,59 +313,9 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
-          <div className="relative flex items-center justify-center md:justify-start w-full md:w-auto gap-2 sm:gap-3">
-            {/* Mobile Menu Button - Absolute positioned on left */}
-            <div className="md:hidden absolute left-0 mobile-menu-container">
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-3 rounded-full transition-colors theme-text-primary"
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background =
-                    "var(--player-bar-button-hover)")
-                }
-                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                title="Menu"
-                aria-label="Open menu"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-
-              {/* Menu Dropdown - Opens upward */}
-              {isMobileMenuOpen && (
-                <div
-                  className="absolute bottom-full left-0 mb-2 w-48 rounded-lg shadow-xl theme-dropdown"
-                  style={{
-                    background: "var(--player-bar-bg)",
-                    backdropFilter: "blur(20px)",
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      navigate("/upload");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-3 transition-colors theme-dropdown-item text-sm flex items-center gap-3 first:rounded-t-lg"
-                  >
-                    <UploadIcon className="w-4 h-4" />
-                    <span>Upload</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigate("/stats");
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-3 transition-colors theme-dropdown-item text-sm flex items-center gap-3"
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    <span>Stats</span>
-                  </button>
-                  <div className="px-3 py-2 border-t border-white/10 last:rounded-b-lg">
-                    <div className="text-xs theme-text-muted mb-2">Theme</div>
-                    <ThemeSelector />
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-2 sm:gap-3">
+            {/* Left spacer for mobile centering */}
+            <div className="md:hidden flex-1" />
 
             {/* Primary Controls - Centered on mobile, 48px touch targets */}
             <div className="flex items-center gap-2 sm:gap-3">
@@ -452,8 +380,8 @@ export default function PersistentPlayer() {
               </button>
             </div>
 
-            {/* Secondary Controls - Absolute positioned on right (mobile only) */}
-            <div className="md:hidden absolute right-0 flex items-center gap-2 sm:gap-3">
+            {/* Secondary Controls - Right side on mobile, inline on desktop */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 md:flex-initial justify-end md:justify-start">
               {/* Queue Position */}
               {queuePosition && (
                 <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
@@ -466,68 +394,6 @@ export default function PersistentPlayer() {
                 <button
                   onClick={() => setIsQueueOpen(!isQueueOpen)}
                   className={`hidden md:flex p-3 rounded-full transition-colors ${
-                    isQueueOpen
-                      ? "theme-text-primary"
-                      : "theme-text-muted hover:theme-text-primary"
-                  }`}
-                  style={
-                    isQueueOpen
-                      ? { background: "var(--player-bar-button-hover)" }
-                      : {}
-                  }
-                  onMouseEnter={(e) =>
-                    !isQueueOpen &&
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) =>
-                    !isQueueOpen && (e.currentTarget.style.background = "")
-                  }
-                  title="Queue"
-                  aria-label="View play queue"
-                >
-                  <List className="w-6 h-6" />
-                </button>
-              )}
-
-              {/* Fullscreen Button (Video only) - 48px touch target */}
-              {currentMedia?.media_type === "video" && (
-                <button
-                  onClick={toggleFullscreen}
-                  className="p-3 rounded-full transition-colors theme-text-primary"
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                  aria-label={
-                    isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
-                  }
-                >
-                  {isFullscreen ? (
-                    <Minimize className="w-6 h-6" />
-                  ) : (
-                    <Maximize className="w-6 h-6" />
-                  )}
-                </button>
-              )}
-            </div>
-
-            {/* Secondary Controls - Desktop inline positioning */}
-            <div className="hidden md:flex items-center gap-2 sm:gap-3">
-              {/* Queue Position */}
-              {queuePosition && (
-                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
-                  {queuePosition.current} / {queuePosition.total}
-                </span>
-              )}
-
-              {/* Queue Button - Desktop only (mobile uses Gallery as queue) */}
-              {queue.length > 0 && (
-                <button
-                  onClick={() => setIsQueueOpen(!isQueueOpen)}
-                  className={`p-3 rounded-full transition-colors ${
                     isQueueOpen
                       ? "theme-text-primary"
                       : "theme-text-muted hover:theme-text-primary"
