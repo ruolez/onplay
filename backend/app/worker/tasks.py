@@ -249,7 +249,26 @@ def generate_thumbnail_at_timestamp(input_path: str, media_id: str, timestamp: f
         return None
 
 def generate_audio_thumbnail(media_id: str) -> str:
-    """Return static shared audio thumbnail path (no file copying)"""
+    """Return static shared audio thumbnail path, ensuring file exists"""
+    import shutil
+
+    thumbnail_dir = Path(MEDIA_ROOT) / "thumbnails"
+    thumbnail_dir.mkdir(parents=True, exist_ok=True)
+
+    destination = thumbnail_dir / "audio-default.jpg"
+
+    # Copy from assets if not already present
+    if not destination.exists():
+        assets_dir = Path(__file__).parent.parent / "assets"
+        source = assets_dir / "audio-default.jpg"
+
+        if source.exists():
+            shutil.copy2(source, destination)
+            print(f"Copied audio-default.jpg from assets to {destination}")
+        else:
+            print(f"Warning: Source audio thumbnail not found at {source}")
+            return None
+
     # All audio files share the same optimized thumbnail for browser caching
     return "/media/thumbnails/audio-default.jpg"
 
