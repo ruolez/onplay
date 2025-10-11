@@ -222,68 +222,39 @@ media-player/
 
 ### Screen Wake Lock (Prevent Mobile Screen Sleep)
 
-**Purpose**: Keep mobile device screen awake during media playback to prevent dimming/locking while browsing or playing audio.
+Keeps mobile device screen awake during media playback to prevent dimming/locking while browsing or playing audio.
 
-- **Implementation**: `useWakeLock` hook in `frontend/src/hooks/useWakeLock.ts`
-- **Browser Support**:
-  - Chrome/Edge Android: Native Wake Lock API
-  - Safari iOS 16.4+: Native Wake Lock API
-  - Brave iOS: Native Wake Lock API (uses WebKit)
-  - Older browsers: Silent video fallback (iOS only)
+**Implementation**: `useWakeLock` hook in `frontend/src/hooks/useWakeLock.ts`
 
-**Critical Timing Requirement:**
+**Browser Support**:
+- iOS 16.4+: Native Wake Lock API
+- Chrome/Edge (all platforms): Native Wake Lock API
+- Older browsers: Feature disabled, clear error message shown
 
-iOS Safari requires wake lock to be requested **synchronously during user gesture handler**, not in `useEffect`:
+**User Control** (added 2025-01-11):
+- Toggle button in persistent player bottom bar (Monitor/MonitorOff icon)
+- Located in first row, right side next to time display
+- Preference persists to localStorage (`player-wake-lock`, default: enabled)
+- When disabled: Immediately releases wake lock, saves battery
+- When enabled: Requests wake lock on media playback
 
-```typescript
-// ✅ CORRECT - Request immediately in click handler
-const togglePlayPause = useCallback(() => {
-  if (player.paused()) {
-    requestWakeLock(); // Still within user gesture
-    player.play();
-  }
-}, [requestWakeLock]);
+**Integration Points**:
+- PlayerContext conditionally calls `requestWakeLock()` based on toggle state
+- Wake lock requested at: `openPlayer()`, `togglePlayPause()`, `playNext()`, `playPrevious()`
+- Auto-released when: player closed, tab switched, user disables toggle
+- Auto-reacquired when: tab becomes visible again (if still enabled)
 
-// ❌ WRONG - Too late, user gesture expired
-useEffect(() => {
-  if (isPlaying) {
-    requestWakeLock(); // Fails on iOS Safari
-  }
-}, [isPlaying]);
-```
+**Logging** (`[WakeLock]` prefix):
+- `🔧 Initializing wake lock hook` - Browser capabilities on mount
+- `📱 Device info: { isIOS, hasNativeAPI, userAgent }` - Device detection
+- `✅ Native API activated` - Success
+- `❌ Wake Lock not supported on this iOS version` - iOS < 16.4
+- `⚠️ Wake Lock API not supported on this browser` - No native API
 
-**Wake Lock Activation Points:**
-- `openPlayer()`: When user clicks media card
-- `togglePlayPause()`: When user clicks play button
-- `playNext()` / `playPrevious()`: When navigating queue
-
-**Fallback Strategy for iOS:**
-1. Try native Wake Lock API first (works on iOS 16.4+)
-2. If fails, play invisible 10x10px looping video at bottom-right corner
-3. Video must be **visible** (not off-screen) for iOS to count it
-
-**Video Fallback Details:**
-```typescript
-// Must be on-screen (iOS ignores off-screen videos)
-video.style.position = "fixed";
-video.style.bottom = "0";
-video.style.right = "0";
-video.style.width = "10px";
-video.style.height = "10px";
-video.style.opacity = "0.01";
-video.setAttribute("playsinline", "");
-video.setAttribute("muted", "");
-video.setAttribute("loop", "");
-```
-
-**Logging:**
-- All logs prefixed with `[WakeLock]` for easy debugging
-- Success: `✅ Wake lock activated (native API)` or `✅ Wake lock activated (video fallback for iOS)`
-- Failure: `⚠️ Native API failed: [error]` or `❌ Fallback video failed: [error]`
-
-**Wake Lock Release:**
-- Auto-released when player closed or tab switched
-- Re-acquired when returning to tab (if media still playing)
+**Auto-Reacquisition**:
+- Listens for browser `release` events (tab switch, battery saver, etc.)
+- Automatically re-requests wake lock if user has it enabled
+- 500ms delay before retry to prevent spam
 
 ### Audio Thumbnail Design Principles
 
@@ -406,6 +377,8 @@ interface PlayerContextType {
   currentTime: number;
   duration: number;
   volume: number;
+  isWakeLockEnabled: boolean;  // Wake lock toggle state
+  setWakeLockEnabled: (enabled: boolean) => void;
   openPlayer: (mediaId: string, queueItems?: Media[]) => Promise<void>;
   closePlayer: () => void;
   togglePlayPause: () => void;
@@ -422,10 +395,10 @@ interface PlayerContextType {
   - `className="fixed -top-[9999px] -left-[9999px] pointer-events-none"`
   - Prevents fullscreen from showing empty wrapper
 - Smooth slide-up animation on media load
-- **Layout sections**:
-  - **Left**: Thumbnail (56x56) + Title + Time display
-  - **Center**: Previous/Play-Pause/Next controls + Seekable progress bar
-  - **Right**: Volume slider (desktop) + Fullscreen button (video only) + Queue position + Close button
+- **Layout sections** (mobile: 2 rows, desktop: 1 row):
+  - **Row 1**: Thumbnail + Title + Time + Wake Lock Toggle
+  - **Row 2**: Previous/Play-Pause/Next + Queue Position + Queue Button (desktop) + Fullscreen (video)
+  - **Desktop Right**: Volume slider + Mute toggle
 - Auto-fullscreen for video files on first play event
 - Fullscreen state tracking across browser vendors (fullscreenchange events)
 - Preserves all analytics tracking (play, pause, complete, progress milestones)
@@ -517,6 +490,7 @@ useEffect(() => {
 - **Video Files**: Auto-fullscreen on play, continue in bar after exit, manual fullscreen toggle
 - **Seekable Progress**: Click progress bar to jump to any position, hover shows dot indicator
 - **Volume Control**: Slider with mute toggle (desktop only, hidden on mobile)
+- **Wake Lock Control**: Toggle to keep screen awake during playback (iOS 16.4+, Chrome/Edge)
 - **Queue Position**: Shows "3 / 15" indicator when queue is active
 - **Cross-Route**: Works seamlessly across Gallery, Upload, Stats pages
 
@@ -1286,7 +1260,7 @@ VITE_API_URL=http://localhost:8080/api
 
 **Player:**
 9. **HLS Memory**: Set `backBufferLength: 30` to prevent memory leaks (see HLS Memory Management)
-10. **Wake Lock Timing**: Request in click handler, not `useEffect` (see Screen Wake Lock)
+10. **Wake Lock**: Requires iOS 16.4+ or Chrome/Edge - older browsers show error message (see Screen Wake Lock)
 11. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
 12. **Autoplay Requirements**: Start muted, unmute after play event
 13. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)
