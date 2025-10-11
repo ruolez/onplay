@@ -617,20 +617,26 @@ export default function Gallery() {
                         {item.filename}
                       </h3>
 
-                      {/* Duration and Three-Dots Menu - Second Line */}
-                      <div className="flex items-center justify-between mb-1 sm:mb-2">
-                        {/* Duration - Left aligned */}
-                        <div className="flex items-center space-x-2 text-xs sm:text-sm theme-text-muted">
+                      {/* Duration, Play Count, and Three-Dots Menu - Second Line */}
+                      <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
+                        {/* Duration and Play Count - Left aligned */}
+                        <div className="flex items-center gap-2 text-xs sm:text-sm theme-text-muted flex-1 min-w-0">
                           {item.duration && (
-                            <>
-                              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <div className="flex items-center space-x-1">
+                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                               <span>{formatDuration(item.duration)}</span>
-                            </>
+                            </div>
+                          )}
+                          {(item.play_count ?? 0) > 0 && (
+                            <div className="hidden md:flex items-center space-x-1">
+                              <Play className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span>{item.play_count}</span>
+                            </div>
                           )}
                         </div>
 
                         {/* Three-Dots Menu - Right aligned */}
-                        <div className="relative media-menu-container">
+                        <div className="relative media-menu-container flex-shrink-0">
                           <button
                             onClick={(e) => handleMenuClick(e, item.id)}
                             className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
