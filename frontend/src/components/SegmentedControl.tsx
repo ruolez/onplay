@@ -88,9 +88,9 @@ export default function SegmentedControl<T extends string>({
               aria-checked={isActive}
               onClick={() => onChange(option.value)}
               className={`
-                flex-1 sm:flex-initial sm:min-w-[100px] px-4 sm:px-6 py-2 rounded-md
+                flex-1 sm:flex-initial sm:min-w-[100px] px-3 sm:px-6 py-1 sm:py-2 rounded-md
                 text-sm sm:text-base font-medium transition-all
-                min-h-[38px] sm:min-h-[38px]
+                min-h-[24px] md:min-h-[38px]
                 focus:outline-none focus:ring-2 focus:ring-offset-1
                 ${
                   isActive

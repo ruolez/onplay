@@ -341,11 +341,7 @@
     border-color: var(--card-border-hover);
   }
 
-  /* Improved segmented control touch targets */
-  .theme-segmented-option {
-    min-height: 44px;
-    min-width: 44px;
-  }
+  /* Improved segmented control touch targets - removed, using Tailwind classes instead */
 
   /* Better dropdown visibility on mobile */
   .theme-dropdown {
