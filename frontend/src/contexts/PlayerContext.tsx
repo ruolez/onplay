@@ -138,9 +138,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (prevState === "loading" && currentState === "ready") {
       const player = playerRef.current?.getPlayer();
       if (player) {
-        // Force unmute and full volume for auto-advance tracks
-        player.muted(false);
-        player.volume(1);
+        // Note: Unmuting is handled by DualVideoPlayer's "playing" event listener
+        // to comply with Chrome's autoplay policy (must wait for playback to start)
 
         if (player.paused()) {
           // Player is paused, need to start playback
