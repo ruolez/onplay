@@ -17,11 +17,11 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8002',
+        target: 'http://api:8002',
         changeOrigin: true,
       },
       '/media': {
-        target: 'http://localhost:9090',
+        target: 'http://nginx:80',
         changeOrigin: true,
       }
     }

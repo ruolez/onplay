@@ -318,7 +318,7 @@
 
 /* Logo Font - Montserrat */
 .logo-text {
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Montserrat", sans-serif;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -326,4 +326,29 @@
 .logo-text .middle-dot {
   font-size: 0.8em;
   opacity: 0.8;
+}
+
+/* Mobile-Specific Enhancements for Better Contrast */
+@media (max-width: 768px) {
+  /* Stronger card borders and backgrounds for improved mobile scannability */
+  .theme-card {
+    border-width: 1.5px;
+  }
+
+  /* Enhanced card hover states for touch clarity */
+  .theme-card:active {
+    background: var(--card-bg-hover);
+    border-color: var(--card-border-hover);
+  }
+
+  /* Improved segmented control touch targets */
+  .theme-segmented-option {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better dropdown visibility on mobile */
+  .theme-dropdown {
+    border-width: 1.5px;
+  }
 }

@@ -235,35 +235,44 @@ export default function PersistentPlayer() {
           borderTop: "1px solid var(--player-bar-border)",
         }}
       >
-        {/* Progress Bar */}
+        {/* Progress Bar - Enhanced touch target for mobile (54px total height) */}
         <div
-          className="w-full h-1 cursor-pointer group relative"
-          style={{ background: "var(--player-progress-bg)" }}
+          className="w-full py-3.5 cursor-pointer group"
           onClick={handleProgressClick}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
           onMouseLeave={() => setIsDragging(false)}
+          role="slider"
+          aria-label="Seek position"
+          aria-valuemin={0}
+          aria-valuemax={duration}
+          aria-valuenow={currentTime}
         >
           <div
-            className="h-full transition-all duration-100"
-            style={{
-              width: `${progress}%`,
-              background: "var(--btn-primary-bg)",
-            }}
-          />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{
-              left: `${progress}%`,
-              transform: "translate(-50%, -50%)",
-              background: "var(--btn-primary-bg)",
-            }}
-          />
+            className="w-full h-4 rounded-full relative"
+            style={{ background: "var(--player-progress-bg)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-100"
+              style={{
+                width: `${progress}%`,
+                background: "var(--btn-primary-bg)",
+              }}
+            />
+            <div
+              className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-lg"
+              style={{
+                left: `${progress}%`,
+                transform: "translate(-50%, -50%)",
+                background: "var(--btn-primary-bg)",
+              }}
+            />
+          </div>
         </div>
 
-        {/* Main Controls */}
-        <div className="px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-4">
-          {/* Left: Thumbnail + Info */}
+        {/* Main Controls - Two rows on mobile, single row on desktop */}
+        <div className="px-2 sm:px-4 py-2 sm:py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+          {/* Row 1 (Mobile) / Left Section (Desktop): Thumbnail + Title + Close */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             {currentMedia.thumbnail_path && (
               <img
@@ -273,128 +282,179 @@ export default function PersistentPlayer() {
               />
             )}
             <div className="min-w-0 flex-1">
-              <h3 className="theme-text-primary font-medium text-sm line-clamp-2 sm:truncate">
+              <h3 className="theme-text-primary font-medium text-sm truncate">
                 {currentMedia.filename}
               </h3>
               <p className="theme-text-muted text-xs">
                 {formatDuration(currentTime)} / {formatDuration(duration)}
               </p>
             </div>
-          </div>
-
-          {/* Center: Playback Controls */}
-          <div className="flex items-center gap-2">
+            {/* Close Button - Mobile only in row 1, hidden on desktop */}
             <button
-              onClick={playPrevious}
-              disabled={!hasPrevious}
-              className={`p-2 rounded-full transition-colors theme-text-primary ${
-                !hasPrevious && "opacity-30 cursor-not-allowed"
-              }`}
+              onClick={closePlayer}
+              className="md:hidden p-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary flex-shrink-0"
               onMouseEnter={(e) =>
-                hasPrevious &&
                 (e.currentTarget.style.background =
                   "var(--player-bar-button-hover)")
               }
-              onMouseLeave={(e) =>
-                hasPrevious && (e.currentTarget.style.background = "")
-              }
-              title="Previous"
+              onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+              title="Close"
+              aria-label="Close player"
             >
-              <SkipBack className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={togglePlayPause}
-              className="p-2.5 rounded-full transition-all hover:scale-105"
-              style={{
-                background: "var(--btn-primary-bg)",
-                color: "var(--btn-primary-text)",
-              }}
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6" fill="currentColor" />
-              ) : (
-                <Play
-                  className="w-6 h-6 translate-x-[1px]"
-                  fill="currentColor"
-                />
-              )}
-            </button>
-
-            <button
-              onClick={playNext}
-              disabled={!hasNext}
-              className={`p-2 rounded-full transition-colors theme-text-primary ${
-                !hasNext && "opacity-30 cursor-not-allowed"
-              }`}
-              onMouseEnter={(e) =>
-                hasNext &&
-                (e.currentTarget.style.background =
-                  "var(--player-bar-button-hover)")
-              }
-              onMouseLeave={(e) =>
-                hasNext && (e.currentTarget.style.background = "")
-              }
-              title="Next"
-            >
-              <SkipForward className="w-5 h-5" />
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Right: Queue + Volume + Fullscreen + Close */}
-          <div className="flex items-center gap-2 sm:gap-4 sm:flex-1 justify-end">
-            {/* Queue Position */}
-            {queuePosition && (
-              <span className="text-sm theme-text-muted whitespace-nowrap hidden sm:block">
-                {queuePosition.current} / {queuePosition.total}
-              </span>
-            )}
+          {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
+          <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-1 sm:gap-2">
+            {/* Left spacer for mobile centering */}
+            <div className="md:hidden flex-1" />
 
-            {/* Queue Button */}
-            {queue.length > 0 && (
+            {/* Primary Controls - Centered on mobile */}
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
-                onClick={() => setIsQueueOpen(!isQueueOpen)}
-                className={`p-2 rounded-full transition-colors ${
-                  isQueueOpen
-                    ? "theme-text-primary"
-                    : "theme-text-muted hover:theme-text-primary"
+                onClick={playPrevious}
+                disabled={!hasPrevious}
+                className={`p-2 sm:p-3 rounded-full transition-colors theme-text-primary ${
+                  !hasPrevious && "opacity-30 cursor-not-allowed"
                 }`}
-                style={
-                  isQueueOpen
-                    ? { background: "var(--player-bar-button-hover)" }
-                    : {}
-                }
                 onMouseEnter={(e) =>
-                  !isQueueOpen &&
+                  hasPrevious &&
                   (e.currentTarget.style.background =
                     "var(--player-bar-button-hover)")
                 }
                 onMouseLeave={(e) =>
-                  !isQueueOpen && (e.currentTarget.style.background = "")
+                  hasPrevious && (e.currentTarget.style.background = "")
                 }
-                title="Queue"
+                title="Previous"
+                aria-label="Previous track"
               >
-                <List className="w-5 h-5" />
+                <SkipBack className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
-            )}
 
+              <button
+                onClick={togglePlayPause}
+                className="p-3 sm:p-3.5 rounded-full transition-all hover:scale-105"
+                style={{
+                  background: "var(--btn-primary-bg)",
+                  color: "var(--btn-primary-text)",
+                }}
+                title={isPlaying ? "Pause" : "Play"}
+                aria-label={isPlaying ? "Pause playback" : "Play media"}
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" />
+                ) : (
+                  <Play
+                    className="w-5 h-5 sm:w-6 sm:h-6 translate-x-[1px]"
+                    fill="currentColor"
+                  />
+                )}
+              </button>
+
+              <button
+                onClick={playNext}
+                disabled={!hasNext}
+                className={`p-2 sm:p-3 rounded-full transition-colors theme-text-primary ${
+                  !hasNext && "opacity-30 cursor-not-allowed"
+                }`}
+                onMouseEnter={(e) =>
+                  hasNext &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  hasNext && (e.currentTarget.style.background = "")
+                }
+                title="Next"
+                aria-label="Next track"
+              >
+                <SkipForward className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+            </div>
+
+            {/* Secondary Controls - Right side on mobile, inline on desktop */}
+            <div className="flex items-center gap-1 sm:gap-2 flex-1 md:flex-initial justify-end md:justify-start">
+              {/* Queue Position */}
+              {queuePosition && (
+                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
+                  {queuePosition.current} / {queuePosition.total}
+                </span>
+              )}
+
+              {/* Queue Button */}
+              {queue.length > 0 && (
+                <button
+                  onClick={() => setIsQueueOpen(!isQueueOpen)}
+                  className={`p-2 sm:p-3 rounded-full transition-colors ${
+                    isQueueOpen
+                      ? "theme-text-primary"
+                      : "theme-text-muted hover:theme-text-primary"
+                  }`}
+                  style={
+                    isQueueOpen
+                      ? { background: "var(--player-bar-button-hover)" }
+                      : {}
+                  }
+                  onMouseEnter={(e) =>
+                    !isQueueOpen &&
+                    (e.currentTarget.style.background =
+                      "var(--player-bar-button-hover)")
+                  }
+                  onMouseLeave={(e) =>
+                    !isQueueOpen && (e.currentTarget.style.background = "")
+                  }
+                  title="Queue"
+                  aria-label="View play queue"
+                >
+                  <List className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              )}
+
+              {/* Fullscreen Button (Video only) */}
+              {currentMedia?.media_type === "video" && (
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 sm:p-3 rounded-full transition-colors theme-text-primary"
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "var(--player-bar-button-hover)")
+                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  aria-label={
+                    isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+                  }
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-5 h-5 sm:w-6 sm:h-6" />
+                  ) : (
+                    <Maximize className="w-5 h-5 sm:w-6 sm:h-6" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Section (Desktop only): Volume + Close */}
+          <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
             {/* Volume Control (Desktop only) */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <button
                 onClick={toggleMute}
-                className="p-2 rounded-full transition-colors theme-text-primary"
+                className="p-3 rounded-full transition-colors theme-text-primary"
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.background =
                     "var(--player-bar-button-hover)")
                 }
                 onMouseLeave={(e) => (e.currentTarget.style.background = "")}
                 title={isMuted ? "Unmute" : "Mute"}
+                aria-label={isMuted ? "Unmute" : "Mute"}
               >
                 {isMuted || volume === 0 ? (
-                  <VolumeX className="w-5 h-5" />
+                  <VolumeX className="w-6 h-6" />
                 ) : (
-                  <Volume2 className="w-5 h-5" />
+                  <Volume2 className="w-6 h-6" />
                 )}
               </button>
               <input
@@ -411,38 +471,19 @@ export default function PersistentPlayer() {
               />
             </div>
 
-            {/* Fullscreen Button (Video only) */}
-            {currentMedia?.media_type === "video" && (
-              <button
-                onClick={toggleFullscreen}
-                className="p-2 rounded-full transition-colors theme-text-primary"
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background =
-                    "var(--player-bar-button-hover)")
-                }
-                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-                title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              >
-                {isFullscreen ? (
-                  <Minimize className="w-5 h-5" />
-                ) : (
-                  <Maximize className="w-5 h-5" />
-                )}
-              </button>
-            )}
-
-            {/* Close Button */}
+            {/* Close Button (Desktop only) */}
             <button
               onClick={closePlayer}
-              className="p-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+              className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
               onMouseEnter={(e) =>
                 (e.currentTarget.style.background =
                   "var(--player-bar-button-hover)")
               }
               onMouseLeave={(e) => (e.currentTarget.style.background = "")}
               title="Close"
+              aria-label="Close player"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </button>
           </div>
         </div>
