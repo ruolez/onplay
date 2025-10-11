@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
 import DualVideoPlayer from "./DualVideoPlayer";
 import QueuePanel from "./QueuePanel";
@@ -95,36 +95,46 @@ export default function PersistentPlayer() {
     };
   }, []);
 
-  const trackEvent = async (eventType: string, data?: any) => {
-    if (!currentMedia) return;
+  // Memoize trackEvent to prevent recreating callbacks
+  const trackEvent = useCallback(
+    async (eventType: string, data?: any) => {
+      if (!currentMedia) return;
 
-    try {
-      await mediaApi.trackAnalytics(
-        currentMedia.id,
-        eventType,
-        sessionId,
-        data,
-      );
-    } catch (error) {
-      console.error("[PersistentPlayer] Failed to track event:", error);
-    }
-  };
+      try {
+        await mediaApi.trackAnalytics(
+          currentMedia.id,
+          eventType,
+          sessionId,
+          data,
+        );
+      } catch (error) {
+        console.error("[PersistentPlayer] Failed to track event:", error);
+      }
+    },
+    [currentMedia, sessionId],
+  );
 
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    const newTime = percent * duration;
-    seek(newTime);
-  };
+  const handleProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!duration) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      const newTime = percent * duration;
+      seek(newTime);
+    },
+    [duration, seek],
+  );
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
-  };
+  const handleVolumeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newVolume = parseFloat(e.target.value);
+      setVolume(newVolume);
+      setIsMuted(newVolume === 0);
+    },
+    [setVolume],
+  );
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (isMuted) {
       setVolume(1);
       setIsMuted(false);
@@ -132,9 +142,9 @@ export default function PersistentPlayer() {
       setVolume(0);
       setIsMuted(true);
     }
-  };
+  }, [isMuted, setVolume]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     const player = playerRef.current?.getPlayer();
     if (!player) return;
 
@@ -145,39 +155,47 @@ export default function PersistentPlayer() {
     } else {
       player.requestFullscreen().catch(() => {});
     }
-  };
+  }, [isFullscreen, playerRef]);
 
-  const handleTimeUpdateWithTracking = (time: number) => {
-    if (!isDragging) {
-      handleTimeUpdate(time);
-    }
-    // Track progress milestones
-    if (duration) {
-      const progress = (time / duration) * 100;
-      if (progress > 25 && progress < 26) trackEvent("progress_25");
-      if (progress > 50 && progress < 51) trackEvent("progress_50");
-      if (progress > 75 && progress < 76) trackEvent("progress_75");
-    }
-  };
+  // CRITICAL: Memoize these callbacks to prevent DualVideoPlayer from
+  // constantly removing/reattaching event listeners, which causes events to be lost
+  const handleTimeUpdateWithTracking = useCallback(
+    (time: number) => {
+      if (!isDragging) {
+        handleTimeUpdate(time);
+      }
+      // Track progress milestones
+      if (duration) {
+        const progress = (time / duration) * 100;
+        if (progress > 25 && progress < 26) trackEvent("progress_25");
+        if (progress > 50 && progress < 51) trackEvent("progress_50");
+        if (progress > 75 && progress < 76) trackEvent("progress_75");
+      }
+    },
+    [isDragging, handleTimeUpdate, duration, trackEvent],
+  );
 
-  const handlePlayWithTracking = () => {
+  const handlePlayWithTracking = useCallback(() => {
+    console.log("[PersistentPlayer] 🎵 onPlay event fired");
     handlePlaybackStarted();
     trackEvent("play");
 
     // Note: Fullscreen is now maintained automatically by keeping same Video.js player instance
     // First video fullscreen is handled by Gallery.tsx setTimeout
     // Subsequent videos maintain fullscreen naturally without needing requestFullscreen()
-  };
+  }, [handlePlaybackStarted, trackEvent]);
 
-  const handlePauseWithTracking = () => {
+  const handlePauseWithTracking = useCallback(() => {
+    console.log("[PersistentPlayer] ⏸️  onPause event fired");
     handlePlaybackPaused();
     trackEvent("pause");
-  };
+  }, [handlePlaybackPaused, trackEvent]);
 
-  const handleEndedWithTracking = async () => {
+  const handleEndedWithTracking = useCallback(async () => {
+    console.log("[PersistentPlayer] ⏹️  onEnded event fired");
     await trackEvent("complete");
     handlePlaybackEnded();
-  };
+  }, [trackEvent, handlePlaybackEnded]);
 
   if (!currentMedia) return null;
 
