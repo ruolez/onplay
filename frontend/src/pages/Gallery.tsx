@@ -383,7 +383,7 @@ export default function Gallery() {
             <div className="sm:hidden relative tag-filter-container flex-shrink-0">
               <button
                 onClick={() => setTagFilterOpen(!tagFilterOpen)}
-                className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1 theme-btn-secondary hover:theme-btn-secondary relative"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1 theme-btn-secondary hover:theme-btn-secondary relative"
                 title="Filter by tags"
               >
                 <TagIcon className="w-3.5 h-3.5" />
