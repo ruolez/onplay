@@ -94,18 +94,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (prevState === "loading" && currentState === "ready") {
       const player = playerRef.current?.getPlayer();
       if (player && player.paused()) {
+        console.log("[PlayerContext] 🎵 Auto-playing next track");
+
         // Force unmute and full volume for auto-advance tracks
         player.muted(false);
         player.volume(1);
 
-        player.play().catch((err) => {
-          console.error("[PlayerContext] Failed to auto-play:", err);
-        });
+        player
+          .play()
+          ?.then(() => {
+            console.log(
+              "[PlayerContext] ✅ Auto-play successful, sending PLAY event",
+            );
+            // Explicitly send PLAY event to update state machine
+            send({ type: "PLAY" });
+          })
+          .catch((err) => {
+            console.error("[PlayerContext] Failed to auto-play:", err);
+          });
       }
     }
 
     prevStateRef.current = currentState;
-  }, [machineState]);
+  }, [machineState, send]);
 
   // Handle preload completion
   const handlePreloadComplete = useCallback(
@@ -185,7 +196,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     // Only update if we have media in sortedMedia
     if (sortedMedia.length === 0) {
-      console.log("[PlayerContext] Skipping queue update - sortedMedia is empty");
+      console.log(
+        "[PlayerContext] Skipping queue update - sortedMedia is empty",
+      );
       return;
     }
 
