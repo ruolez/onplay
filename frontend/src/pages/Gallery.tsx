@@ -295,7 +295,7 @@ export default function Gallery() {
   return (
     <div className="container mx-auto px-4 sm:px-6 pb-6 sm:pb-8">
       {/* Controls - Sticky flush with nav */}
-      <div className="sticky top-[64px] z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
+      <div className="sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
         {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
 
         {/* Row 1: Media Type Filter (full-width on mobile) */}
