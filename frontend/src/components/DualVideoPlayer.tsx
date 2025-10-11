@@ -315,6 +315,18 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           return;
         }
 
+        console.log("[DualPlayer] 🔄 Swapping to preloaded player");
+
+        // CRITICAL: Check if we're currently in fullscreen before swap
+        // Check both browser fullscreen API AND Video.js fullscreen state
+        const wasInBrowserFullscreen = !!document.fullscreenElement;
+        const wasInVideoJsFullscreen = playerRef.current?.isFullscreen() || false;
+
+        console.log("[DualPlayer] Browser fullscreen before swap:", wasInBrowserFullscreen);
+        console.log("[DualPlayer] Video.js fullscreen before swap:", wasInVideoJsFullscreen);
+
+        const wasInFullscreen = wasInBrowserFullscreen || wasInVideoJsFullscreen;
+
         // Pause and clean up main player
         if (playerRef.current && !playerRef.current.isDisposed()) {
           playerRef.current.pause();
@@ -393,6 +405,36 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
               err,
             );
           });
+
+          // CRITICAL FIX: Restore fullscreen if we were in fullscreen before swap
+          if (wasInFullscreen) {
+            console.log("[DualPlayer] 🎬 Restoring fullscreen on new player");
+
+            // Wait for DOM to settle and player to be ready
+            setTimeout(() => {
+              player
+                .requestFullscreen()
+                .then(() => {
+                  console.log(
+                    "[DualPlayer] ✅ Fullscreen restored successfully",
+                  );
+                  console.log(
+                    "[DualPlayer] New player fullscreen state:",
+                    player.isFullscreen(),
+                  );
+                })
+                .catch((err) => {
+                  console.error(
+                    "[DualPlayer] ❌ Failed to restore fullscreen:",
+                    err,
+                  );
+                  console.log(
+                    "[DualPlayer] Player state after failure:",
+                    player.isFullscreen(),
+                  );
+                });
+            }, 150);
+          }
         }
       },
     }));
