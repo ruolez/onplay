@@ -341,7 +341,7 @@ export default function Gallery() {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
                         } else {
                           setSortBy(option.value);
-                          setSortOrder("asc");
+                          setSortOrder("desc");
                         }
                         setSortMenuOpen(false);
                       }}
@@ -476,7 +476,7 @@ export default function Gallery() {
                           setSortOrder(sortOrder === "asc" ? "desc" : "asc");
                         } else {
                           setSortBy(option.value);
-                          setSortOrder("asc");
+                          setSortOrder("desc");
                         }
                         setSortMenuOpen(false);
                       }}

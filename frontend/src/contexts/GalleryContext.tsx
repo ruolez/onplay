@@ -70,11 +70,11 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
         | "name"
         | "duration"
         | "popular"
-        | "new") || "name",
+        | "new") || "new",
   );
 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
-    () => (localStorage.getItem("gallery-sort-order") as "asc" | "desc") || "asc",
+    () => (localStorage.getItem("gallery-sort-order") as "asc" | "desc") || "desc",
   );
 
   // Persist filter changes
