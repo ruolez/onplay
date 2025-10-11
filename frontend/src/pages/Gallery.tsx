@@ -281,7 +281,7 @@ export default function Gallery() {
             <div className="relative sort-menu-container">
               <button
                 onClick={() => setSortMenuOpen(!sortMenuOpen)}
-                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[40px] sm:min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
                 title="Sort options"
               >
                 <ArrowUpDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -327,7 +327,7 @@ export default function Gallery() {
             <div className="flex space-x-2">
               <button
                 onClick={() => toggleViewMode("grid")}
-                className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
+                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
                   viewMode === "grid"
                     ? "theme-btn-primary"
                     : "theme-btn-secondary"
@@ -339,7 +339,7 @@ export default function Gallery() {
               </button>
               <button
                 onClick={() => toggleViewMode("list")}
-                className={`p-2 rounded-lg transition-all min-w-[40px] sm:min-w-[44px] min-h-[40px] sm:min-h-[44px] flex items-center justify-center ${
+                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
                   viewMode === "list"
                     ? "theme-btn-primary"
                     : "theme-btn-secondary"
@@ -360,7 +360,7 @@ export default function Gallery() {
               <button
                 key={tag.id}
                 onClick={() => toggleTagFilter(tag.id)}
-                className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[36px] ${
+                className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] ${
                   selectedTags.includes(tag.id)
                     ? "theme-btn-primary"
                     : "theme-btn-secondary"
@@ -372,7 +372,7 @@ export default function Gallery() {
             {selectedTags.length > 0 && (
               <button
                 onClick={() => setSelectedTags([])}
-                className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors min-h-[36px]"
+                className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors min-h-[44px]"
               >
                 Clear filters
               </button>
@@ -458,12 +458,12 @@ export default function Gallery() {
                   {/* Info */}
                   <div className="p-2 sm:p-4">
                     {/* Filename - First Line */}
-                    <h3 className="theme-text-primary font-medium truncate text-xs sm:text-sm mb-1 sm:mb-2">
+                    <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
                       {item.filename}
                     </h3>
 
                     {/* Duration and Three-Dots Menu - Second Line */}
-                    <div className="hidden sm:flex items-center justify-between mb-1 sm:mb-2">
+                    <div className="flex items-center justify-between mb-1 sm:mb-2">
                       {/* Duration - Left aligned */}
                       <div className="flex items-center space-x-2 text-xs sm:text-sm theme-text-muted">
                         {item.duration && (
@@ -478,7 +478,7 @@ export default function Gallery() {
                       <div className="relative media-menu-container">
                         <button
                           onClick={(e) => handleMenuClick(e, item.id)}
-                          className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                          className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                           title="More options"
                         >
                           <MoreVertical className="w-4 h-4 theme-text-muted" />
@@ -526,7 +526,7 @@ export default function Gallery() {
                         {item.tags.map((tag) => (
                           <span
                             key={tag.id}
-                            className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-xs theme-text-secondary"
+                            className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
                           >
                             {tag.name}
                           </span>
@@ -576,7 +576,7 @@ export default function Gallery() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="theme-text-primary font-medium text-xs sm:text-sm truncate flex-1">
+                        <h3 className="theme-text-primary font-medium text-sm sm:text-base truncate flex-1">
                           {item.filename}
                         </h3>
 
@@ -596,7 +596,7 @@ export default function Gallery() {
                           {item.tags.map((tag) => (
                             <span
                               key={tag.id}
-                              className="px-1 py-[1px] bg-white/10 rounded text-[10px] theme-text-secondary"
+                              className="px-1 py-[1px] bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
                             >
                               {tag.name}
                             </span>
@@ -606,7 +606,7 @@ export default function Gallery() {
                     </div>
 
                     {/* Duration and Play Count - Right aligned */}
-                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-[10px] sm:text-xs theme-text-muted">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-xs sm:text-sm theme-text-muted">
                       {item.duration && (
                         <div className="flex items-center space-x-0.5">
                           <Clock className="w-3 h-3" />
@@ -614,7 +614,7 @@ export default function Gallery() {
                         </div>
                       )}
                       {(item.play_count ?? 0) > 0 && (
-                        <div className="flex items-center space-x-0.5">
+                        <div className="hidden sm:flex items-center space-x-0.5">
                           <Play className="w-3 h-3" />
                           <span>{item.play_count} plays</span>
                         </div>
@@ -625,7 +625,7 @@ export default function Gallery() {
                     <div className="flex-shrink-0 relative media-menu-container">
                       <button
                         onClick={(e) => handleMenuClick(e, item.id)}
-                        className="p-1.5 rounded hover:bg-white/10 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                        className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title="More options"
                         aria-label="More options"
                       >
