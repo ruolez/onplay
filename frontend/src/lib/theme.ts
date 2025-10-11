@@ -142,7 +142,7 @@ export const themes: Record<string, ThemeConfig> = {
     // Text colors - charcoal instead of pure black for softer readability
     textPrimary: "#1c1c1c",
     textSecondary: "#52525b",
-    textMuted: "#71717a",
+    textMuted: "#5f5f66",
 
     // Accent colors - professional calm blue
     accentPrimary: "#0969da",
@@ -152,26 +152,26 @@ export const themes: Record<string, ThemeConfig> = {
     // Card styles - white with subtle warm gray borders
     cardBg: "#ffffff",
     cardBgHover: "#fafafa",
-    cardBorder: "rgba(0, 0, 0, 0.08)",
-    cardBorderHover: "rgba(9, 105, 218, 0.3)",
+    cardBorder: "rgba(0, 0, 0, 0.12)",
+    cardBorderHover: "rgba(9, 105, 218, 0.4)",
     cardShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
     cardShadowHover: "0 2px 8px rgba(0, 0, 0, 0.08)",
     cardOverlay: "rgba(255, 255, 255, 0.7)",
 
     // Primary button - blue with white text
-    btnPrimaryBg: "#0969da",
+    btnPrimaryBg: "#0757b8",
     btnPrimaryText: "#ffffff",
-    btnPrimaryHover: "#0550ae",
+    btnPrimaryHover: "#054a93",
 
     // Secondary button - light gray backgrounds
-    btnSecondaryBg: "rgba(0, 0, 0, 0.04)",
+    btnSecondaryBg: "rgba(0, 0, 0, 0.08)",
     btnSecondaryText: "#52525b",
-    btnSecondaryHover: "rgba(0, 0, 0, 0.08)",
+    btnSecondaryHover: "rgba(0, 0, 0, 0.12)",
 
     // Orange button - warm terracotta
     btnOrangeBg: "#e76f51",
-    btnOrangeText: "#ffffff",
-    btnOrangeHover: "#d35f46",
+    btnOrangeText: "#1c1c1c",
+    btnOrangeHover: "#f28066",
 
     // Input styles - subtle background with clear borders
     inputBg: "#ffffff",
@@ -190,10 +190,10 @@ export const themes: Record<string, ThemeConfig> = {
     statGradient2: "rgba(5, 150, 105, 0.04)",
     statGradient3: "rgba(2, 132, 199, 0.04)",
     statGradient4: "rgba(217, 119, 6, 0.04)",
-    statBorder1: "rgba(9, 105, 218, 0.2)",
-    statBorder2: "rgba(5, 150, 105, 0.2)",
-    statBorder3: "rgba(2, 132, 199, 0.2)",
-    statBorder4: "rgba(217, 119, 6, 0.2)",
+    statBorder1: "rgba(9, 105, 218, 0.3)",
+    statBorder2: "rgba(5, 150, 105, 0.3)",
+    statBorder3: "rgba(2, 132, 199, 0.3)",
+    statBorder4: "rgba(217, 119, 6, 0.3)",
     // Player bar - light theme values
     playerBarBg: "rgba(255, 255, 255, 0.95)",
     playerBarBorder: "rgba(0, 0, 0, 0.1)",
