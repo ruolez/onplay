@@ -7,6 +7,12 @@ export default {
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
   ],
+  safelist: [
+    'w-6',
+    'h-6',
+    'w-5',
+    'h-5',
+  ],
   theme: {
     container: {
       center: true,
