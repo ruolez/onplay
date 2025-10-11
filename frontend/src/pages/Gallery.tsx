@@ -315,20 +315,28 @@ export default function Gallery() {
         {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
 
         {/* Row 1: Media Type Filter + Tag Filter (mobile) + Sort + View */}
-        <div className="flex items-center justify-center gap-2 sm:gap-4">
+        <div className="flex items-center justify-center gap-3 sm:gap-4">
           {/* Mobile: Media Type Dropdown */}
           <div className="sm:hidden relative media-type-menu-container flex-shrink-0">
             <button
               onClick={() => setMediaTypeMenuOpen(!mediaTypeMenuOpen)}
-              className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 theme-btn-secondary hover:theme-btn-secondary w-[70px]"
+              className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 w-[70px] theme-btn-secondary hover:theme-btn-secondary ${
+                filter !== "all" ? "ring-1 ring-white/30 bg-white/10" : ""
+              }`}
               title="Filter by media type"
             >
               {filter === "all" ? (
                 <span className="text-[11px]">All</span>
               ) : filter === "video" ? (
-                <Play className="w-5 h-5" style={{ color: "var(--icon-video)" }} />
+                <Play
+                  className="w-5 h-5"
+                  style={{ color: "var(--icon-video)" }}
+                />
               ) : (
-                <Music className="w-5 h-5" style={{ color: "var(--icon-audio)" }} />
+                <Music
+                  className="w-5 h-5"
+                  style={{ color: "var(--icon-audio)" }}
+                />
               )}
               <ChevronDown className="w-3 h-3" />
             </button>
@@ -352,9 +360,15 @@ export default function Gallery() {
                         {option.value === "all" ? (
                           <span className="text-sm">{option.label}</span>
                         ) : option.value === "video" ? (
-                          <Play className="w-5 h-5" style={{ color: "var(--icon-video)" }} />
+                          <Play
+                            className="w-5 h-5"
+                            style={{ color: "var(--icon-video)" }}
+                          />
                         ) : (
-                          <Music className="w-5 h-5" style={{ color: "var(--icon-audio)" }} />
+                          <Music
+                            className="w-5 h-5"
+                            style={{ color: "var(--icon-audio)" }}
+                          />
                         )}
                       </span>
                       {filter === option.value && (
@@ -384,12 +398,18 @@ export default function Gallery() {
             <div className="sm:hidden relative tag-filter-container flex-shrink-0">
               <button
                 onClick={() => setTagFilterOpen(!tagFilterOpen)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 theme-btn-secondary hover:theme-btn-secondary relative w-[52px]"
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 relative w-[52px] theme-btn-secondary hover:theme-btn-secondary ${
+                  selectedTags.length > 0
+                    ? "ring-1 ring-white/30 bg-white/10"
+                    : ""
+                }`}
                 title="Filter by tags"
               >
                 <TagIcon className="w-3.5 h-3.5" />
                 {selectedTags.length > 0 && (
-                  <span className="text-[10px] font-semibold">{selectedTags.length}</span>
+                  <span className="text-[10px] font-semibold">
+                    {selectedTags.length}
+                  </span>
                 )}
               </button>
               {tagFilterOpen && (
@@ -431,7 +451,7 @@ export default function Gallery() {
           )}
 
           {/* Sort + View Toggle (both mobile and desktop) */}
-          <div className="flex items-center space-x-2 flex-shrink-0">
+          <div className="flex items-center gap-4 flex-shrink-0">
             {/* Sort Dropdown */}
             <div className="relative sort-menu-container">
               <button
@@ -478,33 +498,29 @@ export default function Gallery() {
               )}
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex space-x-2">
-              <button
-                onClick={() => toggleViewMode("grid")}
-                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                  viewMode === "grid"
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-                title="Grid view"
-                aria-label="Grid view"
-              >
-                <Grid3x3 className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => toggleViewMode("list")}
-                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                  viewMode === "list"
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-                title="List view"
-                aria-label="List view"
-              >
+            {/* View Mode Toggle - Single Button */}
+            <button
+              onClick={() =>
+                toggleViewMode(viewMode === "grid" ? "list" : "grid")
+              }
+              className="p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center theme-btn-primary"
+              title={
+                viewMode === "grid"
+                  ? "Switch to list view"
+                  : "Switch to grid view"
+              }
+              aria-label={
+                viewMode === "grid"
+                  ? "Switch to list view"
+                  : "Switch to grid view"
+              }
+            >
+              {viewMode === "grid" ? (
                 <List className="w-5 h-5" />
-              </button>
-            </div>
+              ) : (
+                <Grid3x3 className="w-5 h-5" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -513,7 +529,11 @@ export default function Gallery() {
           <div className="hidden sm:block relative tag-filter-container">
             <button
               onClick={() => setTagFilterOpen(!tagFilterOpen)}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary w-auto"
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 w-auto theme-btn-secondary hover:theme-btn-secondary ${
+                selectedTags.length > 0
+                  ? "ring-1 ring-white/30 bg-white/10"
+                  : ""
+              }`}
               title="Filter by tags"
             >
               <TagIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
