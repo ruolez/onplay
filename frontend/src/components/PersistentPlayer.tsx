@@ -191,7 +191,9 @@ export default function PersistentPlayer() {
   return (
     <>
       {/* Video Player - positioned off-screen but not hidden (required for fullscreen to work) */}
-      <div className="fixed -top-[9999px] -left-[9999px] pointer-events-none">
+      <div
+        className={`fixed -top-[9999px] -left-[9999px] ${!isFullscreen ? "pointer-events-none" : ""}`}
+      >
         <DualVideoPlayer
           ref={playerRef}
           src={playerSrc}
