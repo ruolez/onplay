@@ -44,9 +44,12 @@ export default function Gallery() {
   } = useGallery();
 
   // Local UI state (view mode, modals)
-  const [viewMode, setViewMode] = useState<"grid" | "list">(
-    () => (localStorage.getItem("gallery-view") as "grid" | "list") || "grid",
-  );
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    const saved = localStorage.getItem("gallery-view") as "grid" | "list";
+    if (saved) return saved;
+    // Default to list on mobile (<=768px), grid on desktop
+    return window.innerWidth <= 768 ? "list" : "grid";
+  });
   const [deleteModal, setDeleteModal] = useState<{
     show: boolean;
     id: string | null;
