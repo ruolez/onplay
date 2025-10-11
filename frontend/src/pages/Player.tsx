@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { mediaApi, Media } from "../lib/api";
 import VideoPlayer, { VideoPlayerRef } from "../components/VideoPlayer";
-import { ArrowLeft, Eye, TrendingUp, Image } from "lucide-react";
+import { ArrowLeft, Eye, TrendingUp, Image, X } from "lucide-react";
 import { formatFileSize, formatDuration } from "../lib/utils";
 
 export default function Player() {
@@ -69,6 +69,19 @@ export default function Player() {
       alert("Failed to set thumbnail. Please try again.");
     } finally {
       setThumbnailSaving(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagId: number) => {
+    if (!id) return;
+
+    try {
+      await mediaApi.removeTagFromMedia(id, tagId);
+      // Reload media to get updated tags
+      loadMedia();
+    } catch (error) {
+      console.error("Failed to remove tag:", error);
+      alert("Failed to remove tag. Please try again.");
     }
   };
 
@@ -205,6 +218,26 @@ export default function Player() {
                     >
                       {variant.quality}
                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tags */}
+            {media.tags && media.tags.length > 0 && (
+              <div className="mt-4 sm:mt-6">
+                <p className="text-white/60 text-xs sm:text-sm mb-2">Tags:</p>
+                <div className="flex flex-wrap gap-2">
+                  {media.tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      onClick={() => handleRemoveTag(tag.id)}
+                      className="group px-2 sm:px-3 py-1 bg-white/10 hover:bg-red-500/20 text-white/80 hover:text-red-400 rounded-full text-xs sm:text-sm border border-white/20 hover:border-red-500/50 transition-all flex items-center gap-1 min-h-[32px]"
+                      title="Click to remove tag"
+                    >
+                      <span>{tag.name}</span>
+                      <X className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
                   ))}
                 </div>
               </div>

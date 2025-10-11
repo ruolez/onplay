@@ -18,6 +18,8 @@ import {
   Tag as TagIcon,
   MoreVertical,
   ArrowUpDown,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 
 export default function Gallery() {
@@ -65,6 +67,7 @@ export default function Gallery() {
   const [tagInput, setTagInput] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const navigate = useNavigate();
   const { openPlayer, requestFullscreen } = usePlayer();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -107,6 +110,20 @@ export default function Gallery() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sortMenuOpen]);
+
+  // Close tag filter menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        tagFilterOpen &&
+        !(e.target as Element).closest(".tag-filter-container")
+      ) {
+        setTagFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [tagFilterOpen]);
 
   // Close three-dots menu when clicking outside
   useEffect(() => {
@@ -356,31 +373,60 @@ export default function Gallery() {
           </div>
         </div>
 
-        {/* Row 2: Tags + Sort/View (mobile only - right aligned) */}
+        {/* Row 2: Tag Filter Dropdown + Sort/View (right aligned) */}
         <div className="flex items-center justify-between gap-2">
-          {/* Tags - Left aligned */}
+          {/* Tag Filter Dropdown - Left aligned */}
           {allTags.length > 0 && (
-            <div className="flex flex-wrap gap-2 flex-1">
-              {allTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  onClick={() => toggleTagFilter(tag.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all min-h-[44px] ${
-                    selectedTags.includes(tag.id)
-                      ? "theme-btn-primary"
-                      : "theme-btn-secondary"
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              ))}
-              {selectedTags.length > 0 && (
-                <button
-                  onClick={() => setSelectedTags([])}
-                  className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium theme-btn-secondary hover:bg-red-500/20 transition-colors min-h-[44px]"
-                >
-                  Clear filters
-                </button>
+            <div className="relative tag-filter-container flex-1">
+              <button
+                onClick={() => setTagFilterOpen(!tagFilterOpen)}
+                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[32px] sm:min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary w-full sm:w-auto max-w-[200px] sm:max-w-none"
+                title="Filter by tags"
+              >
+                <TagIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="truncate flex-1 text-left">
+                  {selectedTags.length === 0
+                    ? "All"
+                    : selectedTags.length === 1
+                      ? allTags.find((t) => t.id === selectedTags[0])?.name
+                      : `${selectedTags.length} selected`}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              </button>
+              {tagFilterOpen && (
+                <div className="absolute left-0 mt-1 w-56 sm:w-64 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
+                  {/* All option */}
+                  <button
+                    onClick={() => {
+                      setSelectedTags([]);
+                      setTagFilterOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between first:rounded-t-lg"
+                  >
+                    <span>All</span>
+                    {selectedTags.length === 0 && (
+                      <Check className="w-4 h-4 theme-text-primary" />
+                    )}
+                  </button>
+                  {/* Divider */}
+                  <div className="h-px bg-white/10 my-1" />
+                  {/* Tag options with checkboxes */}
+                  {allTags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        onClick={() => toggleTagFilter(tag.id)}
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between last:rounded-b-lg"
+                      >
+                        <span>{tag.name}</span>
+                        {isSelected && (
+                          <Check className="w-4 h-4 theme-text-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -769,7 +815,7 @@ export default function Gallery() {
       {/* Delete Modal */}
       {deleteModal.show && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm px-4"
           onClick={() => setDeleteModal({ show: false, id: null })}
         >
           <div
@@ -828,7 +874,7 @@ export default function Gallery() {
       {/* Rename Modal */}
       {renameModal.show && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm px-4"
           onClick={() =>
             setRenameModal({ show: false, id: null, currentName: "" })
           }
@@ -883,7 +929,7 @@ export default function Gallery() {
       {/* Tag Modal */}
       {tagModal.show && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm px-4"
           onClick={() => setTagModal({ show: false, mediaId: null })}
         >
           <div
