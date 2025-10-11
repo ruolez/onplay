@@ -137,7 +137,7 @@ function AppContent() {
                 className="w-9 h-9 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
                 viewBox="0 0 32 32"
                 fill="none"
-                style={{ color: "#14b8a6" }}
+                style={{ color: "var(--accent-primary)" }}
               >
                 <circle
                   cx="16"
