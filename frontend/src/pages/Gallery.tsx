@@ -315,34 +315,30 @@ export default function Gallery() {
         {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
 
         {/* Row 1: Media Type Filter + Tag Filter (mobile) + Sort + View */}
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center justify-center gap-2 sm:gap-4">
           {/* Mobile: Media Type Dropdown */}
           <div className="sm:hidden relative media-type-menu-container flex-shrink-0">
             <button
               onClick={() => setMediaTypeMenuOpen(!mediaTypeMenuOpen)}
-              className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
+              className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 theme-btn-secondary hover:theme-btn-secondary w-[70px]"
               title="Filter by media type"
             >
               {filter === "all" ? (
-                <>
-                  <Filter className="w-3.5 h-3.5" />
-                  <span className="capitalize">{filter}</span>
-                  <ChevronDown className="w-3 h-3" />
-                </>
+                <span className="text-[11px]">All</span>
               ) : filter === "video" ? (
-                <Play className="w-3.5 h-3.5" />
+                <Play className="w-5 h-5" style={{ color: "var(--icon-video)" }} />
               ) : (
-                <Music className="w-3.5 h-3.5" />
+                <Music className="w-5 h-5" style={{ color: "var(--icon-audio)" }} />
               )}
+              <ChevronDown className="w-3 h-3" />
             </button>
             {mediaTypeMenuOpen && (
               <div className="absolute left-0 mt-1 w-32 rounded-lg shadow-xl theme-dropdown z-50">
                 {[
-                  { value: "all" as const, label: "All", icon: Filter },
-                  { value: "video" as const, label: "Video", icon: Play },
-                  { value: "audio" as const, label: "Audio", icon: Music },
+                  { value: "all" as const, label: "All", showText: true },
+                  { value: "video" as const, label: "Video", showText: false },
+                  { value: "audio" as const, label: "Audio", showText: false },
                 ].map((option) => {
-                  const Icon = option.icon;
                   return (
                     <button
                       key={option.value}
@@ -350,11 +346,16 @@ export default function Gallery() {
                         setFilter(option.value);
                         setMediaTypeMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
+                      className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
                     >
-                      <span className="flex items-center gap-1.5">
-                        <Icon className="w-3.5 h-3.5" />
-                        {option.label}
+                      <span className="flex items-center gap-2">
+                        {option.value === "all" ? (
+                          <span className="text-sm">{option.label}</span>
+                        ) : option.value === "video" ? (
+                          <Play className="w-5 h-5" style={{ color: "var(--icon-video)" }} />
+                        ) : (
+                          <Music className="w-5 h-5" style={{ color: "var(--icon-audio)" }} />
+                        )}
                       </span>
                       {filter === option.value && (
                         <Check className="w-3.5 h-3.5 theme-text-primary" />
@@ -383,12 +384,12 @@ export default function Gallery() {
             <div className="sm:hidden relative tag-filter-container flex-shrink-0">
               <button
                 onClick={() => setTagFilterOpen(!tagFilterOpen)}
-                className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1 theme-btn-secondary hover:theme-btn-secondary relative"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 theme-btn-secondary hover:theme-btn-secondary relative w-[52px]"
                 title="Filter by tags"
               >
                 <TagIcon className="w-3.5 h-3.5" />
                 {selectedTags.length > 0 && (
-                  <span className="text-[10px]">{selectedTags.length}</span>
+                  <span className="text-[10px] font-semibold">{selectedTags.length}</span>
                 )}
               </button>
               {tagFilterOpen && (
