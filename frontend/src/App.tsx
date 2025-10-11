@@ -16,12 +16,14 @@ import LogoPreview from "./pages/LogoPreview";
 import ThemeSelector from "./components/ThemeSelector";
 import PersistentPlayer from "./components/PersistentPlayer";
 import { useTheme } from "./contexts/ThemeContext";
+import { useGallery } from "./contexts/GalleryContext";
 import { themes, applyTheme } from "./lib/theme";
-import { Upload as UploadIcon, BarChart3, Menu, X, Search } from "lucide-react";
+import { Upload as UploadIcon, BarChart3, X, Search, Tag as TagIcon, Check, Menu } from "lucide-react";
 
 function AppContent() {
   const { theme } = useTheme();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { selectedTags, setSelectedTags, allTags } = useGallery();
+  const [isMobileTagFilterOpen, setIsMobileTagFilterOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -38,10 +40,6 @@ function AppContent() {
     }
   }, [theme]);
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
 
   // Sync search with URL params
   useEffect(() => {
@@ -131,7 +129,6 @@ function AppContent() {
             <Link
               to="/"
               className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0"
-              onClick={() => setMobileMenuOpen(false)}
             >
               <svg
                 className="w-9 h-9 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
@@ -233,6 +230,29 @@ function AppContent() {
 
             {/* Mobile Actions (right side) */}
             <div className="md:hidden flex items-center space-x-2">
+              {/* Mobile Tag Filter Icon (Gallery only) */}
+              {location.pathname === "/" && allTags.length > 0 && (
+                <button
+                  onClick={() => setIsMobileTagFilterOpen(true)}
+                  className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center relative"
+                  aria-label="Filter by tags"
+                  title="Filter by tags"
+                >
+                  <TagIcon className="w-5 h-5" />
+                  {selectedTags.length > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                      style={{
+                        background: "var(--btn-primary-bg)",
+                        color: "var(--btn-primary-text)",
+                      }}
+                    >
+                      {selectedTags.length}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {/* Mobile Search Icon (Gallery only) */}
               {location.pathname === "/" && (
                 <button
@@ -244,49 +264,9 @@ function AppContent() {
                   <Search className="w-5 h-5" />
                 </button>
               )}
-
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-5 h-5" />
-                ) : (
-                  <Menu className="w-5 h-5" />
-                )}
-              </button>
             </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 theme-dropdown border-t border-white/10">
-            <div className="container mx-auto px-4 py-4 space-y-2">
-              <Link
-                to="/upload"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center space-x-3 theme-nav-link p-3 rounded-lg hover:bg-white/5 transition-colors min-h-[44px]"
-              >
-                <UploadIcon className="w-5 h-5" />
-                <span>Upload</span>
-              </Link>
-              <Link
-                to="/stats"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center space-x-3 theme-nav-link p-3 rounded-lg hover:bg-white/5 transition-colors min-h-[44px]"
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span>Stats</span>
-              </Link>
-              <div className="pt-2 border-t border-white/10">
-                <ThemeSelector />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Mobile Search Modal */}
         {isMobileSearchOpen && (
@@ -325,6 +305,82 @@ function AppContent() {
                       <X className="w-5 h-5 theme-text-muted" />
                     </button>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Tag Filter Modal */}
+        {isMobileTagFilterOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start pt-20"
+            onClick={() => setIsMobileTagFilterOpen(false)}
+          >
+            <div className="container mx-auto px-4">
+              <div
+                className="rounded-lg p-4 max-h-[70vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  backgroundColor: "rgb(20, 20, 25)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold theme-text-primary">Filter by Tags</h3>
+                  <button
+                    onClick={() => setIsMobileTagFilterOpen(false)}
+                    className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5 theme-text-muted" />
+                  </button>
+                </div>
+
+                {/* All option */}
+                <button
+                  onClick={() => {
+                    setSelectedTags([]);
+                    setIsMobileTagFilterOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 transition-colors theme-dropdown-item text-base flex items-center justify-between rounded-lg"
+                  style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}
+                >
+                  <span>All</span>
+                  {selectedTags.length === 0 && (
+                    <Check className="w-5 h-5 theme-text-primary" />
+                  )}
+                </button>
+
+                {/* Tag options */}
+                <div className="mt-2">
+                  {allTags.map((tag, index) => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    const isLast = index === allTags.length - 1;
+                    return (
+                      <button
+                        key={tag.id}
+                        onClick={() => {
+                          setSelectedTags((prev) =>
+                            prev.includes(tag.id)
+                              ? prev.filter((id) => id !== tag.id)
+                              : [...prev, tag.id]
+                          );
+                        }}
+                        className="w-full text-left px-4 py-3 transition-colors theme-dropdown-item text-base flex items-center justify-between rounded-lg"
+                        style={
+                          !isLast
+                            ? { borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }
+                            : {}
+                        }
+                      >
+                        <span>{tag.name}</span>
+                        {isSelected && (
+                          <Check className="w-5 h-5 theme-text-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

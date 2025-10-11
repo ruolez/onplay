@@ -296,9 +296,7 @@ export default function Gallery() {
     <div className="container mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-6 sm:pb-8">
       {/* Controls */}
       <div className="mb-6 sm:mb-8 space-y-2 sm:space-y-6">
-        {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
-
-        {/* Row 1: Media Type Filter (full-width on mobile) */}
+        {/* Row 1: Media Type Filter + Sort + View Toggle */}
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           <SegmentedControl
             options={[
@@ -308,20 +306,20 @@ export default function Gallery() {
             ]}
             value={filter}
             onChange={setFilter}
-            className="w-full sm:flex-initial"
+            className="flex-1 sm:flex-initial"
           />
 
-          {/* Desktop: Sort + View Toggle (same row as filter) */}
-          <div className="hidden sm:flex items-center space-x-2 flex-shrink-0">
+          {/* Sort + View Toggle (mobile and desktop) */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
             {/* Sort Dropdown */}
             <div className="relative sort-menu-container">
               <button
                 onClick={() => setSortMenuOpen(!sortMenuOpen)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
                 title="Sort options"
               >
-                <ArrowUpDown className="w-4 h-4" />
-                <span className="capitalize">{sortBy}</span>
+                <ArrowUpDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline capitalize">{sortBy}</span>
                 <span className="text-[10px]">
                   {sortOrder === "asc" ? "↑" : "↓"}
                 </span>
@@ -345,7 +343,7 @@ export default function Gallery() {
                         }
                         setSortMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
+                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs sm:text-sm flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
                     >
                       <span>{option.label}</span>
                       {sortBy === option.value && (
@@ -371,7 +369,7 @@ export default function Gallery() {
                 title="Grid view"
                 aria-label="Grid view"
               >
-                <Grid3x3 className="w-5 h-5" />
+                <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
               <button
                 onClick={() => toggleViewMode("list")}
@@ -383,15 +381,15 @@ export default function Gallery() {
                 title="List view"
                 aria-label="List view"
               >
-                <List className="w-5 h-5" />
+                <List className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Row 2: Tag Filter Dropdown + Sort/View (right aligned) */}
-        <div className="flex items-center justify-between gap-2">
-          {/* Tag Filter Dropdown - Left aligned */}
+        {/* Row 2: Tag Filter Dropdown (desktop only) */}
+        <div className="hidden sm:flex items-center justify-between gap-2">
+          {/* Tag Filter Dropdown - Left aligned (desktop only) */}
           {allTags.length > 0 && (
             <div className="relative tag-filter-container flex-1">
               <button
@@ -446,82 +444,6 @@ export default function Gallery() {
               )}
             </div>
           )}
-
-          {/* Mobile: Sort + View Toggle (second row, right-aligned) */}
-          <div className="sm:hidden flex items-center space-x-2 flex-shrink-0">
-            {/* Sort Dropdown */}
-            <div className="relative sort-menu-container">
-              <button
-                onClick={() => setSortMenuOpen(!sortMenuOpen)}
-                className="px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
-                title="Sort options"
-              >
-                <ArrowUpDown className="w-3.5 h-3.5" />
-                <span className="text-[10px]">
-                  {sortOrder === "asc" ? "↑" : "↓"}
-                </span>
-              </button>
-              {sortMenuOpen && (
-                <div className="absolute right-0 mt-1 w-36 rounded-lg shadow-xl theme-dropdown z-50">
-                  {[
-                    { value: "new" as const, label: "New" },
-                    { value: "name" as const, label: "Name" },
-                    { value: "popular" as const, label: "Popular" },
-                    { value: "duration" as const, label: "Duration" },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        if (sortBy === option.value) {
-                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                        } else {
-                          setSortBy(option.value);
-                          setSortOrder("asc");
-                        }
-                        setSortMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
-                    >
-                      <span>{option.label}</span>
-                      {sortBy === option.value && (
-                        <span className="text-[10px]">
-                          {sortOrder === "asc" ? "↑" : "↓"}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex space-x-2">
-              <button
-                onClick={() => toggleViewMode("grid")}
-                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                  viewMode === "grid"
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-                title="Grid view"
-                aria-label="Grid view"
-              >
-                <Grid3x3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => toggleViewMode("list")}
-                className={`p-2 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                  viewMode === "list"
-                    ? "theme-btn-primary"
-                    : "theme-btn-secondary"
-                }`}
-                title="List view"
-                aria-label="List view"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
