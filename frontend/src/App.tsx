@@ -134,7 +134,7 @@ function AppContent() {
               onClick={() => setMobileMenuOpen(false)}
             >
               <svg
-                className="w-9 h-9 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
+                className="w-8 h-8 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
                 viewBox="0 0 32 32"
                 fill="none"
                 style={{ color: "var(--accent-primary)" }}
@@ -162,7 +162,7 @@ function AppContent() {
                   opacity="0.4"
                 />
               </svg>
-              <span className="logo-text text-base sm:text-lg lg:text-xl theme-text-primary">
+              <span className="logo-text text-sm sm:text-lg lg:text-xl theme-text-primary">
                 On<span className="middle-dot"> · </span>Play
               </span>
             </Link>
@@ -171,7 +171,11 @@ function AppContent() {
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
               <Link
                 to="/upload"
-                className="transition-colors theme-nav-link p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className={`transition-colors p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                  location.pathname === "/upload"
+                    ? "bg-white/10 theme-text-primary"
+                    : "theme-nav-link"
+                }`}
                 title="Upload"
                 aria-label="Upload"
               >
@@ -179,7 +183,11 @@ function AppContent() {
               </Link>
               <Link
                 to="/stats"
-                className="transition-colors theme-nav-link p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className={`transition-colors p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                  location.pathname === "/stats"
+                    ? "bg-white/10 theme-text-primary"
+                    : "theme-nav-link"
+                }`}
                 title="Stats"
                 aria-label="Stats"
               >
@@ -233,28 +241,31 @@ function AppContent() {
 
             {/* Mobile Actions (right side) */}
             <div className="md:hidden flex items-center space-x-2">
+              {/* Visual separator */}
+              <div className="w-px h-6 bg-white/10 mr-1" />
+
               {/* Mobile Search Icon (Gallery only) */}
               {location.pathname === "/" && (
                 <button
                   onClick={() => setIsMobileSearchOpen(true)}
-                  className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                  className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Search"
                   title="Search"
                 >
-                  <Search className="w-5 h-5" />
+                  <Search className="w-5 h-5 theme-text-primary" />
                 </button>
               )}
 
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="Toggle menu"
               >
                 {mobileMenuOpen ? (
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5 theme-text-primary" />
                 ) : (
-                  <Menu className="w-5 h-5" />
+                  <Menu className="w-5 h-5 theme-text-primary" />
                 )}
               </button>
             </div>
@@ -268,7 +279,11 @@ function AppContent() {
               <Link
                 to="/upload"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center space-x-3 theme-nav-link p-3 rounded-lg hover:bg-white/5 transition-colors min-h-[44px]"
+                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] ${
+                  location.pathname === "/upload"
+                    ? "bg-white/10 border-l-2 border-blue-500 theme-text-primary"
+                    : "theme-nav-link hover:bg-white/5"
+                }`}
               >
                 <UploadIcon className="w-5 h-5" />
                 <span>Upload</span>
@@ -276,7 +291,11 @@ function AppContent() {
               <Link
                 to="/stats"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center space-x-3 theme-nav-link p-3 rounded-lg hover:bg-white/5 transition-colors min-h-[44px]"
+                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] ${
+                  location.pathname === "/stats"
+                    ? "bg-white/10 border-l-2 border-blue-500 theme-text-primary"
+                    : "theme-nav-link hover:bg-white/5"
+                }`}
               >
                 <BarChart3 className="w-5 h-5" />
                 <span>Stats</span>

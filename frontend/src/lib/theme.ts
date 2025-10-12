@@ -80,9 +80,9 @@ export const themes: Record<string, ThemeConfig> = {
   eclipse: {
     bgPrimary: "#0e0e10",
     bgGradient: "linear-gradient(180deg, #0e0e10 0%, #18181b 100%)",
-    navBg: "rgba(14, 14, 16, 0.9)",
-    navBorder: "rgba(113, 113, 122, 0.15)",
-    navShadow: "none",
+    navBg: "rgba(14, 14, 16, 0.95)",
+    navBorder: "rgba(113, 113, 122, 0.25)",
+    navShadow: "0 1px 3px rgba(0, 0, 0, 0.3)",
     dropdownBg: "rgba(14, 14, 16, 0.95)",
     textPrimary: "#f4f4f5",
     textSecondary: "#a1a1aa",
@@ -100,9 +100,9 @@ export const themes: Record<string, ThemeConfig> = {
     btnPrimaryBg: "#e8a359",
     btnPrimaryText: "#0e0e10",
     btnPrimaryHover: "#f5b87a",
-    btnSecondaryBg: "rgba(113, 113, 122, 0.15)",
+    btnSecondaryBg: "rgba(113, 113, 122, 0.25)",
     btnSecondaryText: "#a1a1aa",
-    btnSecondaryHover: "rgba(113, 113, 122, 0.25)",
+    btnSecondaryHover: "rgba(113, 113, 122, 0.35)",
     btnOrangeBg: "#475569",
     btnOrangeText: "#e2e8f0",
     btnOrangeHover: "#64748b",
@@ -138,9 +138,9 @@ export const themes: Record<string, ThemeConfig> = {
     bgGradient: "linear-gradient(180deg, #fafaf8 0%, #f5f5f3 100%)",
 
     // Navigation - slightly darker with subtle border and shadow
-    navBg: "rgba(255, 255, 255, 0.9)",
-    navBorder: "rgba(0, 0, 0, 0.06)",
-    navShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+    navBg: "rgba(255, 255, 255, 0.95)",
+    navBorder: "rgba(0, 0, 0, 0.12)",
+    navShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
     dropdownBg: "rgba(255, 255, 255, 0.95)",
 
     // Text colors - charcoal instead of pure black for softer readability
@@ -168,9 +168,9 @@ export const themes: Record<string, ThemeConfig> = {
     btnPrimaryHover: "#054a93",
 
     // Secondary button - light gray backgrounds
-    btnSecondaryBg: "rgba(0, 0, 0, 0.08)",
+    btnSecondaryBg: "rgba(0, 0, 0, 0.12)",
     btnSecondaryText: "#52525b",
-    btnSecondaryHover: "rgba(0, 0, 0, 0.12)",
+    btnSecondaryHover: "rgba(0, 0, 0, 0.18)",
 
     // Orange button - warm terracotta
     btnOrangeBg: "#e76f51",
@@ -270,7 +270,10 @@ export function applyTheme(theme: ThemeConfig) {
 
   root.style.setProperty("--player-bar-bg", theme.playerBarBg);
   root.style.setProperty("--player-bar-border", theme.playerBarBorder);
-  root.style.setProperty("--player-bar-button-hover", theme.playerBarButtonHover);
+  root.style.setProperty(
+    "--player-bar-button-hover",
+    theme.playerBarButtonHover,
+  );
   root.style.setProperty("--player-progress-bg", theme.playerProgressBg);
 
   root.style.setProperty("--icon-audio", theme.iconAudio);
