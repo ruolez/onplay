@@ -82,14 +82,13 @@ function AppContent() {
     }
   }, [isMobileSearchOpen]);
 
-  // Click-outside handler for desktop search (only close if empty)
+  // Click-outside handler for desktop search
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         isDesktopSearchOpen &&
         desktopSearchRef.current &&
-        !desktopSearchRef.current.contains(e.target as Node) &&
-        !searchQuery
+        !desktopSearchRef.current.contains(e.target as Node)
       ) {
         setIsDesktopSearchOpen(false);
       }
@@ -100,16 +99,30 @@ function AppContent() {
     }
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isDesktopSearchOpen, searchQuery]);
+  }, [isDesktopSearchOpen]);
 
-  // Click-outside handler for mobile search (only close if empty)
+  // Escape key handler for desktop search
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isDesktopSearchOpen) {
+        setIsDesktopSearchOpen(false);
+      }
+    };
+
+    if (isDesktopSearchOpen) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isDesktopSearchOpen]);
+
+  // Click-outside handler for mobile search
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         isMobileSearchOpen &&
         mobileSearchRef.current &&
-        !mobileSearchRef.current.contains(e.target as Node) &&
-        !searchQuery
+        !mobileSearchRef.current.contains(e.target as Node)
       ) {
         setIsMobileSearchOpen(false);
       }
@@ -120,7 +133,22 @@ function AppContent() {
     }
 
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMobileSearchOpen, searchQuery]);
+  }, [isMobileSearchOpen]);
+
+  // Escape key handler for mobile search
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileSearchOpen) {
+        setIsMobileSearchOpen(false);
+      }
+    };
+
+    if (isMobileSearchOpen) {
+      document.addEventListener("keydown", handleEscape);
+    }
+
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isMobileSearchOpen]);
 
   return (
     <div className="min-h-screen theme-bg pb-24">
