@@ -314,11 +314,11 @@ export default function PersistentPlayer() {
 
           {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
           <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-2 sm:gap-3">
-            {/* Left spacer for mobile centering */}
-            <div className="md:hidden flex-1" />
+            {/* Left spacer for mobile centering - matches title section width from Row 1 */}
+            <div className="md:hidden flex-1 min-w-0" />
 
             {/* Primary Controls - Centered on mobile, 48px touch targets */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <button
                 onClick={playPrevious}
                 disabled={!hasPrevious}
@@ -380,11 +380,11 @@ export default function PersistentPlayer() {
               </button>
             </div>
 
-            {/* Secondary Controls - Right side on mobile, inline on desktop */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 md:flex-initial justify-end md:justify-start">
-              {/* Queue Position - Aligned with toggle buttons above */}
+            {/* Secondary Controls - Horizontally aligned with Row 1 wake lock toggle */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Queue Position - Aligned with wake lock toggle above */}
               {queuePosition && (
-                <div className="flex items-center justify-center h-12">
+                <div className="flex items-center justify-center h-12 w-12">
                   <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
                     {queuePosition.current} / {queuePosition.total}
                   </span>
