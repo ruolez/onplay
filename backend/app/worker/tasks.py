@@ -98,7 +98,7 @@ def process_video(media_id: str, input_path: str, db):
                     'b:v': variant["video_bitrate"],
                     'c:a': 'aac',
                     'b:a': variant["audio_bitrate"],
-                    'hls_time': 6,
+                    'hls_time': 4,
                     'hls_playlist_type': 'vod',
                     'hls_segment_filename': segment_pattern,
                     'preset': 'fast',
@@ -173,7 +173,7 @@ def process_audio(media_id: str, input_path: str, db):
                 **{
                     'c:a': 'aac',
                     'b:a': variant["bitrate"],
-                    'hls_time': 6,
+                    'hls_time': 4,
                     'hls_playlist_type': 'vod',
                     'hls_segment_filename': segment_pattern
                 }

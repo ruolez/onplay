@@ -111,6 +111,9 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
               overrideNative: true,
               bandwidth: 4194304,
               backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
+              maxBufferLength: 60, // Buffer up to 60 seconds ahead for smooth playback
+              maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues
+              maxBufferHole: 0.5, // Jump over gaps up to 0.5s without rebuffering
             },
             nativeVideoTracks: false,
             nativeAudioTracks: false,
