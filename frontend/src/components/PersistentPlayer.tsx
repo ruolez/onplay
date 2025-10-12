@@ -313,72 +313,82 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
-          <div className="flex items-center md:justify-start w-full md:w-auto gap-2 sm:gap-3">
-            {/* Left section (Mobile only) - Mirrors Row 1's flex-1 thumbnail+title section, centers play buttons */}
-            <div className="md:hidden flex-1 min-w-0 flex items-center justify-center">
-              {/* Primary Controls - Centered within flex-1 section */}
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  onClick={playPrevious}
-                  disabled={!hasPrevious}
-                  className={`p-3 rounded-full transition-colors theme-text-primary ${
-                    !hasPrevious && "opacity-30 cursor-not-allowed"
-                  }`}
-                  onMouseEnter={(e) =>
-                    hasPrevious &&
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) =>
-                    hasPrevious && (e.currentTarget.style.background = "")
-                  }
-                  title="Previous"
-                  aria-label="Previous track"
-                >
-                  <SkipBack className="w-6 h-6" />
-                </button>
+          <div className="flex items-center justify-between md:justify-start w-full md:w-auto gap-2 sm:gap-3">
+            {/* Mobile layout: Invisible spacer + Play buttons + Queue counter for perfect centering */}
+            {/* Invisible left spacer (Mobile only) - Balances queue counter to center play buttons */}
+            <div className="md:hidden w-12 flex-shrink-0" />
 
-                <button
-                  onClick={togglePlayPause}
-                  className="p-3 sm:p-4 rounded-full transition-all hover:scale-105"
-                  style={{
-                    background: "var(--btn-primary-bg)",
-                    color: "var(--btn-primary-text)",
-                  }}
-                  title={isPlaying ? "Pause" : "Play"}
-                  aria-label={isPlaying ? "Pause playback" : "Play media"}
-                >
-                  {isPlaying ? (
-                    <Pause className="w-6 h-6" fill="currentColor" />
-                  ) : (
-                    <Play
-                      className="w-6 h-6 translate-x-[1px]"
-                      fill="currentColor"
-                    />
-                  )}
-                </button>
+            {/* Primary Controls - Centered between equal-width spacers on mobile */}
+            <div className="md:hidden flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={playPrevious}
+                disabled={!hasPrevious}
+                className={`p-3 rounded-full transition-colors theme-text-primary ${
+                  !hasPrevious && "opacity-30 cursor-not-allowed"
+                }`}
+                onMouseEnter={(e) =>
+                  hasPrevious &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  hasPrevious && (e.currentTarget.style.background = "")
+                }
+                title="Previous"
+                aria-label="Previous track"
+              >
+                <SkipBack className="w-6 h-6" />
+              </button>
 
-                <button
-                  onClick={playNext}
-                  disabled={!hasNext}
-                  className={`p-3 rounded-full transition-colors theme-text-primary ${
-                    !hasNext && "opacity-30 cursor-not-allowed"
-                  }`}
-                  onMouseEnter={(e) =>
-                    hasNext &&
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) =>
-                    hasNext && (e.currentTarget.style.background = "")
-                  }
-                  title="Next"
-                  aria-label="Next track"
-                >
-                  <SkipForward className="w-6 h-6" />
-                </button>
-              </div>
+              <button
+                onClick={togglePlayPause}
+                className="p-3 sm:p-4 rounded-full transition-all hover:scale-105"
+                style={{
+                  background: "var(--btn-primary-bg)",
+                  color: "var(--btn-primary-text)",
+                }}
+                title={isPlaying ? "Pause" : "Play"}
+                aria-label={isPlaying ? "Pause playback" : "Play media"}
+              >
+                {isPlaying ? (
+                  <Pause className="w-6 h-6" fill="currentColor" />
+                ) : (
+                  <Play
+                    className="w-6 h-6 translate-x-[1px]"
+                    fill="currentColor"
+                  />
+                )}
+              </button>
+
+              <button
+                onClick={playNext}
+                disabled={!hasNext}
+                className={`p-3 rounded-full transition-colors theme-text-primary ${
+                  !hasNext && "opacity-30 cursor-not-allowed"
+                }`}
+                onMouseEnter={(e) =>
+                  hasNext &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  hasNext && (e.currentTarget.style.background = "")
+                }
+                title="Next"
+                aria-label="Next track"
+              >
+                <SkipForward className="w-6 h-6" />
+              </button>
             </div>
+
+            {/* Queue Position (Mobile only) - 48px width, aligned with wake lock */}
+            {queuePosition && (
+              <div className="md:hidden flex items-center justify-center h-12 w-12 flex-shrink-0">
+                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
+                  {queuePosition.current} / {queuePosition.total}
+                </span>
+              </div>
+            )}
 
             {/* Desktop play buttons */}
             <div className="hidden md:flex items-center gap-2 sm:gap-3">
@@ -442,15 +452,6 @@ export default function PersistentPlayer() {
                 <SkipForward className="w-6 h-6" />
               </button>
             </div>
-
-            {/* Queue Position (Mobile only) - Direct child like wake lock */}
-            {queuePosition && (
-              <div className="md:hidden flex items-center justify-center h-12 w-12 flex-shrink-0">
-                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
-                  {queuePosition.current} / {queuePosition.total}
-                </span>
-              </div>
-            )}
 
             {/* Desktop-only controls */}
             <div className="hidden md:flex items-center gap-2 sm:gap-3">
