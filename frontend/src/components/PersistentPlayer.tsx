@@ -381,10 +381,10 @@ export default function PersistentPlayer() {
             </div>
 
             {/* Secondary Controls - Horizontally aligned with Row 1 wake lock toggle */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 md:flex-initial justify-end md:justify-start">
               {/* Queue Position - Aligned with wake lock toggle above */}
               {queuePosition && (
-                <div className="flex items-center justify-center h-12 w-12">
+                <div className="flex items-center justify-center h-12 w-12 flex-shrink-0">
                   <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
                     {queuePosition.current} / {queuePosition.total}
                   </span>
