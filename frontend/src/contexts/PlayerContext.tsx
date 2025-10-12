@@ -24,6 +24,7 @@ interface PlayerContextType {
   currentMedia: Media | null;
   sessionId: string;
   isPlaying: boolean;
+  isBuffering: boolean;
   currentTime: number;
   duration: number;
   volume: number;
@@ -115,6 +116,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const { currentMedia, sessionId, playbackState, queue, currentIndex } =
     state.context;
   const { isPlaying, currentTime, duration, volume } = playbackState;
+  const isBuffering = state.matches("buffering");
 
   // Computed values
   const hasNext = currentIndex >= 0 && currentIndex < queue.length - 1;
@@ -421,6 +423,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         currentMedia,
         sessionId,
         isPlaying,
+        isBuffering,
         currentTime,
         duration,
         volume,

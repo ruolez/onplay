@@ -16,6 +16,7 @@ import {
   List,
   Monitor,
   MonitorOff,
+  Loader2,
 } from "lucide-react";
 
 export default function PersistentPlayer() {
@@ -23,6 +24,7 @@ export default function PersistentPlayer() {
     currentMedia,
     sessionId,
     isPlaying,
+    isBuffering,
     currentTime,
     duration,
     volume,
@@ -349,10 +351,12 @@ export default function PersistentPlayer() {
                     background: "var(--btn-primary-bg)",
                     color: "var(--btn-primary-text)",
                   }}
-                  title={isPlaying ? "Pause" : "Play"}
-                  aria-label={isPlaying ? "Pause playback" : "Play media"}
+                  title={isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"}
+                  aria-label={isBuffering ? "Buffering media" : isPlaying ? "Pause playback" : "Play media"}
                 >
-                  {isPlaying ? (
+                  {isBuffering ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : isPlaying ? (
                     <Pause className="w-6 h-6" fill="currentColor" />
                   ) : (
                     <Play
@@ -422,10 +426,12 @@ export default function PersistentPlayer() {
                   background: "var(--btn-primary-bg)",
                   color: "var(--btn-primary-text)",
                 }}
-                title={isPlaying ? "Pause" : "Play"}
-                aria-label={isPlaying ? "Pause playback" : "Play media"}
+                title={isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"}
+                aria-label={isBuffering ? "Buffering media" : isPlaying ? "Pause playback" : "Play media"}
               >
-                {isPlaying ? (
+                {isBuffering ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : isPlaying ? (
                   <Pause className="w-6 h-6" fill="currentColor" />
                 ) : (
                   <Play
