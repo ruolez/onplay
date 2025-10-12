@@ -91,14 +91,16 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
-              bandwidth: 4000000, // 4Mbps - balanced estimate, allows quick quality adaptation
+              bandwidth: 300000, // 300kbps - conservative estimate forces low quality start
+              minBufferLength: 8, // Wait for 8 seconds buffered before playing
+              goalBufferLength: 12, // Try to maintain 12 second buffer during playback
               backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
               maxBufferLength: 30, // Buffer 30 seconds ahead (industry standard)
               maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues
               maxBufferHole: 0.5, // Jump over gaps up to 0.5s without rebuffering
               experimentalBufferBasedABR: true, // Smart quality switching based on buffer health
               smoothQualityChange: true, // Prevent jarring quality transitions
-              useBandwidthFromLocalStorage: true, // Persist bandwidth estimates between sessions
+              useBandwidthFromLocalStorage: false, // Always start fresh - no poisoning from good connection
               enableLowInitialPlaylist: true, // Faster startup with lower quality first
             },
             nativeVideoTracks: false,
@@ -107,19 +109,55 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           },
         });
 
-        // Handle autoplay - start muted then unmute after first play
+        // Handle autoplay - wait for buffer before playing
         if (autoplay) {
-          // Explicitly trigger play to ensure autoplay works
           player.ready(() => {
-            player.play()?.catch((err) => {
-              console.error("[DualPlayer] Autoplay failed:", err);
-            });
+            console.log("[DualPlayer] 🔄 Waiting for buffer before autoplay...");
+
+            // Wait for minimum buffer (3 seconds) before starting playback
+            const checkBuffer = () => {
+              const buffered = player.buffered();
+              if (buffered.length > 0) {
+                const bufferedAmount = buffered.end(0) - player.currentTime();
+                console.log(`[DualPlayer] 📊 Buffer: ${bufferedAmount.toFixed(1)}s`);
+
+                if (bufferedAmount >= 3) {
+                  console.log("[DualPlayer] ✅ Buffer ready, starting playback");
+                  player.play()?.catch((err) => {
+                    console.error("[DualPlayer] Autoplay failed:", err);
+                  });
+                  return true; // Stop checking
+                }
+              }
+              return false; // Keep checking
+            };
+
+            // Check immediately and then every 500ms
+            if (!checkBuffer()) {
+              const bufferInterval = setInterval(() => {
+                if (checkBuffer()) {
+                  clearInterval(bufferInterval);
+                }
+              }, 500);
+
+              // Timeout after 15 seconds - just play anyway
+              setTimeout(() => {
+                clearInterval(bufferInterval);
+                console.log("[DualPlayer] ⏰ Buffer timeout, starting anyway");
+                if (player.paused()) {
+                  player.play()?.catch((err) => {
+                    console.error("[DualPlayer] Timeout autoplay failed:", err);
+                  });
+                }
+              }, 15000);
+            }
           });
 
           // Unmute after first play event (ensures autoplay policy satisfied)
           player.one("playing", () => {
             setTimeout(() => {
               if (player.muted()) {
+                console.log("[DualPlayer] 🔊 Unmuting after play started");
                 player.muted(false);
                 player.volume(1);
               }
@@ -397,13 +435,15 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
             html5: {
               vhs: {
                 overrideNative: true,
-                bandwidth: 4000000, // 4Mbps - balanced estimate
+                bandwidth: 300000, // 300kbps - match main player
+                minBufferLength: 6, // Smaller minimum for preload
+                goalBufferLength: 10,
                 backBufferLength: 10, // Smaller buffer for preload
                 maxBufferLength: 20, // Preload less
                 maxBufferSize: 30 * 1000 * 1000, // 30MB for preload
                 experimentalBufferBasedABR: true,
                 smoothQualityChange: true,
-                useBandwidthFromLocalStorage: true,
+                useBandwidthFromLocalStorage: false, // Always start fresh
                 enableLowInitialPlaylist: true,
               },
               nativeVideoTracks: false,
