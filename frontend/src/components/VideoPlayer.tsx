@@ -109,9 +109,9 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
-              bandwidth: 300000, // 300kbps - conservative estimate forces low quality start
-              minBufferLength: 8, // Wait for 8 seconds buffered before playing
-              goalBufferLength: 12, // Try to maintain 12 second buffer during playback
+              bandwidth: 500000, // 500kbps - balanced for mobile (learns and adapts quickly)
+              minBufferLength: 3, // Wait for 3s buffered (1.5 segments) - mobile-friendly
+              goalBufferLength: 6, // Maintain 6s buffer (3 segments) - realistic for mobile
               backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
               maxBufferLength: 30, // Buffer 30 seconds ahead (industry standard)
               maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues

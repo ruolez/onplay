@@ -91,9 +91,9 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
-              bandwidth: 300000, // 300kbps - conservative estimate forces low quality start
-              minBufferLength: 8, // Wait for 8 seconds buffered before playing
-              goalBufferLength: 12, // Try to maintain 12 second buffer during playback
+              bandwidth: 500000, // 500kbps - balanced for mobile (learns and adapts quickly)
+              minBufferLength: 3, // Wait for 3s buffered (1.5 segments) - mobile-friendly
+              goalBufferLength: 6, // Maintain 6s buffer (3 segments) - realistic for mobile
               backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
               maxBufferLength: 30, // Buffer 30 seconds ahead (industry standard)
               maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues
@@ -109,48 +109,15 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           },
         });
 
-        // Handle autoplay - wait for buffer before playing
+        // Handle autoplay - trust VHS minBufferLength setting
         if (autoplay) {
+          // VHS will wait for minBufferLength (3s) automatically before playing
+          // Just trigger play and let VHS handle the timing
           player.ready(() => {
-            console.log("[DualPlayer] 🔄 Waiting for buffer before autoplay...");
-
-            // Wait for minimum buffer (3 seconds) before starting playback
-            const checkBuffer = () => {
-              const buffered = player.buffered();
-              if (buffered.length > 0) {
-                const bufferedAmount = buffered.end(0) - player.currentTime();
-                console.log(`[DualPlayer] 📊 Buffer: ${bufferedAmount.toFixed(1)}s`);
-
-                if (bufferedAmount >= 3) {
-                  console.log("[DualPlayer] ✅ Buffer ready, starting playback");
-                  player.play()?.catch((err) => {
-                    console.error("[DualPlayer] Autoplay failed:", err);
-                  });
-                  return true; // Stop checking
-                }
-              }
-              return false; // Keep checking
-            };
-
-            // Check immediately and then every 500ms
-            if (!checkBuffer()) {
-              const bufferInterval = setInterval(() => {
-                if (checkBuffer()) {
-                  clearInterval(bufferInterval);
-                }
-              }, 500);
-
-              // Timeout after 15 seconds - just play anyway
-              setTimeout(() => {
-                clearInterval(bufferInterval);
-                console.log("[DualPlayer] ⏰ Buffer timeout, starting anyway");
-                if (player.paused()) {
-                  player.play()?.catch((err) => {
-                    console.error("[DualPlayer] Timeout autoplay failed:", err);
-                  });
-                }
-              }, 15000);
-            }
+            console.log("[DualPlayer] 🎵 Starting autoplay (VHS will handle buffering)");
+            player.play()?.catch((err) => {
+              console.error("[DualPlayer] Autoplay failed:", err);
+            });
           });
 
           // Unmute after first play event (ensures autoplay policy satisfied)
@@ -435,9 +402,9 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
             html5: {
               vhs: {
                 overrideNative: true,
-                bandwidth: 300000, // 300kbps - match main player
-                minBufferLength: 6, // Smaller minimum for preload
-                goalBufferLength: 10,
+                bandwidth: 500000, // 500kbps - match main player
+                minBufferLength: 2, // Minimal for preload
+                goalBufferLength: 4, // Small goal for preload
                 backBufferLength: 10, // Smaller buffer for preload
                 maxBufferLength: 20, // Preload less
                 maxBufferSize: 30 * 1000 * 1000, // 30MB for preload
