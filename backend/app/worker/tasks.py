@@ -98,14 +98,14 @@ def process_video(media_id: str, input_path: str, db):
                     'b:v': variant["video_bitrate"],
                     'c:a': 'aac',
                     'b:a': variant["audio_bitrate"],
-                    'hls_time': 2,  # 2-second segments for faster quality adaptation
+                    'hls_time': 4,
                     'hls_playlist_type': 'vod',
                     'hls_segment_filename': segment_pattern,
                     'hls_segment_type': 'mpegts',
                     'hls_flags': 'independent_segments',
-                    'force_key_frames': 'expr:gte(t,n_forced*2)',  # Keyframe every 2 seconds
-                    'g': 40,  # GOP size: 2x segment duration at 20fps
-                    'keyint_min': 40,  # Consistent keyframe interval
+                    'force_key_frames': 'expr:gte(t,n_forced*4)',
+                    'g': 80,  # GOP size: 2x segment duration at 20fps
+                    'keyint_min': 80,  # Consistent keyframe interval
                     'preset': 'fast'
                 }
             )
@@ -115,15 +115,11 @@ def process_video(media_id: str, input_path: str, db):
             variant_size = sum(f.stat().st_size for f in variant_dir.glob("*"))
 
             # Save variant to database
-            # Add 15% overhead for container format (MPEG-TS headers, etc.)
-            raw_bitrate = int(variant["video_bitrate"].rstrip('k')) * 1000
-            bandwidth_with_overhead = int(raw_bitrate * 1.15)
-
             db_variant = MediaVariant(
                 media_id=media_id,
                 quality=variant["name"],
                 path=f"/media/hls/{media_id}/{variant['name']}/playlist.m3u8",
-                bitrate=bandwidth_with_overhead,
+                bitrate=int(variant["video_bitrate"].rstrip('k')) * 1000,
                 file_size=variant_size,
                 width=int(variant["height"] * 16 / 9),  # Assume 16:9 aspect ratio
                 height=variant["height"]
@@ -163,7 +159,6 @@ def process_audio(media_id: str, input_path: str, db):
     variants = [
         {"name": "320kbps", "bitrate": "320k"},
         {"name": "128kbps", "bitrate": "128k"},
-        {"name": "96kbps", "bitrate": "96k"},  # Better stepping for slow connections
         {"name": "64kbps", "bitrate": "64k"},
     ]
 
@@ -182,7 +177,7 @@ def process_audio(media_id: str, input_path: str, db):
                 **{
                     'c:a': 'aac',
                     'b:a': variant["bitrate"],
-                    'hls_time': 2,  # 2-second segments for faster quality adaptation
+                    'hls_time': 4,
                     'hls_playlist_type': 'vod',
                     'hls_segment_filename': segment_pattern,
                     'hls_segment_type': 'mpegts',
@@ -195,15 +190,11 @@ def process_audio(media_id: str, input_path: str, db):
             variant_size = sum(f.stat().st_size for f in variant_dir.glob("*"))
 
             # Save variant to database
-            # Add 15% overhead for container format (MPEG-TS headers, etc.)
-            raw_bitrate = int(variant["bitrate"].rstrip('k')) * 1000
-            bandwidth_with_overhead = int(raw_bitrate * 1.15)
-
             db_variant = MediaVariant(
                 media_id=media_id,
                 quality=variant["name"],
                 path=f"/media/hls/{media_id}/{variant['name']}/playlist.m3u8",
-                bitrate=bandwidth_with_overhead,
+                bitrate=int(variant["bitrate"].rstrip('k')) * 1000,
                 file_size=variant_size
             )
             db.add(db_variant)
@@ -252,8 +243,7 @@ def create_master_playlist_video(media_id: str, variants: list, db):
         "#EXT-X-VERSION:3"
     ]
 
-    # Sort LOW to HIGH bitrate - helps VHS pick lowest quality first
-    for db_variant in sorted(db_variants, key=lambda v: v.bitrate):
+    for db_variant in sorted(db_variants, key=lambda v: v.bitrate, reverse=True):
         # EXT-X-STREAM-INF tag with bandwidth and resolution
         stream_info = f"#EXT-X-STREAM-INF:BANDWIDTH={db_variant.bitrate}"
 
@@ -290,8 +280,7 @@ def create_master_playlist_audio(media_id: str, variants: list, db):
         "#EXT-X-VERSION:3"
     ]
 
-    # Sort LOW to HIGH bitrate - helps VHS pick lowest quality first
-    for db_variant in sorted(db_variants, key=lambda v: v.bitrate):
+    for db_variant in sorted(db_variants, key=lambda v: v.bitrate, reverse=True):
         # EXT-X-STREAM-INF tag with bandwidth only (audio has no resolution)
         lines.append(f"#EXT-X-STREAM-INF:BANDWIDTH={db_variant.bitrate}")
         # Relative path to variant playlist
