@@ -101,8 +101,12 @@ def process_video(media_id: str, input_path: str, db):
                     'hls_time': 4,
                     'hls_playlist_type': 'vod',
                     'hls_segment_filename': segment_pattern,
-                    'preset': 'fast',
-                    'movflags': '+faststart'
+                    'hls_segment_type': 'mpegts',
+                    'hls_flags': 'independent_segments',
+                    'force_key_frames': 'expr:gte(t,n_forced*4)',
+                    'g': 80,  # GOP size: 2x segment duration at 20fps
+                    'keyint_min': 80,  # Consistent keyframe interval
+                    'preset': 'fast'
                 }
             )
             ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
@@ -175,7 +179,9 @@ def process_audio(media_id: str, input_path: str, db):
                     'b:a': variant["bitrate"],
                     'hls_time': 4,
                     'hls_playlist_type': 'vod',
-                    'hls_segment_filename': segment_pattern
+                    'hls_segment_filename': segment_pattern,
+                    'hls_segment_type': 'mpegts',
+                    'hls_flags': 'independent_segments'
                 }
             )
             ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
