@@ -376,7 +376,7 @@ export default function Gallery() {
                 }`}
                 title="Filter by tags"
               >
-                <TagIcon className="w-3.5 h-3.5" />
+                <TagIcon className="w-5 h-5" style={{ color: "var(--icon-tag)" }} />
                 {selectedTags.length > 0 && (
                   <span className="text-[10px] font-semibold">
                     {selectedTags.length}
@@ -507,7 +507,7 @@ export default function Gallery() {
               }`}
               title="Filter by tags"
             >
-              <TagIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <TagIcon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--icon-tag)" }} />
               <span className="truncate flex-1 text-left">
                 {selectedTags.length === 0
                   ? "All"

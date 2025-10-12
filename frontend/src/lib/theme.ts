@@ -72,6 +72,7 @@ export interface ThemeConfig {
   // Media type icons
   iconAudio: string;
   iconVideo: string;
+  iconTag: string;
 }
 
 export const themes: Record<string, ThemeConfig> = {
@@ -126,6 +127,7 @@ export const themes: Record<string, ThemeConfig> = {
     playerProgressBg: "rgba(113, 113, 122, 0.2)",
     iconAudio: "#a78bfa",
     iconVideo: "#60a5fa",
+    iconTag: "#fbbf24",
   },
 
   linen: {
@@ -201,6 +203,7 @@ export const themes: Record<string, ThemeConfig> = {
     playerProgressBg: "rgba(0, 0, 0, 0.1)",
     iconAudio: "#8b5cf6",
     iconVideo: "#3b82f6",
+    iconTag: "#d97706",
   },
 };
 
@@ -269,4 +272,5 @@ export function applyTheme(theme: ThemeConfig) {
 
   root.style.setProperty("--icon-audio", theme.iconAudio);
   root.style.setProperty("--icon-video", theme.iconVideo);
+  root.style.setProperty("--icon-tag", theme.iconTag);
 }
