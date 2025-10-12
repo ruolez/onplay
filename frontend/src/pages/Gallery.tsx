@@ -297,7 +297,7 @@ export default function Gallery() {
               title="Filter by media type"
             >
               {filter === "all" ? (
-                <span className="text-[11px]">All</span>
+                <span className="text-sm font-semibold" style={{ color: "var(--icon-all)" }}>All</span>
               ) : filter === "video" ? (
                 <Play
                   className="w-5 h-5"
@@ -329,7 +329,7 @@ export default function Gallery() {
                     >
                       <span className="flex items-center gap-2">
                         {option.value === "all" ? (
-                          <span className="text-sm">{option.label}</span>
+                          <span className="text-sm font-semibold" style={{ color: "var(--icon-all)" }}>{option.label}</span>
                         ) : option.value === "video" ? (
                           <Play
                             className="w-5 h-5"

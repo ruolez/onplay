@@ -73,6 +73,7 @@ export interface ThemeConfig {
   iconAudio: string;
   iconVideo: string;
   iconTag: string;
+  iconAll: string;
 }
 
 export const themes: Record<string, ThemeConfig> = {
@@ -128,6 +129,7 @@ export const themes: Record<string, ThemeConfig> = {
     iconAudio: "#a78bfa",
     iconVideo: "#60a5fa",
     iconTag: "#fbbf24",
+    iconAll: "#94a3b8",
   },
 
   linen: {
@@ -204,6 +206,7 @@ export const themes: Record<string, ThemeConfig> = {
     iconAudio: "#8b5cf6",
     iconVideo: "#3b82f6",
     iconTag: "#d97706",
+    iconAll: "#0969da",
   },
 };
 
@@ -273,4 +276,5 @@ export function applyTheme(theme: ThemeConfig) {
   root.style.setProperty("--icon-audio", theme.iconAudio);
   root.style.setProperty("--icon-video", theme.iconVideo);
   root.style.setProperty("--icon-tag", theme.iconTag);
+  root.style.setProperty("--icon-all", theme.iconAll);
 }
