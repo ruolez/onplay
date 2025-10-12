@@ -125,6 +125,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           },
         });
 
+        console.log("[VideoPlayer] ✅ Player initialized for source:", src);
+
         // Handle autoplay - unmute after play starts if autoplay was enabled
         if (autoplay) {
           player.one("play", () => {
@@ -134,9 +136,18 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         }
 
         // Event listeners
-        if (onPlay) player.on("play", onPlay);
-        if (onPause) player.on("pause", onPause);
-        if (onEnded) player.on("ended", onEnded);
+        if (onPlay) player.on("play", () => {
+          console.log("[VideoPlayer] ▶️ Play event fired");
+          onPlay();
+        });
+        if (onPause) player.on("pause", () => {
+          console.log("[VideoPlayer] ⏸️ Pause event fired");
+          onPause();
+        });
+        if (onEnded) player.on("ended", () => {
+          console.log("[VideoPlayer] ⏹️ Ended event fired");
+          onEnded();
+        });
         if (onTimeUpdate) {
           player.on("timeupdate", () => {
             onTimeUpdate(player.currentTime() || 0);
@@ -148,60 +159,70 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           });
         }
 
-        // Quality level debugging
-        player.on("loadedplaylist", () => {
-          const tech = player.tech({ IWillNotUseThisInPlugins: true });
-          const vhs = tech?.vhs;
-          if (vhs?.playlists?.master) {
-            const playlists = vhs.playlists.master.playlists;
-            console.log(
-              "[VideoPlayer] 📋 Available quality variants:",
-              playlists.map((p: any) => ({
-                bandwidth: p.attributes?.BANDWIDTH,
-                resolution: p.attributes?.RESOLUTION,
-              }))
-            );
-          }
-        });
+        // Quality level debugging - wait for player to be ready
+        player.ready(() => {
+          console.log("[VideoPlayer] 🎬 Player ready, setting up quality monitoring");
 
-        player.on("loadeddata", () => {
-          const tech = player.tech({ IWillNotUseThisInPlugins: true });
-          const vhs = tech?.vhs;
-          if (vhs?.playlists?.media_) {
-            const currentPlaylist = vhs.playlists.media_;
-            console.log(
-              "[VideoPlayer] 🎵 Currently playing quality:",
-              {
-                bandwidth: currentPlaylist.attributes?.BANDWIDTH,
-                resolution: currentPlaylist.attributes?.RESOLUTION,
-                uri: currentPlaylist.uri?.split("/").pop(),
+          try {
+            const tech = player.tech({ IWillNotUseThisInPlugins: true });
+            console.log("[VideoPlayer] 🔧 Tech object:", tech ? "available" : "not available");
+
+            if (tech) {
+              const vhs = (tech as any).vhs;
+              console.log("[VideoPlayer] 📺 VHS object:", vhs ? "available" : "not available");
+
+              if (vhs) {
+                // Log initial playlists
+                setTimeout(() => {
+                  try {
+                    if (vhs.playlists?.master?.playlists) {
+                      console.log("[VideoPlayer] 📋 Available quality variants:",
+                        vhs.playlists.master.playlists.map((p: any) => ({
+                          bandwidth: p.attributes?.BANDWIDTH,
+                          uri: p.uri
+                        }))
+                      );
+                    }
+
+                    if (vhs.playlists?.media_) {
+                      console.log("[VideoPlayer] 🎵 Initial quality:", {
+                        bandwidth: vhs.playlists.media_.attributes?.BANDWIDTH,
+                        uri: vhs.playlists.media_.uri
+                      });
+                    }
+                  } catch (err) {
+                    console.error("[VideoPlayer] Error reading playlists:", err);
+                  }
+                }, 1000);
+
+                // Track quality switches
+                let lastQuality = "";
+                const checkQuality = () => {
+                  try {
+                    if (vhs.playlists?.media_) {
+                      const current = vhs.playlists.media_;
+                      const uri = current.uri || "";
+                      if (uri && uri !== lastQuality) {
+                        lastQuality = uri;
+                        console.log("[VideoPlayer] 🔄 Quality changed:", {
+                          bandwidth: current.attributes?.BANDWIDTH,
+                          uri: uri.split("/").pop(),
+                          systemBandwidth: vhs.systemBandwidth
+                        });
+                      }
+                    }
+                  } catch (err) {
+                    // Silently fail
+                  }
+                };
+
+                setInterval(checkQuality, 2000); // Check every 2 seconds
               }
-            );
+            }
+          } catch (error) {
+            console.error("[VideoPlayer] Error setting up quality monitoring:", error);
           }
         });
-
-        // Track quality switches
-        let lastQuality = "";
-        const checkQualityChange = () => {
-          const tech = player.tech({ IWillNotUseThisInPlugins: true });
-          const vhs = tech?.vhs;
-          if (vhs?.playlists?.media_) {
-            const currentPlaylist = vhs.playlists.media_;
-            const currentQuality = currentPlaylist.uri || "";
-            if (currentQuality && currentQuality !== lastQuality) {
-              lastQuality = currentQuality;
-              console.log(
-                "[VideoPlayer] 🔄 Quality switched to:",
-                {
-                  bandwidth: currentPlaylist.attributes?.BANDWIDTH,
-                  uri: currentQuality.split("/").pop(),
-                  estimatedBandwidth: vhs.systemBandwidth || "unknown",
-                }
-              );
-            }
-          }
-        };
-        player.on("progress", checkQualityChange);
 
         playerRef.current = player;
       }

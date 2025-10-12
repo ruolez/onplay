@@ -91,8 +91,15 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
-              bandwidth: 4194304,
-              backBufferLength: 30,
+              bandwidth: 4000000, // 4Mbps - balanced estimate, allows quick quality adaptation
+              backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
+              maxBufferLength: 30, // Buffer 30 seconds ahead (industry standard)
+              maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues
+              maxBufferHole: 0.5, // Jump over gaps up to 0.5s without rebuffering
+              experimentalBufferBasedABR: true, // Smart quality switching based on buffer health
+              smoothQualityChange: true, // Prevent jarring quality transitions
+              useBandwidthFromLocalStorage: true, // Persist bandwidth estimates between sessions
+              enableLowInitialPlaylist: true, // Faster startup with lower quality first
             },
             nativeVideoTracks: false,
             nativeAudioTracks: false,
@@ -119,6 +126,73 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
             }, 100);
           });
         }
+
+        // Quality monitoring
+        player.ready(() => {
+          console.log("[DualPlayer] 🎬 Player ready, setting up quality monitoring");
+
+          try {
+            const tech = player.tech({ IWillNotUseThisInPlugins: true });
+            if (tech) {
+              const vhs = (tech as any).vhs;
+              if (vhs) {
+                console.log("[DualPlayer] 📺 VHS available, monitoring quality");
+
+                // Log available variants after playlist loads
+                setTimeout(() => {
+                  try {
+                    if (vhs.playlists?.master?.playlists) {
+                      console.log("[DualPlayer] 📋 Available quality variants:",
+                        vhs.playlists.master.playlists.map((p: any) => ({
+                          bandwidth: p.attributes?.BANDWIDTH,
+                          uri: p.uri?.split("/").pop()
+                        }))
+                      );
+                    }
+
+                    if (vhs.playlists?.media_) {
+                      console.log("[DualPlayer] 🎵 Starting quality:", {
+                        bandwidth: vhs.playlists.media_.attributes?.BANDWIDTH,
+                        uri: vhs.playlists.media_.uri?.split("/").pop()
+                      });
+                    }
+                  } catch (err) {
+                    console.error("[DualPlayer] Error reading initial playlists:", err);
+                  }
+                }, 1500);
+
+                // Track quality switches every 2 seconds
+                let lastQuality = "";
+                const checkQuality = () => {
+                  try {
+                    if (vhs.playlists?.media_) {
+                      const current = vhs.playlists.media_;
+                      const uri = current.uri || "";
+                      if (uri && uri !== lastQuality) {
+                        lastQuality = uri;
+                        console.log("[DualPlayer] 🔄 Quality switched to:", {
+                          bandwidth: current.attributes?.BANDWIDTH,
+                          uri: uri.split("/").pop(),
+                          systemBandwidth: Math.round(vhs.systemBandwidth || 0),
+                          bufferLevel: player.buffered().length > 0 ?
+                            (player.buffered().end(0) - player.currentTime()).toFixed(1) + "s" : "0s"
+                        });
+                      }
+                    }
+                  } catch (err) {
+                    // Silently ignore
+                  }
+                };
+
+                setInterval(checkQuality, 2000);
+              } else {
+                console.log("[DualPlayer] ⚠️ VHS not available");
+              }
+            }
+          } catch (error) {
+            console.error("[DualPlayer] Error setting up quality monitoring:", error);
+          }
+        });
 
         playerRef.current = player;
       }
@@ -293,8 +367,14 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
             html5: {
               vhs: {
                 overrideNative: true,
-                bandwidth: 4194304,
+                bandwidth: 4000000, // 4Mbps - balanced estimate
                 backBufferLength: 10, // Smaller buffer for preload
+                maxBufferLength: 20, // Preload less
+                maxBufferSize: 30 * 1000 * 1000, // 30MB for preload
+                experimentalBufferBasedABR: true,
+                smoothQualityChange: true,
+                useBandwidthFromLocalStorage: true,
+                enableLowInitialPlaylist: true,
               },
               nativeVideoTracks: false,
               nativeAudioTracks: false,
