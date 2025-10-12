@@ -314,8 +314,11 @@ export default function PersistentPlayer() {
 
           {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
           <div className="flex items-center md:justify-start w-full md:w-auto gap-2 sm:gap-3">
-            {/* Mobile layout: flex-1 spacer (mirrors Row 1) + Queue counter for perfect alignment at all resolutions */}
-            {/* Invisible left spacer (Mobile only) - Mirrors Row 1's flex-1 section, centers play buttons */}
+            {/* Mobile layout: 48px spacer + flex-1 buttons + 48px queue (mirrors Row 1 exactly) */}
+            {/* Invisible 48px spacer (Mobile only) - Mirrors Row 1's thumbnail */}
+            <div className="md:hidden w-12 h-12 flex-shrink-0" />
+
+            {/* Centered play buttons within flex-1 (Mobile only) - Mirrors Row 1's title section */}
             <div className="md:hidden flex-1 min-w-0 flex items-center justify-center">
               {/* Primary Controls - Centered within flex-1 section */}
               <div className="flex items-center gap-2 sm:gap-3">
