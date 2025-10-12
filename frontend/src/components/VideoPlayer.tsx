@@ -148,6 +148,61 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           });
         }
 
+        // Quality level debugging
+        player.on("loadedplaylist", () => {
+          const tech = player.tech({ IWillNotUseThisInPlugins: true });
+          const vhs = tech?.vhs;
+          if (vhs?.playlists?.master) {
+            const playlists = vhs.playlists.master.playlists;
+            console.log(
+              "[VideoPlayer] 📋 Available quality variants:",
+              playlists.map((p: any) => ({
+                bandwidth: p.attributes?.BANDWIDTH,
+                resolution: p.attributes?.RESOLUTION,
+              }))
+            );
+          }
+        });
+
+        player.on("loadeddata", () => {
+          const tech = player.tech({ IWillNotUseThisInPlugins: true });
+          const vhs = tech?.vhs;
+          if (vhs?.playlists?.media_) {
+            const currentPlaylist = vhs.playlists.media_;
+            console.log(
+              "[VideoPlayer] 🎵 Currently playing quality:",
+              {
+                bandwidth: currentPlaylist.attributes?.BANDWIDTH,
+                resolution: currentPlaylist.attributes?.RESOLUTION,
+                uri: currentPlaylist.uri?.split("/").pop(),
+              }
+            );
+          }
+        });
+
+        // Track quality switches
+        let lastQuality = "";
+        const checkQualityChange = () => {
+          const tech = player.tech({ IWillNotUseThisInPlugins: true });
+          const vhs = tech?.vhs;
+          if (vhs?.playlists?.media_) {
+            const currentPlaylist = vhs.playlists.media_;
+            const currentQuality = currentPlaylist.uri || "";
+            if (currentQuality && currentQuality !== lastQuality) {
+              lastQuality = currentQuality;
+              console.log(
+                "[VideoPlayer] 🔄 Quality switched to:",
+                {
+                  bandwidth: currentPlaylist.attributes?.BANDWIDTH,
+                  uri: currentQuality.split("/").pop(),
+                  estimatedBandwidth: vhs.systemBandwidth || "unknown",
+                }
+              );
+            }
+          }
+        };
+        player.on("progress", checkQualityChange);
+
         playerRef.current = player;
       }
 
