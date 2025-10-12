@@ -126,6 +126,15 @@ def process_video(media_id: str, input_path: str, db):
             print(f"Error processing {variant['name']}: {e}")
             continue
 
+    # Flush variants to database so they're queryable (but not yet committed)
+    db.flush()
+
+    # Generate master playlist for adaptive bitrate streaming
+    try:
+        create_master_playlist_video(media_id, variants, db)
+    except Exception as e:
+        print(f"Master playlist generation failed: {e}")
+
     # Generate thumbnail
     try:
         thumbnail_path = generate_thumbnail(input_path, media_id)
@@ -188,6 +197,15 @@ def process_audio(media_id: str, input_path: str, db):
             print(f"Error processing {variant['name']}: {e}")
             continue
 
+    # Flush variants to database so they're queryable (but not yet committed)
+    db.flush()
+
+    # Generate master playlist for adaptive bitrate streaming
+    try:
+        create_master_playlist_audio(media_id, variants, db)
+    except Exception as e:
+        print(f"Master playlist generation failed: {e}")
+
     # Generate waveform thumbnail for audio
     try:
         thumbnail_path = generate_audio_thumbnail(media_id)
@@ -196,6 +214,77 @@ def process_audio(media_id: str, input_path: str, db):
         print(f"Audio thumbnail generation failed: {e}")
 
     db.commit()
+
+def create_master_playlist_video(media_id: str, variants: list, db):
+    """
+    Generate HLS master playlist for adaptive bitrate streaming.
+    The master playlist references all quality variants and allows Video.js
+    to automatically switch between them based on network conditions.
+    """
+    hls_dir = Path(MEDIA_ROOT) / "hls" / media_id
+    master_playlist_path = hls_dir / "master.m3u8"
+
+    # Get all successfully created variants from database
+    db_variants = db.query(MediaVariant).filter(MediaVariant.media_id == media_id).all()
+
+    if not db_variants:
+        print(f"No variants found for media {media_id}, skipping master playlist")
+        return
+
+    # Build master playlist content
+    lines = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3"
+    ]
+
+    for db_variant in sorted(db_variants, key=lambda v: v.bitrate, reverse=True):
+        # EXT-X-STREAM-INF tag with bandwidth and resolution
+        stream_info = f"#EXT-X-STREAM-INF:BANDWIDTH={db_variant.bitrate}"
+
+        if db_variant.width and db_variant.height:
+            stream_info += f",RESOLUTION={db_variant.width}x{db_variant.height}"
+
+        lines.append(stream_info)
+        # Relative path to variant playlist
+        lines.append(f"{db_variant.quality}/playlist.m3u8")
+
+    # Write master playlist
+    with open(master_playlist_path, 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+
+    print(f"Master playlist created at {master_playlist_path}")
+
+def create_master_playlist_audio(media_id: str, variants: list, db):
+    """
+    Generate HLS master playlist for audio adaptive bitrate streaming.
+    """
+    hls_dir = Path(MEDIA_ROOT) / "hls" / media_id
+    master_playlist_path = hls_dir / "master.m3u8"
+
+    # Get all successfully created variants from database
+    db_variants = db.query(MediaVariant).filter(MediaVariant.media_id == media_id).all()
+
+    if not db_variants:
+        print(f"No variants found for media {media_id}, skipping master playlist")
+        return
+
+    # Build master playlist content
+    lines = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3"
+    ]
+
+    for db_variant in sorted(db_variants, key=lambda v: v.bitrate, reverse=True):
+        # EXT-X-STREAM-INF tag with bandwidth only (audio has no resolution)
+        lines.append(f"#EXT-X-STREAM-INF:BANDWIDTH={db_variant.bitrate}")
+        # Relative path to variant playlist
+        lines.append(f"{db_variant.quality}/playlist.m3u8")
+
+    # Write master playlist
+    with open(master_playlist_path, 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+
+    print(f"Master playlist created at {master_playlist_path}")
 
 def generate_thumbnail(input_path: str, media_id: str) -> str:
     """Generate video thumbnail from middle of video"""

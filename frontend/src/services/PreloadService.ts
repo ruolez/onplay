@@ -97,18 +97,13 @@ export class PreloadService {
       const response = await mediaApi.getMediaById(nextTrack.id);
       const fullMedia = response.data;
 
-      // Get best variant for preloading
-      const bestVariant = fullMedia.variants
-        ? fullMedia.variants.sort((a, b) => b.bitrate - a.bitrate)[0]
-        : null;
-
-      if (!bestVariant) {
-        return;
-      }
+      // Use master playlist for adaptive bitrate streaming
+      // The master playlist allows Video.js to automatically switch quality variants
+      const masterPlaylistPath = `/media/hls/${fullMedia.id}/master.m3u8`;
 
       // Trigger player preload
       player.preloadNext(
-        bestVariant.path,
+        masterPlaylistPath,
         fullMedia.thumbnail_path
           ? `${fullMedia.thumbnail_path}?t=${Date.now()}`
           : undefined,

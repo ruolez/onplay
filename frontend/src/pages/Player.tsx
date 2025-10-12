@@ -101,8 +101,9 @@ export default function Player() {
     );
   }
 
-  const bestVariant = media.variants.sort((a, b) => b.bitrate - a.bitrate)[0];
-  const playerSrc = bestVariant ? bestVariant.path : "";
+  // Use master playlist for adaptive bitrate streaming
+  // Master playlist allows Video.js to automatically switch quality variants
+  const playerSrc = `/media/hls/${media.id}/master.m3u8`;
 
   return (
     <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 max-w-7xl">

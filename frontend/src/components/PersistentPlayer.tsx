@@ -200,10 +200,10 @@ export default function PersistentPlayer() {
 
   if (!currentMedia) return null;
 
-  const bestVariant = currentMedia.variants
-    ? currentMedia.variants.sort((a, b) => b.bitrate - a.bitrate)[0]
-    : null;
-  const playerSrc = bestVariant ? bestVariant.path : "";
+  // Use master playlist for adaptive bitrate streaming
+  // Master playlist allows Video.js to automatically switch between quality variants
+  // based on the user's network conditions (slow connection → lower quality, fast → higher quality)
+  const playerSrc = `/media/hls/${currentMedia.id}/master.m3u8`;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
