@@ -382,11 +382,13 @@ export default function PersistentPlayer() {
 
             {/* Secondary Controls - Right side on mobile, inline on desktop */}
             <div className="flex items-center gap-2 sm:gap-3 flex-1 md:flex-initial justify-end md:justify-start">
-              {/* Queue Position */}
+              {/* Queue Position - Aligned with toggle buttons above */}
               {queuePosition && (
-                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
-                  {queuePosition.current} / {queuePosition.total}
-                </span>
+                <div className="flex items-center justify-center h-12">
+                  <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
+                    {queuePosition.current} / {queuePosition.total}
+                  </span>
+                </div>
               )}
 
               {/* Queue Button - Desktop only (mobile uses Gallery as queue) */}
