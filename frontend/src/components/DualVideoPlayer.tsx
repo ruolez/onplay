@@ -104,7 +104,7 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
         if (autoplay) {
           // Explicitly trigger play to ensure autoplay works
           player.ready(() => {
-            player.play().catch((err) => {
+            player.play()?.catch((err) => {
               console.error("[DualPlayer] Autoplay failed:", err);
             });
           });
@@ -156,7 +156,7 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
 
         // Auto-play after source change (maintains fullscreen)
         player.ready(() => {
-          player.play().catch((err) => {
+          player.play()?.catch((err) => {
             console.error("[DualPlayer] Failed to play after source change:", err);
           });
         });

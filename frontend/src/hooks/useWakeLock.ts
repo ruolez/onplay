@@ -23,7 +23,7 @@ export function useWakeLock() {
   }, []);
 
   // Request with retry logic
-  const requestWakeLockWithRetry = useCallback(async (retryCount = 0) => {
+  const requestWakeLockWithRetry = useCallback(async () => {
     const iosDevice = isIOS();
     const hasNativeAPI = "wakeLock" in navigator;
 
@@ -64,7 +64,7 @@ export function useWakeLock() {
             // Small delay before re-requesting
             setTimeout(() => {
               if (isActiveRef.current) {
-                requestWakeLockWithRetry(0);
+                requestWakeLockWithRetry();
               }
             }, 500);
           }
@@ -110,7 +110,7 @@ export function useWakeLock() {
       retryTimeoutRef.current = null;
     }
 
-    await requestWakeLockWithRetry(0);
+    await requestWakeLockWithRetry();
   }, [requestWakeLockWithRetry]);
 
   const releaseWakeLock = useCallback(async () => {
