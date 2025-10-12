@@ -133,8 +133,14 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
 
           try {
             const tech = player.tech({ IWillNotUseThisInPlugins: true });
+            console.log("[DualPlayer] 🔧 Tech type:", tech?.name || "unknown");
+            console.log("[DualPlayer] 🔧 Tech constructor:", tech?.constructor?.name || "unknown");
+
             if (tech) {
               const vhs = (tech as any).vhs;
+              console.log("[DualPlayer] 🔧 VHS object exists:", !!vhs);
+              console.log("[DualPlayer] 🔧 Tech properties:", Object.keys(tech).slice(0, 10));
+
               if (vhs) {
                 console.log("[DualPlayer] 📺 VHS available, monitoring quality");
 
@@ -186,7 +192,31 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
 
                 setInterval(checkQuality, 2000);
               } else {
-                console.log("[DualPlayer] ⚠️ VHS not available");
+                console.log("[DualPlayer] ⚠️ VHS not available - likely using Safari native HLS");
+                console.log("[DualPlayer] 🍎 Safari native playback detected");
+
+                // Try to access Safari's native quality levels
+                const videoEl = player.el()?.querySelector("video");
+                if (videoEl) {
+                  console.log("[DualPlayer] 📹 Video element found");
+
+                  // Check for native HLS quality variant info
+                  setTimeout(() => {
+                    const textTracks = (videoEl as any).textTracks;
+                    const audioTracks = (videoEl as any).audioTracks;
+                    const videoTracks = (videoEl as any).videoTracks;
+
+                    console.log("[DualPlayer] 📊 Native tracks:", {
+                      textTracks: textTracks?.length || 0,
+                      audioTracks: audioTracks?.length || 0,
+                      videoTracks: videoTracks?.length || 0
+                    });
+
+                    // Safari doesn't expose quality levels via standard API
+                    // It handles ABR internally without JavaScript control
+                    console.log("[DualPlayer] ℹ️ Safari manages quality automatically (no manual control available)");
+                  }, 2000);
+                }
               }
             }
           } catch (error) {
