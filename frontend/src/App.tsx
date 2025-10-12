@@ -90,15 +90,18 @@ function AppContent() {
         desktopSearchRef.current &&
         !desktopSearchRef.current.contains(e.target as Node)
       ) {
+        e.preventDefault();
+        e.stopPropagation();
         setIsDesktopSearchOpen(false);
       }
     };
 
     if (isDesktopSearchOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside, true);
     }
 
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside, true);
   }, [isDesktopSearchOpen]);
 
   // Escape key handler for desktop search
@@ -124,15 +127,18 @@ function AppContent() {
         mobileSearchRef.current &&
         !mobileSearchRef.current.contains(e.target as Node)
       ) {
+        e.preventDefault();
+        e.stopPropagation();
         setIsMobileSearchOpen(false);
       }
     };
 
     if (isMobileSearchOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside, true);
     }
 
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside, true);
   }, [isMobileSearchOpen]);
 
   // Escape key handler for mobile search
