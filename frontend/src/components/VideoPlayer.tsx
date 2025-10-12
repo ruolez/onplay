@@ -109,14 +109,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
-              bandwidth: 1500000, // 1.5Mbps - realistic mobile connection, learns and upgrades
+              bandwidth: 4000000, // 4Mbps - balanced estimate, allows quick quality adaptation
               backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
               maxBufferLength: 30, // Buffer 30 seconds ahead (industry standard)
               maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues
               maxBufferHole: 0.5, // Jump over gaps up to 0.5s without rebuffering
               experimentalBufferBasedABR: true, // Smart quality switching based on buffer health
               smoothQualityChange: true, // Prevent jarring quality transitions
-              fastQualityChange: false, // Wait for buffer before quality switches
               useBandwidthFromLocalStorage: true, // Persist bandwidth estimates between sessions
               enableLowInitialPlaylist: true, // Faster startup with lower quality first
             },
