@@ -380,22 +380,28 @@ export default function PersistentPlayer() {
               </button>
             </div>
 
-            {/* Right spacer + Secondary Controls - balances left spacer and aligns queue with wake lock */}
-            <div className="md:hidden flex-1 min-w-0 flex items-center justify-end gap-2 sm:gap-3">
-              {/* Queue Position - Fixed 48px width, aligned with wake lock toggle above */}
+            {/* Queue Position (Mobile only) - Direct child like wake lock, aligned via flex-1 spacer */}
+            {queuePosition && (
+              <div className="md:hidden flex items-center justify-center h-12 w-12 flex-shrink-0">
+                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
+                  {queuePosition.current} / {queuePosition.total}
+                </span>
+              </div>
+            )}
+
+            {/* Desktop-only controls */}
+            <div className="hidden md:flex items-center gap-2 sm:gap-3">
               {queuePosition && (
-                <div className="flex items-center justify-center h-12 w-12 flex-shrink-0">
-                  <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
-                    {queuePosition.current} / {queuePosition.total}
-                  </span>
-                </div>
+                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
+                  {queuePosition.current} / {queuePosition.total}
+                </span>
               )}
 
-              {/* Queue Button - Desktop only (mobile uses Gallery as queue) */}
+              {/* Queue Button - Desktop only */}
               {queue.length > 0 && (
                 <button
                   onClick={() => setIsQueueOpen(!isQueueOpen)}
-                  className={`hidden md:flex p-3 rounded-full transition-colors ${
+                  className={`p-3 rounded-full transition-colors ${
                     isQueueOpen
                       ? "theme-text-primary"
                       : "theme-text-muted hover:theme-text-primary"
@@ -420,7 +426,7 @@ export default function PersistentPlayer() {
                 </button>
               )}
 
-              {/* Fullscreen Button (Video only) - 48px touch target */}
+              {/* Fullscreen Button (Video only) */}
               {currentMedia?.media_type === "video" && (
                 <button
                   onClick={toggleFullscreen}
