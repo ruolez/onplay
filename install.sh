@@ -899,7 +899,7 @@ update_installation() {
 
     # Stop containers
     print_info "Stopping containers..."
-    docker compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml down --remove-orphans
 
     # Rebuild images
     print_info "Rebuilding Docker images (this may take a few minutes)..."
@@ -909,6 +909,12 @@ update_installation() {
         exit 1
     fi
     print_success "Docker images rebuilt successfully"
+
+    # Clean up dangling images and build cache
+    print_info "Cleaning up dangling images and build cache..."
+    docker image prune -f
+    docker system prune -f
+    print_success "Cleanup completed successfully"
 
     # Start containers
     print_info "Starting containers..."
