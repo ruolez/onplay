@@ -391,7 +391,7 @@ export default function Gallery() {
                       setSelectedTags([]);
                       setTagFilterOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between first:rounded-t-lg"
+                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm flex items-center justify-between first:rounded-t-lg"
                   >
                     <span>All</span>
                     {selectedTags.length === 0 && (
@@ -407,7 +407,7 @@ export default function Gallery() {
                       <button
                         key={tag.id}
                         onClick={() => toggleTagFilter(tag.id)}
-                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center justify-between last:rounded-b-lg"
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm flex items-center justify-between last:rounded-b-lg"
                       >
                         <span>{tag.name}</span>
                         {isSelected && (
@@ -430,7 +430,6 @@ export default function Gallery() {
                 className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
                 title="Sort options"
               >
-                <ArrowUpDown className="w-4 h-4" />
                 <span className="capitalize">{sortBy}</span>
                 <span className="text-[10px]">
                   {sortOrder === "asc" ? "↑" : "↓"}
@@ -455,14 +454,9 @@ export default function Gallery() {
                         }
                         setSortMenuOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm flex items-center justify-between first:rounded-t-lg last:rounded-b-lg"
+                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm first:rounded-t-lg last:rounded-b-lg"
                     >
-                      <span>{option.label}</span>
-                      {sortBy === option.value && (
-                        <span className="text-[10px]">
-                          {sortOrder === "asc" ? "↑" : "↓"}
-                        </span>
-                      )}
+                      {option.label}
                     </button>
                   ))}
                 </div>
