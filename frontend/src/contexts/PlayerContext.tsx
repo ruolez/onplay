@@ -280,14 +280,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     // If we just transitioned from loading to ready, ensure playback state is synced
     if (prevState === "loading" && currentState === "ready") {
-      const player = playerRef.current?.getPlayer();
-      if (player) {
-        // Note: Unmuting is handled by DualVideoPlayer's "playing" event listener
-        // to comply with Chrome's autoplay policy (must wait for playback to start)
+      // Small delay to ensure player has loaded the new source
+      const timer = setTimeout(() => {
+        const player = playerRef.current?.getPlayer();
+        if (player) {
+          // Note: Unmuting is handled by DualVideoPlayer's "playing" event listener
+          // to comply with Chrome's autoplay policy (must wait for playback to start)
 
-        if (player.paused()) {
-          // Player is paused, need to start playback
-          console.log("[PlayerContext] 🎵 Auto-playing next track (paused)");
+          console.log("[PlayerContext] 🎵 Auto-playing next track...");
           player
             .play()
             ?.then(() => {
@@ -298,16 +298,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             })
             .catch((err) => {
               console.error("[PlayerContext] Failed to auto-play:", err);
+              // Still try to sync state if autoplay was blocked
+              if (!player.paused()) {
+                send({ type: "PLAY" });
+              }
             });
-        } else {
-          // Player is already playing (DualVideoPlayer auto-played it)
-          // Just sync the state machine
-          console.log(
-            "[PlayerContext] ✅ Player already playing, syncing state machine",
-          );
-          send({ type: "PLAY" });
         }
-      }
+      }, 150);
+
+      return () => clearTimeout(timer);
     }
 
     prevStateRef.current = currentState;
