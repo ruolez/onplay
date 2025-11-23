@@ -941,7 +941,7 @@ export default function PersistentPlayer() {
 
         {/* Progress Bar - Full width at very bottom of mini player */}
         <div
-          className="w-full h-1.5 cursor-pointer"
+          className="w-full h-3 cursor-pointer"
           onClick={handleProgressClick}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
