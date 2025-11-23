@@ -166,6 +166,10 @@ onplay/
 │   │   └── celery_app.py         # Celery configuration
 │   └── requirements.txt
 ├── frontend/
+│   ├── public/
+│   │   ├── manifest.json         # PWA manifest (standalone mode)
+│   │   ├── sw.js                 # Service worker (network-first caching)
+│   │   └── icons/                # PWA icons (192, 512, apple-touch)
 │   ├── src/
 │   │   ├── pages/
 │   │   │   ├── Home.tsx          # Upload interface
@@ -181,6 +185,13 @@ onplay/
 │   │   │   ├── ThemeContext.tsx   # Theme management
 │   │   │   ├── GalleryContext.tsx # Gallery state management (filters, search, tags, sort)
 │   │   │   └── PlayerContext.tsx  # Persistent player state management + queue subscription
+│   │   ├── hooks/
+│   │   │   ├── useWakeLock.ts     # Screen Wake Lock API (prevent sleep)
+│   │   │   ├── useSwipeGesture.ts # Touch swipe detection (left/right/up/down)
+│   │   │   ├── useMediaSession.ts # Lock screen controls integration
+│   │   │   └── useHaptics.ts      # Haptic feedback (Android only)
+│   │   ├── machines/
+│   │   │   └── queueMachine.ts    # XState machine for playback queue
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Axios API client
 │   │   │   ├── theme.ts          # Theme definitions
@@ -236,6 +247,26 @@ onplay/
   - No browser crashes or auto-refreshes
   - Smooth playback for hours
 
+### Progressive Web App (PWA)
+
+OnPlay is installable as a PWA for a native-like fullscreen experience without browser chrome.
+
+**Files**:
+- `frontend/public/manifest.json` - App manifest (standalone display mode)
+- `frontend/public/sw.js` - Service worker with network-first caching
+- `frontend/public/icons/` - App icons (192x192, 512x512, apple-touch-icon)
+
+**Features**:
+- Standalone display mode (no browser address bar)
+- iOS safe area insets for notched devices (`env(safe-area-inset-*)`)
+- Custom app shortcuts (Upload, Stats)
+- Service worker caching (network-first strategy, skips API calls and HLS streams)
+
+**iOS PWA Specifics**:
+- Uses `apple-mobile-web-app-capable` meta tags
+- Safe area padding on navigation: `paddingTop: "env(safe-area-inset-top)"`
+- Expanded player uses `height: "100dvh"` for proper fullscreen
+
 ### Screen Wake Lock (Prevent Mobile Screen Sleep)
 
 Keeps mobile device screen awake during media playback to prevent dimming/locking while browsing or playing audio.
@@ -254,16 +285,50 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 - When disabled: Immediately releases wake lock, saves battery
 - When enabled: Requests wake lock on media playback
 
+**State Management**:
+- `userWantsWakeLockRef` tracks user intent (survives browser-initiated releases)
+- `isActive` state reflects actual wake lock status
+- UI toggle shows actual state (`isWakeLockActive`), not just user preference
+
 **Integration Points**:
 - PlayerContext conditionally calls `requestWakeLock()` based on toggle state
 - Wake lock requested at: `openPlayer()`, `togglePlayPause()`, `playNext()`, `playPrevious()`
 - Auto-released when: player closed, tab switched, user disables toggle
-- Auto-reacquired when: tab becomes visible again (if still enabled)
+- Auto-reacquired when: tab becomes visible again (if user had it enabled)
 
 **Auto-Reacquisition**:
-- Listens for browser `release` events (tab switch, battery saver, etc.)
-- Automatically re-requests wake lock if user has it enabled
-- 500ms delay before retry to prevent spam
+- Listens for `visibilitychange` event
+- Uses `userWantsWakeLockRef` (not `isActive`) to determine if re-acquisition needed
+- 100ms delay before retry to let browser settle
+
+### Swipe Gestures (Mobile Player)
+
+Touch swipe detection for mobile player navigation using `useSwipeGesture` hook.
+
+**Directions**:
+- **Left**: Previous track
+- **Right**: Next track
+- **Up**: Expand player (mini → full)
+- **Down**: Collapse player (full → mini)
+
+**Configuration**:
+- `threshold`: 50px minimum swipe distance
+- `maxTime`: 300ms maximum gesture duration
+- Automatically distinguishes horizontal vs vertical swipes
+
+**Usage**: Spread `handlers` on element or use `bind(ref)` for imperative binding.
+
+### Media Session API (Lock Screen Controls)
+
+Lock screen and notification controls for media playback using `useMediaSession` hook.
+
+**Features**:
+- Track metadata (title, artist, artwork) shown on lock screen
+- Play/pause, next/previous track buttons
+- Seek forward/backward (10s increments)
+- Seek to specific position via scrubber
+
+**Integration**: Called in PlayerContext with handlers that delegate to state machine events.
 
 ### Audio Thumbnail Design Principles
 
@@ -578,3 +643,9 @@ VITE_API_URL=http://localhost:8080/api
 23. **Player State Restore**: Use `RESTORE_STATE` event in queueMachine, not `LOAD_TRACK` (preserves saved time/volume)
 24. **Staleness Check**: Discard saved player state if older than 1 hour
 25. **Visibility Change**: Save state on `visibilitychange` event - most reliable for mobile tab discards
+
+**PWA & Mobile:**
+26. **iOS Safe Areas**: Use `env(safe-area-inset-*)` for notched devices
+27. **PWA Viewport**: Use `100dvh` not `-webkit-fill-available` for dynamic viewport height
+28. **Wake Lock Re-acquisition**: Use `userWantsWakeLockRef` (user intent) not `isActive` (actual state) in visibility handler
+29. **Haptic Feedback**: Only works on Android - iOS Safari doesn't support Web Vibration API
