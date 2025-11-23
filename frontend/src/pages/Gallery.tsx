@@ -16,7 +16,6 @@ import {
   List,
   Tag as TagIcon,
   MoreVertical,
-  ArrowUpDown,
   ChevronDown,
   Check,
 } from "lucide-react";
@@ -154,6 +153,15 @@ export default function Gallery() {
     }
   }, [currentMedia?.id]);
 
+  // Sync view mode from mobile bottom nav
+  useEffect(() => {
+    const handleViewModeChange = (e: CustomEvent<"grid" | "list">) => {
+      setViewMode(e.detail);
+    };
+    window.addEventListener("viewModeChange", handleViewModeChange as EventListener);
+    return () => window.removeEventListener("viewModeChange", handleViewModeChange as EventListener);
+  }, []);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ready":
@@ -280,15 +288,15 @@ export default function Gallery() {
   );
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 pb-6 sm:pb-8">
-      {/* Controls - Sticky flush with nav */}
-      <div className="sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
+    <div className="container mx-auto px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-0">
+      {/* Controls - Sticky flush with nav (desktop only - mobile uses MobileBottomNav) */}
+      <div className="hidden sm:block sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
         {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
 
         {/* Row 1: Media Type Filter + Tag Filter (mobile) + Sort + View */}
         <div className="flex items-center justify-center gap-3 sm:gap-4">
-          {/* Mobile: Media Type Dropdown */}
-          <div className="sm:hidden relative media-type-menu-container flex-shrink-0">
+          {/* Mobile: Media Type Dropdown - Now in MobileBottomNav */}
+          <div className="hidden relative media-type-menu-container flex-shrink-0">
             <button
               onClick={() => setMediaTypeMenuOpen(!mediaTypeMenuOpen)}
               className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 w-[70px] theme-btn-secondary hover:theme-btn-secondary ${
@@ -364,9 +372,9 @@ export default function Gallery() {
             className="hidden sm:flex flex-initial"
           />
 
-          {/* Mobile: Tag Filter (middle) - Compact icon only */}
+          {/* Mobile: Tag Filter (middle) - Now in MobileBottomNav */}
           {allTags.length > 0 && (
-            <div className="sm:hidden relative tag-filter-container flex-shrink-0">
+            <div className="hidden relative tag-filter-container flex-shrink-0">
               <button
                 onClick={() => setTagFilterOpen(!tagFilterOpen)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 relative w-[52px] theme-btn-secondary hover:theme-btn-secondary ${
@@ -421,8 +429,8 @@ export default function Gallery() {
             </div>
           )}
 
-          {/* Sort + View Toggle (both mobile and desktop) */}
-          <div className="flex items-center gap-4 flex-shrink-0">
+          {/* Sort + View Toggle (desktop only - mobile uses MobileBottomNav) */}
+          <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
             {/* Sort Dropdown */}
             <div className="relative sort-menu-container">
               <button

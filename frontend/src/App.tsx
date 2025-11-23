@@ -15,12 +15,15 @@ import Stats from "./pages/Stats";
 import LogoPreview from "./pages/LogoPreview";
 import ThemeSelector from "./components/ThemeSelector";
 import PersistentPlayer from "./components/PersistentPlayer";
+import MobileBottomNav from "./components/MobileBottomNav";
 import { useTheme } from "./contexts/ThemeContext";
+import { usePlayer } from "./contexts/PlayerContext";
 import { themes, applyTheme } from "./lib/theme";
 import { Upload as UploadIcon, BarChart3, Menu, X, Search } from "lucide-react";
 
 function AppContent() {
   const { theme } = useTheme();
+  const { currentMedia } = usePlayer();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -166,8 +169,14 @@ function AppContent() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isMobileSearchOpen]);
 
+  // Calculate bottom padding based on active elements
+  // Mobile: bottom nav (56px) + player (115px if active) + safe area
+  // Desktop: player only (85px if active)
+  const mobileBottomPadding = currentMedia ? "pb-[180px]" : "pb-[72px]";
+  const desktopBottomPadding = currentMedia ? "md:pb-[100px]" : "md:pb-4";
+
   return (
-    <div className="min-h-screen theme-bg pb-24">
+    <div className={`min-h-screen theme-bg ${mobileBottomPadding} ${desktopBottomPadding}`}>
       {/* Navigation */}
       <nav className="theme-nav sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6">
@@ -406,6 +415,23 @@ function AppContent() {
 
       {/* Persistent Player */}
       <PersistentPlayer />
+
+      {/* Mobile Bottom Filter Controls */}
+      <MobileBottomNav />
+
+      {/* CSS Animation */}
+      <style>{`
+        @keyframes slideUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

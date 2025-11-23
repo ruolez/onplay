@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
 import DualVideoPlayer from "./DualVideoPlayer";
 import QueuePanel from "./QueuePanel";
 import { mediaApi } from "../lib/api";
 import { formatDuration } from "../lib/utils";
+import { useHaptics } from "../hooks/useHaptics";
+import { useSwipeGesture } from "../hooks/useSwipeGesture";
 import {
   Play,
   Pause,
@@ -17,6 +19,10 @@ import {
   Monitor,
   MonitorOff,
   Loader2,
+  ChevronDown,
+  X,
+  Music,
+  Video,
 } from "lucide-react";
 
 export default function PersistentPlayer() {
@@ -50,6 +56,7 @@ export default function PersistentPlayer() {
     jumpToTrack,
     isWakeLockEnabled,
     setWakeLockEnabled,
+    closePlayer,
   } = usePlayer();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -58,6 +65,55 @@ export default function PersistentPlayer() {
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const haptics = useHaptics();
+  const miniPlayerRef = useRef<HTMLDivElement>(null);
+  const expandedPlayerRef = useRef<HTMLDivElement>(null);
+
+  // Swipe gesture for mini player (left/right for tracks, up to expand)
+  const miniPlayerGestures = useSwipeGesture({
+    threshold: 50,
+    maxTime: 300,
+    onSwipeLeft: () => {
+      if (hasNext) {
+        haptics.trackChange();
+        playNext();
+      }
+    },
+    onSwipeRight: () => {
+      if (hasPrevious) {
+        haptics.trackChange();
+        playPrevious();
+      }
+    },
+    onSwipeUp: () => {
+      haptics.gestureComplete();
+      setIsExpanded(true);
+    },
+  });
+
+  // Swipe gesture for expanded player (down to collapse)
+  const expandedPlayerGestures = useSwipeGesture({
+    threshold: 80,
+    maxTime: 400,
+    onSwipeDown: () => {
+      haptics.gestureComplete();
+      setIsExpanded(false);
+    },
+    onSwipeLeft: () => {
+      if (hasNext) {
+        haptics.trackChange();
+        playNext();
+      }
+    },
+    onSwipeRight: () => {
+      if (hasPrevious) {
+        haptics.trackChange();
+        playPrevious();
+      }
+    },
+  });
 
   // Slide up animation when media loads
   useEffect(() => {
@@ -66,6 +122,7 @@ export default function PersistentPlayer() {
     } else {
       setIsVisible(false);
       setIsQueueOpen(false);
+      setIsExpanded(false);
     }
   }, [currentMedia]);
 
@@ -98,6 +155,18 @@ export default function PersistentPlayer() {
     };
   }, []);
 
+  // Prevent body scroll when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isExpanded]);
+
   // Memoize trackEvent to prevent recreating callbacks
   const trackEvent = useCallback(
     async (eventType: string, data?: any) => {
@@ -123,9 +192,22 @@ export default function PersistentPlayer() {
       const rect = e.currentTarget.getBoundingClientRect();
       const percent = (e.clientX - rect.left) / rect.width;
       const newTime = percent * duration;
+      haptics.buttonPress();
       seek(newTime);
     },
-    [duration, seek],
+    [duration, seek, haptics],
+  );
+
+  const handleExpandedProgressClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!duration) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const percent = (e.clientX - rect.left) / rect.width;
+      const newTime = percent * duration;
+      haptics.buttonPress();
+      seek(newTime);
+    },
+    [duration, seek, haptics],
   );
 
   const handleVolumeChange = useCallback(
@@ -138,6 +220,7 @@ export default function PersistentPlayer() {
   );
 
   const toggleMute = useCallback(() => {
+    haptics.buttonPress();
     if (isMuted) {
       setVolume(1);
       setIsMuted(false);
@@ -145,12 +228,13 @@ export default function PersistentPlayer() {
       setVolume(0);
       setIsMuted(true);
     }
-  }, [isMuted, setVolume]);
+  }, [isMuted, setVolume, haptics]);
 
   const toggleFullscreen = useCallback(() => {
     const player = playerRef.current?.getPlayer();
     if (!player) return;
 
+    haptics.buttonPress();
     if (isFullscreen) {
       if (document.exitFullscreen) {
         document.exitFullscreen();
@@ -158,7 +242,32 @@ export default function PersistentPlayer() {
     } else {
       player.requestFullscreen().catch(() => {});
     }
-  }, [isFullscreen, playerRef]);
+  }, [isFullscreen, playerRef, haptics]);
+
+  const handleTogglePlayPause = useCallback(() => {
+    haptics.playPause();
+    togglePlayPause();
+  }, [togglePlayPause, haptics]);
+
+  const handlePlayNext = useCallback(() => {
+    if (hasNext) {
+      haptics.trackChange();
+      playNext();
+    }
+  }, [hasNext, playNext, haptics]);
+
+  const handlePlayPrevious = useCallback(() => {
+    if (hasPrevious) {
+      haptics.trackChange();
+      playPrevious();
+    }
+  }, [hasPrevious, playPrevious, haptics]);
+
+  const handleClose = useCallback(() => {
+    haptics.buttonPress();
+    setIsExpanded(false);
+    closePlayer();
+  }, [closePlayer, haptics]);
 
   // CRITICAL: Memoize these callbacks to prevent DualVideoPlayer from
   // constantly removing/reattaching event listeners, which causes events to be lost
@@ -182,10 +291,6 @@ export default function PersistentPlayer() {
     console.log("[PersistentPlayer] 🎵 onPlay event fired");
     handlePlaybackStarted();
     trackEvent("play");
-
-    // Note: Fullscreen is now maintained automatically by keeping same Video.js player instance
-    // First video fullscreen is handled by Gallery.tsx setTimeout
-    // Subsequent videos maintain fullscreen naturally without needing requestFullscreen()
   }, [handlePlaybackStarted, trackEvent]);
 
   const handlePauseWithTracking = useCallback(() => {
@@ -203,11 +308,9 @@ export default function PersistentPlayer() {
   if (!currentMedia) return null;
 
   // Use master playlist for adaptive bitrate streaming
-  // Master playlist allows Video.js to automatically switch between quality variants
-  // based on the user's network conditions (slow connection → lower quality, fast → higher quality)
   const playerSrc = `/media/hls/${currentMedia.id}/master.m3u8`;
-
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const isAudio = currentMedia.media_type === "audio";
 
   return (
     <>
@@ -245,27 +348,289 @@ export default function PersistentPlayer() {
         onTrackClick={jumpToTrack}
       />
 
-      {/* Bottom Bar */}
+      {/* Expanded Full-Screen Player */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[90] transition-transform duration-300 ease-out ${
-          isVisible ? "translate-y-0" : "translate-y-full"
+        ref={expandedPlayerRef}
+        className={`fixed inset-0 z-[100] transition-transform duration-300 ease-out ${
+          isExpanded ? "translate-y-0" : "translate-y-full"
+        }`}
+        style={{
+          background: "linear-gradient(180deg, var(--bg-primary) 0%, rgba(0,0,0,0.98) 100%)",
+        }}
+        {...expandedPlayerGestures.handlers}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 pt-safe">
+          <button
+            onClick={() => {
+              haptics.buttonPress();
+              setIsExpanded(false);
+            }}
+            className="p-2 -ml-2 rounded-full transition-colors"
+            style={{ background: "var(--player-bar-button-hover)" }}
+            aria-label="Collapse player"
+          >
+            <ChevronDown className="w-6 h-6 theme-text-primary" />
+          </button>
+
+          <span className="text-xs theme-text-muted uppercase tracking-wider font-medium">
+            Now Playing
+          </span>
+
+          <button
+            onClick={handleClose}
+            className="p-2 -mr-2 rounded-full transition-colors hover:bg-white/10"
+            aria-label="Close player"
+          >
+            <X className="w-6 h-6 theme-text-muted" />
+          </button>
+        </div>
+
+        {/* Album Art / Video Thumbnail */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 py-4">
+          <div
+            className="relative w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden shadow-2xl"
+            style={{
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            {currentMedia.thumbnail_path ? (
+              <img
+                src={`${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`}
+                alt={currentMedia.filename}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+              >
+                {isAudio ? (
+                  <Music className="w-24 h-24 text-white/80" />
+                ) : (
+                  <Video className="w-24 h-24 text-white/80" />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Track Info */}
+          <div className="w-full max-w-[320px] mt-8 text-center">
+            <h2 className="text-xl font-bold theme-text-primary truncate">
+              {currentMedia.filename.replace(/\.[^/.]+$/, "")}
+            </h2>
+            <p className="text-sm theme-text-muted mt-1 flex items-center justify-center gap-2">
+              {isAudio ? (
+                <Music className="w-4 h-4" />
+              ) : (
+                <Video className="w-4 h-4" />
+              )}
+              {isAudio ? "Audio" : "Video"}
+              {queuePosition && (
+                <span className="ml-2">
+                  • {queuePosition.current} of {queuePosition.total}
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full max-w-[320px] mt-8">
+            <div
+              className="w-full h-5 rounded-full cursor-pointer group"
+              style={{ background: "var(--player-progress-bg)" }}
+              onClick={handleExpandedProgressClick}
+            >
+              <div
+                className="h-full rounded-full transition-all relative"
+                style={{
+                  width: `${progress}%`,
+                  background: "var(--btn-primary-bg)",
+                }}
+              >
+                <div
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full opacity-100 transition-opacity shadow-lg"
+                  style={{
+                    background: "var(--btn-primary-bg)",
+                    transform: "translate(50%, -50%)",
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex justify-between mt-2 text-xs theme-text-muted">
+              <span>{formatDuration(currentTime)}</span>
+              <span>{formatDuration(duration)}</span>
+            </div>
+          </div>
+
+          {/* Main Controls */}
+          <div className="flex items-center justify-center gap-8 mt-8">
+            <button
+              onClick={handlePlayPrevious}
+              disabled={!hasPrevious}
+              className={`p-4 rounded-full transition-all theme-text-primary ${
+                !hasPrevious && "opacity-30 cursor-not-allowed"
+              }`}
+              aria-label="Previous track"
+            >
+              <SkipBack className="w-8 h-8" fill="currentColor" />
+            </button>
+
+            <button
+              onClick={handleTogglePlayPause}
+              className="p-5 rounded-full transition-all hover:scale-105 active:scale-95"
+              style={{
+                background: "var(--btn-primary-bg)",
+                color: "var(--btn-primary-text)",
+              }}
+              aria-label={isBuffering ? "Buffering" : isPlaying ? "Pause" : "Play"}
+            >
+              {isBuffering ? (
+                <Loader2 className="w-10 h-10 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-10 h-10" fill="currentColor" />
+              ) : (
+                <Play className="w-10 h-10 translate-x-[2px]" fill="currentColor" />
+              )}
+            </button>
+
+            <button
+              onClick={handlePlayNext}
+              disabled={!hasNext}
+              className={`p-4 rounded-full transition-all theme-text-primary ${
+                !hasNext && "opacity-30 cursor-not-allowed"
+              }`}
+              aria-label="Next track"
+            >
+              <SkipForward className="w-8 h-8" fill="currentColor" />
+            </button>
+          </div>
+
+          {/* Secondary Controls */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            {/* Wake Lock */}
+            <button
+              onClick={() => {
+                haptics.buttonPress();
+                setWakeLockEnabled(!isWakeLockEnabled);
+              }}
+              className={`p-3 rounded-full transition-colors ${
+                isWakeLockEnabled
+                  ? "theme-text-primary bg-white/10"
+                  : "theme-text-muted"
+              }`}
+              aria-label={isWakeLockEnabled ? "Screen wake enabled" : "Screen wake disabled"}
+            >
+              {isWakeLockEnabled ? (
+                <Monitor className="w-5 h-5" />
+              ) : (
+                <MonitorOff className="w-5 h-5" />
+              )}
+            </button>
+
+            {/* Fullscreen (Video only) */}
+            {!isAudio && (
+              <button
+                onClick={toggleFullscreen}
+                className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? (
+                  <Minimize className="w-5 h-5" />
+                ) : (
+                  <Maximize className="w-5 h-5" />
+                )}
+              </button>
+            )}
+
+            {/* Volume (Desktop) */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                onClick={toggleMute}
+                className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                aria-label={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="w-20 h-1 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, var(--player-progress-bg) ${volume * 100}%, var(--player-progress-bg) 100%)`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Swipe Hint */}
+        <div className="text-center pb-8 pb-safe">
+          <p className="text-xs theme-text-muted">
+            Swipe down to minimize • Swipe left/right to change tracks
+          </p>
+        </div>
+      </div>
+
+      {/* Mini Player Bottom Bar */}
+      <div
+        ref={miniPlayerRef}
+        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[56px] md:bottom-0 ${
+          isVisible && !isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
           background: "var(--player-bar-bg)",
           backdropFilter: "blur(20px)",
           borderTop: "1px solid var(--player-bar-border)",
         }}
+        {...miniPlayerGestures.handlers}
       >
+        {/* Drag Handle Indicator */}
+        <div className="flex justify-center pt-2">
+          <div
+            className="w-10 h-1 rounded-full bg-white/20"
+            onClick={() => {
+              haptics.buttonPress();
+              setIsExpanded(true);
+            }}
+          />
+        </div>
+
         {/* Main Controls - Two rows on mobile, single row on desktop */}
         <div className="px-2 sm:px-4 py-2 sm:py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
           {/* Row 1 (Mobile) / Left Section (Desktop): Thumbnail + Title + Wake Lock */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-            {currentMedia.thumbnail_path && (
+          <div
+            className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 cursor-pointer"
+            onClick={() => {
+              haptics.buttonPress();
+              setIsExpanded(true);
+            }}
+          >
+            {currentMedia.thumbnail_path ? (
               <img
                 src={`${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`}
                 alt={currentMedia.filename}
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0"
               />
+            ) : (
+              <div
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded flex-shrink-0 flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+              >
+                {isAudio ? (
+                  <Music className="w-6 h-6 text-white/80" />
+                ) : (
+                  <Video className="w-6 h-6 text-white/80" />
+                )}
+              </div>
             )}
             <div className="min-w-0 flex-1">
               <h3 className="theme-text-primary font-medium text-sm truncate">
@@ -278,7 +643,11 @@ export default function PersistentPlayer() {
 
             {/* Wake Lock Toggle - 48px touch target */}
             <button
-              onClick={() => setWakeLockEnabled(!isWakeLockEnabled)}
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.buttonPress();
+                setWakeLockEnabled(!isWakeLockEnabled);
+              }}
               className={`p-3 rounded-full transition-colors flex-shrink-0 ${
                 isWakeLockEnabled
                   ? "theme-text-primary"
@@ -325,7 +694,7 @@ export default function PersistentPlayer() {
               {/* Primary Controls - Centered within flex-1 section */}
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
-                  onClick={playPrevious}
+                  onClick={handlePlayPrevious}
                   disabled={!hasPrevious}
                   className={`p-3 rounded-full transition-colors theme-text-primary ${
                     !hasPrevious && "opacity-30 cursor-not-allowed"
@@ -345,7 +714,7 @@ export default function PersistentPlayer() {
                 </button>
 
                 <button
-                  onClick={togglePlayPause}
+                  onClick={handleTogglePlayPause}
                   className="p-3 sm:p-4 rounded-full transition-all hover:scale-105"
                   style={{
                     background: "var(--btn-primary-bg)",
@@ -367,7 +736,7 @@ export default function PersistentPlayer() {
                 </button>
 
                 <button
-                  onClick={playNext}
+                  onClick={handlePlayNext}
                   disabled={!hasNext}
                   className={`p-3 rounded-full transition-colors theme-text-primary ${
                     !hasNext && "opacity-30 cursor-not-allowed"
@@ -400,7 +769,7 @@ export default function PersistentPlayer() {
             {/* Desktop play buttons */}
             <div className="hidden md:flex items-center gap-2 sm:gap-3">
               <button
-                onClick={playPrevious}
+                onClick={handlePlayPrevious}
                 disabled={!hasPrevious}
                 className={`p-3 rounded-full transition-colors theme-text-primary ${
                   !hasPrevious && "opacity-30 cursor-not-allowed"
@@ -420,7 +789,7 @@ export default function PersistentPlayer() {
               </button>
 
               <button
-                onClick={togglePlayPause}
+                onClick={handleTogglePlayPause}
                 className="p-3 sm:p-4 rounded-full transition-all hover:scale-105"
                 style={{
                   background: "var(--btn-primary-bg)",
@@ -442,7 +811,7 @@ export default function PersistentPlayer() {
               </button>
 
               <button
-                onClick={playNext}
+                onClick={handlePlayNext}
                 disabled={!hasNext}
                 className={`p-3 rounded-full transition-colors theme-text-primary ${
                   !hasNext && "opacity-30 cursor-not-allowed"

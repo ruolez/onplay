@@ -76,7 +76,10 @@ export interface ThemeConfig {
   iconAll: string;
 }
 
-export const themes: Record<string, ThemeConfig> = {
+// Available theme names
+export type ThemeName = "eclipse" | "linen";
+
+export const themes: Record<ThemeName, ThemeConfig> = {
   eclipse: {
     bgPrimary: "#0e0e10",
     bgGradient: "linear-gradient(180deg, #0e0e10 0%, #18181b 100%)",

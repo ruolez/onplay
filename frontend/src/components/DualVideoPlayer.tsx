@@ -180,8 +180,8 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
                           bandwidth: current.attributes?.BANDWIDTH,
                           uri: uri.split("/").pop(),
                           systemBandwidth: Math.round(vhs.systemBandwidth || 0),
-                          bufferLevel: player.buffered().length > 0 ?
-                            (player.buffered().end(0) - player.currentTime()).toFixed(1) + "s" : "0s"
+                          bufferLevel: player.buffered() && player.buffered().length > 0 ?
+                            (player.buffered().end(0) - (player.currentTime() ?? 0)).toFixed(1) + "s" : "0s"
                         });
                       }
                     }
