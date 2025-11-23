@@ -13,6 +13,7 @@ export function useWakeLock() {
   const isActiveRef = useRef(false);
   const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
   const usingFallbackRef = useRef(false);
+  const videoReadyRef = useRef(false);
 
   // Create fallback video element (silent video loop for iOS Safari)
   useEffect(() => {
@@ -23,11 +24,13 @@ export function useWakeLock() {
       video.muted = true;
       video.playsInline = true;
       video.loop = true;
+      video.preload = "auto";
 
       // Also set as attributes for HTML5 compliance
       video.setAttribute("muted", "");
       video.setAttribute("playsinline", "");
       video.setAttribute("loop", "");
+      video.setAttribute("preload", "auto");
 
       // Hide video off-screen
       video.style.position = "absolute";
@@ -37,15 +40,28 @@ export function useWakeLock() {
       video.style.height = "1px";
       video.style.opacity = "0.01";
 
-      // Tiny base64 encoded MP4 (NoSleep.js pattern - known to work on iOS)
-      video.src =
-        "data:video/mp4;base64,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";
+      // Listen for when video is ready
+      video.addEventListener("canplaythrough", () => {
+        console.log("[WakeLock] Video ready (canplaythrough)");
+        videoReadyRef.current = true;
+      });
 
-      // Add to DOM first
+      video.addEventListener("loadeddata", () => {
+        console.log("[WakeLock] Video loadeddata, readyState:", video.readyState);
+      });
+
+      video.addEventListener("error", (e) => {
+        console.error("[WakeLock] Video error:", e);
+      });
+
+      // Use actual MP4 file instead of base64 (Safari handles this better)
+      video.src = "/silence.mp4";
+
+      // Add to DOM
       document.body.appendChild(video);
       noSleepVideoRef.current = video;
 
-      // Load the video
+      // Start loading
       video.load();
 
       console.log("[WakeLock] Created iOS fallback video element");
@@ -56,6 +72,7 @@ export function useWakeLock() {
         noSleepVideoRef.current.pause();
         noSleepVideoRef.current.remove();
         noSleepVideoRef.current = null;
+        videoReadyRef.current = false;
       }
     };
   }, []);
@@ -104,14 +121,39 @@ export function useWakeLock() {
         // Ensure muted is set (critical for iOS autoplay)
         video.muted = true;
 
-        console.log("[WakeLock] Attempting video.play(), readyState:", video.readyState);
+        console.log("[WakeLock] Video state - readyState:", video.readyState, "paused:", video.paused, "videoReady:", videoReadyRef.current);
+
+        // If video isn't ready, wait for it
+        if (video.readyState < 3) {
+          console.log("[WakeLock] Waiting for video to be ready...");
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error("Video load timeout"));
+            }, 5000);
+
+            const onReady = () => {
+              clearTimeout(timeout);
+              video.removeEventListener("canplaythrough", onReady);
+              videoReadyRef.current = true;
+              resolve();
+            };
+
+            if (video.readyState >= 3) {
+              clearTimeout(timeout);
+              videoReadyRef.current = true;
+              resolve();
+            } else {
+              video.addEventListener("canplaythrough", onReady);
+              // Trigger load again just in case
+              video.load();
+            }
+          });
+        }
+
+        console.log("[WakeLock] Attempting video.play()...");
 
         // Play the video
-        const playPromise = video.play();
-
-        if (playPromise !== undefined) {
-          await playPromise;
-        }
+        await video.play();
 
         isActiveRef.current = true;
         usingFallbackRef.current = true;
@@ -119,25 +161,6 @@ export function useWakeLock() {
         return true;
       } catch (err: any) {
         console.error("[WakeLock] ❌ Video fallback failed:", err.name, err.message);
-
-        // If NotSupportedError, try alternative approach - reload and retry
-        if (err.name === "NotSupportedError") {
-          console.log("[WakeLock] Trying reload + play...");
-          try {
-            video.load();
-            // Wait a tick for load to process
-            await new Promise(resolve => setTimeout(resolve, 100));
-            video.muted = true;
-            await video.play();
-            isActiveRef.current = true;
-            usingFallbackRef.current = true;
-            console.log("[WakeLock] ✅ Activated on retry (iOS video fallback)");
-            return true;
-          } catch (retryErr) {
-            console.error("[WakeLock] ❌ Retry also failed:", retryErr);
-          }
-        }
-
         return false;
       }
     }
