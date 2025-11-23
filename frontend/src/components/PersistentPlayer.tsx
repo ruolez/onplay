@@ -351,10 +351,11 @@ export default function PersistentPlayer() {
       {/* Expanded Full-Screen Player */}
       <div
         ref={expandedPlayerRef}
-        className={`fixed inset-0 z-[100] transition-transform duration-300 ease-out ${
+        className={`fixed left-0 right-0 top-0 z-[100] transition-transform duration-300 ease-out ${
           isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
+          height: "100dvh",
           background: "linear-gradient(180deg, var(--bg-primary) 0%, rgba(0,0,0,0.98) 100%)",
         }}
         {...expandedPlayerGestures.handlers}
