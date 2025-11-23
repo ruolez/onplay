@@ -44,24 +44,23 @@ export default function MobileBottomNav() {
     return window.innerWidth <= 768 ? "list" : "grid";
   });
 
-  // Only show on Gallery page
-  if (location.pathname !== "/") {
-    return null;
-  }
-
-  // Position dropdowns just above the bottom nav bar
-  const dropdownBottom = "62px";
-
   // Close menus when clicking outside
+  // IMPORTANT: This useEffect must be BEFORE any early returns to follow React's rules of hooks
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (mediaTypeMenuOpen && !(e.target as Element).closest(".mobile-media-type-menu")) {
+      if (
+        mediaTypeMenuOpen &&
+        !(e.target as Element).closest(".mobile-media-type-menu")
+      ) {
         setMediaTypeMenuOpen(false);
       }
       if (sortMenuOpen && !(e.target as Element).closest(".mobile-sort-menu")) {
         setSortMenuOpen(false);
       }
-      if (tagFilterOpen && !(e.target as Element).closest(".mobile-tag-filter")) {
+      if (
+        tagFilterOpen &&
+        !(e.target as Element).closest(".mobile-tag-filter")
+      ) {
         setTagFilterOpen(false);
       }
     };
@@ -69,11 +68,19 @@ export default function MobileBottomNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mediaTypeMenuOpen, sortMenuOpen, tagFilterOpen]);
 
+  // Only show on Gallery page (must be AFTER all hooks)
+  if (location.pathname !== "/") {
+    return null;
+  }
+
+  // Position dropdowns just above the bottom nav bar
+  const dropdownBottom = "62px";
+
   const toggleTagFilter = (tagId: number) => {
     setSelectedTags(
       selectedTags.includes(tagId)
         ? selectedTags.filter((id) => id !== tagId)
-        : [...selectedTags, tagId]
+        : [...selectedTags, tagId],
     );
   };
 
@@ -81,11 +88,14 @@ export default function MobileBottomNav() {
     const newMode = viewMode === "grid" ? "list" : "grid";
     setViewMode(newMode);
     localStorage.setItem("gallery-view", newMode);
-    window.dispatchEvent(new CustomEvent("viewModeChange", { detail: newMode }));
+    window.dispatchEvent(
+      new CustomEvent("viewModeChange", { detail: newMode }),
+    );
   };
 
   // Unified button base style - ghost style with subtle hover
-  const buttonBase = "rounded-xl transition-all min-h-[48px] flex items-center justify-center gap-2 active:scale-95";
+  const buttonBase =
+    "rounded-xl transition-all min-h-[48px] flex items-center justify-center gap-2 active:scale-95";
   const buttonInactive = "bg-white/5 hover:bg-white/10";
   const buttonActive = "bg-white/15";
 
@@ -111,13 +121,23 @@ export default function MobileBottomNav() {
             className={`w-full px-2 ${buttonBase} ${filter !== "all" ? buttonActive : buttonInactive}`}
           >
             {filter === "all" ? (
-              <span className="text-sm font-medium theme-text-primary">All</span>
+              <span className="text-sm font-medium theme-text-primary">
+                All
+              </span>
             ) : filter === "video" ? (
-              <Play className="w-5 h-5" style={{ color: "var(--icon-video)" }} />
+              <Play
+                className="w-5 h-5"
+                style={{ color: "var(--icon-video)" }}
+              />
             ) : (
-              <Music className="w-5 h-5" style={{ color: "var(--icon-audio)" }} />
+              <Music
+                className="w-5 h-5"
+                style={{ color: "var(--icon-audio)" }}
+              />
             )}
-            <ChevronUp className={`w-4 h-4 theme-text-muted transition-transform ${mediaTypeMenuOpen ? "rotate-180" : ""}`} />
+            <ChevronUp
+              className={`w-4 h-4 theme-text-muted transition-transform ${mediaTypeMenuOpen ? "rotate-180" : ""}`}
+            />
           </button>
 
           {mediaTypeMenuOpen && (
@@ -132,8 +152,26 @@ export default function MobileBottomNav() {
             >
               {[
                 { value: "all" as FilterType, label: "All", icon: null },
-                { value: "video" as FilterType, label: "Video", icon: <Play className="w-5 h-5" style={{ color: "var(--icon-video)" }} /> },
-                { value: "audio" as FilterType, label: "Audio", icon: <Music className="w-5 h-5" style={{ color: "var(--icon-audio)" }} /> },
+                {
+                  value: "video" as FilterType,
+                  label: "Video",
+                  icon: (
+                    <Play
+                      className="w-5 h-5"
+                      style={{ color: "var(--icon-video)" }}
+                    />
+                  ),
+                },
+                {
+                  value: "audio" as FilterType,
+                  label: "Audio",
+                  icon: (
+                    <Music
+                      className="w-5 h-5"
+                      style={{ color: "var(--icon-audio)" }}
+                    />
+                  ),
+                },
               ].map((option) => (
                 <button
                   key={option.value}
@@ -147,7 +185,9 @@ export default function MobileBottomNav() {
                 >
                   <span className="flex items-center gap-3">
                     {option.icon || <span className="w-5" />}
-                    <span className="text-sm font-medium theme-text-primary">{option.label}</span>
+                    <span className="text-sm font-medium theme-text-primary">
+                      {option.label}
+                    </span>
                   </span>
                   {filter === option.value && (
                     <Check className="w-4 h-4 theme-text-primary" />
@@ -169,11 +209,17 @@ export default function MobileBottomNav() {
             className={`w-[90px] ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
           >
             <div className="relative">
-              <TagIcon className="w-5 h-5" style={{ color: "var(--icon-tag)" }} />
+              <TagIcon
+                className="w-5 h-5"
+                style={{ color: "var(--icon-tag)" }}
+              />
               {selectedTags.length > 0 && (
                 <span
                   className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
-                  style={{ background: "var(--btn-primary-bg)", color: "var(--btn-primary-text)" }}
+                  style={{
+                    background: "var(--btn-primary-bg)",
+                    color: "var(--btn-primary-text)",
+                  }}
                 >
                   {selectedTags.length}
                 </span>
@@ -201,7 +247,9 @@ export default function MobileBottomNav() {
                   selectedTags.length === 0 ? "bg-white/10" : "hover:bg-white/5"
                 }`}
               >
-                <span className="text-sm font-medium theme-text-primary">All Tags</span>
+                <span className="text-sm font-medium theme-text-primary">
+                  All Tags
+                </span>
                 {selectedTags.length === 0 && (
                   <Check className="w-4 h-4 theme-text-primary" />
                 )}
@@ -219,7 +267,9 @@ export default function MobileBottomNav() {
                       isSelected ? "bg-white/10" : "hover:bg-white/5"
                     }`}
                   >
-                    <span className="text-sm font-medium theme-text-primary">{tag.name}</span>
+                    <span className="text-sm font-medium theme-text-primary">
+                      {tag.name}
+                    </span>
                     {isSelected && (
                       <Check className="w-4 h-4 theme-text-primary" />
                     )}
@@ -240,8 +290,12 @@ export default function MobileBottomNav() {
             }}
             className={`px-5 ${buttonBase} ${buttonInactive}`}
           >
-            <span className="text-sm font-medium theme-text-primary capitalize">{sortBy}</span>
-            <span className="text-xs theme-text-muted">{sortOrder === "asc" ? "↑" : "↓"}</span>
+            <span className="text-sm font-medium theme-text-primary capitalize">
+              {sortBy}
+            </span>
+            <span className="text-xs theme-text-muted">
+              {sortOrder === "asc" ? "↑" : "↓"}
+            </span>
           </button>
 
           {sortMenuOpen && (
@@ -275,7 +329,9 @@ export default function MobileBottomNav() {
                     sortBy === option.value ? "bg-white/10" : "hover:bg-white/5"
                   }`}
                 >
-                  <span className="text-sm font-medium theme-text-primary">{option.label}</span>
+                  <span className="text-sm font-medium theme-text-primary">
+                    {option.label}
+                  </span>
                   {sortBy === option.value && (
                     <span className="text-xs theme-text-muted">
                       {sortOrder === "asc" ? "Ascending" : "Descending"}
@@ -291,7 +347,9 @@ export default function MobileBottomNav() {
         <button
           onClick={toggleViewMode}
           className={`w-[48px] ${buttonBase} ${buttonInactive}`}
-          aria-label={viewMode === "grid" ? "Switch to list view" : "Switch to grid view"}
+          aria-label={
+            viewMode === "grid" ? "Switch to list view" : "Switch to grid view"
+          }
         >
           {viewMode === "grid" ? (
             <List className="w-5 h-5 theme-text-primary" />

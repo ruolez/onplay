@@ -93,6 +93,16 @@ function AppContent() {
         desktopSearchRef.current &&
         !desktopSearchRef.current.contains(e.target as Node)
       ) {
+        // Check if clicking on a navigation link - allow those through
+        const target = e.target as Element;
+        const isNavigation = target.closest("a[href]") || target.closest("nav");
+        if (isNavigation) {
+          // Just close search, let navigation proceed
+          setIsDesktopSearchOpen(false);
+          return;
+        }
+
+        // Block non-navigation clicks (e.g., media cards)
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
