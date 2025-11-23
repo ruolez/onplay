@@ -355,8 +355,11 @@ export default function PersistentPlayer() {
           isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
-          height: "100%",
-          maxHeight: "-webkit-fill-available",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: "100dvh",
           background: "linear-gradient(180deg, var(--bg-primary) 0%, rgba(0,0,0,0.98) 100%)",
         }}
         {...expandedPlayerGestures.handlers}
