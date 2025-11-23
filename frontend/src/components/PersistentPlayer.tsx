@@ -939,9 +939,9 @@ export default function PersistentPlayer() {
           </div>
         </div>
 
-        {/* Progress Bar - Enhanced touch target for mobile, positioned at bottom for thumb accessibility */}
+        {/* Progress Bar - Full width at very bottom of mini player */}
         <div
-          className="w-full pt-2 pb-1 md:py-3.5 cursor-pointer group"
+          className="w-full h-1 cursor-pointer"
           onClick={handleProgressClick}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
@@ -951,27 +951,15 @@ export default function PersistentPlayer() {
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={currentTime}
+          style={{ background: "var(--player-progress-bg)" }}
         >
           <div
-            className="w-full h-2 md:h-4 rounded-full relative"
-            style={{ background: "var(--player-progress-bg)" }}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-100"
-              style={{
-                width: `${progress}%`,
-                background: "var(--btn-primary-bg)",
-              }}
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-lg"
-              style={{
-                left: `${progress}%`,
-                transform: "translate(-50%, -50%)",
-                background: "var(--btn-primary-bg)",
-              }}
-            />
-          </div>
+            className="h-full transition-all duration-100"
+            style={{
+              width: `${progress}%`,
+              background: "var(--btn-primary-bg)",
+            }}
+          />
         </div>
       </div>
     </>
