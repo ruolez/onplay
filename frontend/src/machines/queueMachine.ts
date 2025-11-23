@@ -20,6 +20,13 @@ export interface QueueContext {
 export type QueueEvent =
   | { type: "LOAD_TRACK"; mediaId: string; queueItems?: Media[] }
   | { type: "UPDATE_QUEUE"; queueItems: Media[] }
+  | {
+      type: "RESTORE_STATE";
+      mediaId: string;
+      currentTime: number;
+      volume: number;
+      wasPlaying: boolean;
+    }
   | { type: "PLAY" }
   | { type: "PAUSE" }
   | { type: "NEXT" }
@@ -86,13 +93,21 @@ export const queueMachine = setup({
         }
 
         // Find current media in new queue
-        const newIndex = newQueue.findIndex((item) => item.id === currentMedia.id);
+        const newIndex = newQueue.findIndex(
+          (item) => item.id === currentMedia.id,
+        );
 
         if (newIndex >= 0) {
-          console.log("[queueMachine] ✅ Current media found at new index:", newIndex);
+          console.log(
+            "[queueMachine] ✅ Current media found at new index:",
+            newIndex,
+          );
           return newIndex;
         } else {
-          console.log("[queueMachine] ⚠️ Current media NOT in new queue, keeping old index:", context.currentIndex);
+          console.log(
+            "[queueMachine] ⚠️ Current media NOT in new queue, keeping old index:",
+            context.currentIndex,
+          );
           // Keep playing current track even if not in new queue
           // This allows user to finish listening even if they filter it out
           return context.currentIndex;
@@ -201,6 +216,17 @@ export const queueMachine = setup({
       },
       errorMessage: undefined,
     }),
+    restoreState: assign({
+      playbackState: ({ context, event }) => {
+        if (event.type !== "RESTORE_STATE") return context.playbackState;
+        return {
+          ...context.playbackState,
+          currentTime: event.currentTime,
+          volume: event.volume,
+          isPlaying: false, // Will be set after track loads
+        };
+      },
+    }),
     startPreloadService: () => {},
   },
   guards: {
@@ -256,6 +282,10 @@ export const queueMachine = setup({
           target: "loading",
           actions: ["setQueue", "generateSessionId"],
         },
+        RESTORE_STATE: {
+          target: "loading",
+          actions: ["restoreState", "generateSessionId"],
+        },
       },
     },
     loading: {
@@ -270,6 +300,14 @@ export const queueMachine = setup({
         input: ({ event, context }) => {
           // If LOAD_TRACK event, use the mediaId from the event
           if (event.type === "LOAD_TRACK") {
+            return {
+              mediaId: event.mediaId,
+              context,
+            };
+          }
+
+          // If RESTORE_STATE event, use the mediaId from the event
+          if (event.type === "RESTORE_STATE") {
             return {
               mediaId: event.mediaId,
               context,

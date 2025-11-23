@@ -67,6 +67,18 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
+// Persisted state type for localStorage
+interface PlayerPersistedState {
+  mediaId: string;
+  currentTime: number;
+  volume: number;
+  wasPlaying: boolean;
+  savedAt: number;
+}
+
+const PLAYER_STATE_KEY = "player-state";
+const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
@@ -85,6 +97,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem("player-wake-lock", String(isWakeLockEnabled));
   }, [isWakeLockEnabled]);
+
+  // Track pending restore state (for seeking after track loads)
+  const pendingRestoreRef = useRef<{
+    currentTime: number;
+    wasPlaying: boolean;
+  } | null>(null);
 
   // Wrapper to conditionally request wake lock
   const conditionalRequestWakeLock = useCallback(() => {
@@ -129,6 +147,130 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Machine state for debugging
   const machineState = state.value as string;
   const errorMessage = state.context.errorMessage;
+
+  // Save player state to localStorage
+  const savePlayerState = useCallback(() => {
+    if (!currentMedia) return;
+
+    const stateToSave: PlayerPersistedState = {
+      mediaId: currentMedia.id,
+      currentTime,
+      volume,
+      wasPlaying: isPlaying,
+      savedAt: Date.now(),
+    };
+
+    localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(stateToSave));
+    console.log(
+      "[PlayerContext] 💾 Saved player state:",
+      stateToSave.mediaId,
+      "at",
+      Math.round(stateToSave.currentTime) + "s",
+    );
+  }, [currentMedia, currentTime, volume, isPlaying]);
+
+  // Restore player state on mount (only if idle)
+  useEffect(() => {
+    // Only restore if player is idle
+    if (machineState !== "idle") return;
+
+    const saved = localStorage.getItem(PLAYER_STATE_KEY);
+    if (!saved) return;
+
+    try {
+      const savedState: PlayerPersistedState = JSON.parse(saved);
+
+      // Validate staleness
+      if (Date.now() - savedState.savedAt > MAX_STATE_AGE_MS) {
+        console.log("[PlayerContext] ⏰ Saved state too old, discarding");
+        localStorage.removeItem(PLAYER_STATE_KEY);
+        return;
+      }
+
+      console.log(
+        "[PlayerContext] 🔄 Restoring player state:",
+        savedState.mediaId,
+        "at",
+        Math.round(savedState.currentTime) + "s",
+      );
+
+      // Store pending restore info for seeking after track loads
+      pendingRestoreRef.current = {
+        currentTime: savedState.currentTime,
+        wasPlaying: savedState.wasPlaying,
+      };
+
+      // Send restore event to state machine
+      send({
+        type: "RESTORE_STATE",
+        mediaId: savedState.mediaId,
+        currentTime: savedState.currentTime,
+        volume: savedState.volume,
+        wasPlaying: savedState.wasPlaying,
+      });
+    } catch {
+      console.error("[PlayerContext] Failed to parse saved state, clearing");
+      localStorage.removeItem(PLAYER_STATE_KEY);
+    }
+  }, []); // Only on mount
+
+  // Seek to saved position after track loads (for restore)
+  useEffect(() => {
+    if (machineState !== "ready" || !pendingRestoreRef.current) return;
+
+    const { currentTime: savedTime, wasPlaying } = pendingRestoreRef.current;
+    pendingRestoreRef.current = null;
+
+    console.log(
+      "[PlayerContext] 🎯 Seeking to restored position:",
+      Math.round(savedTime) + "s",
+    );
+
+    // Small delay to ensure player is ready
+    setTimeout(() => {
+      playerRef.current?.seek(savedTime);
+      send({ type: "SEEK", time: savedTime });
+
+      // Don't auto-resume - let user manually play
+      // This is safer UX (user might not want audio suddenly playing)
+      console.log("[PlayerContext] ✅ State restored. wasPlaying:", wasPlaying);
+    }, 100);
+  }, [machineState, send]);
+
+  // Save state on visibility change (tab hidden)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && currentMedia) {
+        savePlayerState();
+      }
+    };
+
+    // Also save on freeze event (Chrome)
+    const handleFreeze = () => {
+      if (currentMedia) {
+        savePlayerState();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("freeze", handleFreeze);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("freeze", handleFreeze);
+    };
+  }, [currentMedia, savePlayerState]);
+
+  // Debounced save during playback (every 10 seconds)
+  useEffect(() => {
+    if (!isPlaying || !currentMedia) return;
+
+    const interval = setInterval(() => {
+      savePlayerState();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, currentMedia, savePlayerState]);
 
   // Auto-play when transitioning to ready state (for auto-advance)
   const prevStateRef = useRef<string>(machineState);
@@ -277,6 +419,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const closePlayer = useCallback(() => {
+    // Clear saved state when user manually closes
+    localStorage.removeItem(PLAYER_STATE_KEY);
     releaseWakeLock();
     preloadService.stop();
     send({ type: "CLOSE" });
@@ -295,16 +439,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       } else {
         player.pause();
         send({ type: "PAUSE" });
+        // Save state when user pauses
+        savePlayerState();
       }
     }
-  }, [send, conditionalRequestWakeLock]);
+  }, [send, conditionalRequestWakeLock, savePlayerState]);
 
   const seek = useCallback(
     (time: number) => {
       playerRef.current?.seek(time);
       send({ type: "SEEK", time });
+      // Save state after seek (position changed)
+      setTimeout(() => savePlayerState(), 100);
     },
-    [send],
+    [send, savePlayerState],
   );
 
   const setVolume = useCallback(
