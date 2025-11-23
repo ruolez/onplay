@@ -114,17 +114,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Public setter that also releases wake lock when disabled
   const setWakeLockEnabled = useCallback(
     (enabled: boolean) => {
+      console.log("[PlayerContext] Wake lock toggle:", enabled);
       setIsWakeLockEnabledState(enabled);
 
       if (!enabled) {
         // Immediately release wake lock when user disables
         releaseWakeLock();
       } else {
-        // Request wake lock when user enables (if media is playing)
-        const player = playerRef.current?.getPlayer();
-        if (player && !player.paused()) {
-          requestWakeLock();
-        }
+        // Always request wake lock when user enables
+        // The user gesture from the button click satisfies browser requirements
+        requestWakeLock();
       }
     },
     [releaseWakeLock, requestWakeLock],
