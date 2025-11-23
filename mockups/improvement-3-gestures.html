@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Improvement #3: Gesture-Based Navigation + Haptics</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+    .comparison-title {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .comparison-subtitle {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    .phones-container {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .phone-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .phone {
+      width: 375px;
+      height: 500px;
+      background: #0e0e10;
+      border-radius: 40px;
+      border: 3px solid #333;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .notch {
+      width: 150px;
+      height: 30px;
+      background: #000;
+      border-radius: 0 0 20px 20px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+    }
+
+    /* Mini Player with swipe indicators */
+    .mini-player {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(20, 20, 22, 0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 12px 16px;
+    }
+    .mini-player-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .mini-thumb {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 6px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .mini-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .mini-title {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mini-time {
+      font-size: 12px;
+      color: #888;
+    }
+    .mini-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mini-btn {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: #fff;
+    }
+    .mini-btn.play {
+      background: #e8a359;
+      color: #000;
+    }
+    .progress-bar {
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      margin-top: 12px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      width: 35%;
+      height: 100%;
+      background: #e8a359;
+    }
+
+    /* Gesture indicators */
+    .gesture-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 85px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .swipe-indicator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      background: rgba(232, 163, 89, 0.2);
+      border: 2px solid rgba(232, 163, 89, 0.5);
+      border-radius: 16px;
+      margin: 8px 0;
+    }
+    .swipe-arrow {
+      font-size: 24px;
+      color: #e8a359;
+    }
+    .swipe-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Haptic feedback visualization */
+    .haptic-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      border: 3px solid #e8a359;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+    }
+
+    .phone-label {
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+    }
+    .phone-label.feature { background: #14532d; border-color: #166534; }
+
+    /* Feature cards */
+    .features-section {
+      margin-top: 60px;
+      max-width: 900px;
+      width: 100%;
+    }
+    .features-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .feature-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    .feature-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-desc {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.5;
+    }
+    .feature-source {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #e8a359;
+    }
+
+    /* Current vs Proposed indicator */
+    .current-indicator {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="comparison-title">
+    Improvement #3: Gesture-Based Navigation + Haptic Feedback
+  </div>
+  <div class="comparison-subtitle">
+    Add swipe gestures for track control and haptic feedback for tactile confirmation
+  </div>
+
+  <div class="phones-container">
+    <!-- Swipe Left/Right for Tracks -->
+    <div class="phone-wrapper">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="gesture-overlay">
+          <div class="swipe-indicator">
+            <span class="swipe-arrow">←</span>
+            <span class="swipe-text">Previous Track</span>
+          </div>
+          <div style="color: #666; font-size: 12px; margin: 16px 0;">Swipe on mini player</div>
+          <div class="swipe-indicator">
+            <span class="swipe-text">Next Track</span>
+            <span class="swipe-arrow">→</span>
+          </div>
+        </div>
+        <div class="mini-player">
+          <div class="mini-player-row">
+            <div class="mini-thumb"></div>
+            <div class="mini-info">
+              <div class="mini-title">Stop Meeting Cut.mp3</div>
+              <div class="mini-time">1:14 / 3:36</div>
+            </div>
+            <div class="mini-controls">
+              <div class="mini-btn">⏮</div>
+              <div class="mini-btn play">▶</div>
+              <div class="mini-btn">⏭</div>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label feature">Swipe Left/Right: Change Tracks</div>
+    </div>
+
+    <!-- Swipe Up for Expand -->
+    <div class="phone-wrapper">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="gesture-overlay">
+          <div class="swipe-indicator" style="flex-direction: column;">
+            <span class="swipe-arrow" style="transform: rotate(-90deg);">←</span>
+            <span class="swipe-text">Expand to Full Player</span>
+          </div>
+        </div>
+        <div class="mini-player">
+          <div class="mini-player-row">
+            <div class="mini-thumb">
+              <div class="haptic-ring"></div>
+            </div>
+            <div class="mini-info">
+              <div class="mini-title">Stop Meeting Cut.mp3</div>
+              <div class="mini-time">1:14 / 3:36</div>
+            </div>
+            <div class="mini-controls">
+              <div class="mini-btn">⏮</div>
+              <div class="mini-btn play">▶</div>
+              <div class="mini-btn">⏭</div>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label feature">Swipe Up: Expand Player</div>
+    </div>
+  </div>
+
+  <div class="features-section">
+    <div class="features-title">Industry-Standard Gesture Patterns</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <div class="feature-name">Swipe Track Change</div>
+        <div class="feature-desc">
+          Swipe left/right on mini player to change tracks without tapping small buttons. Works in both collapsed and expanded states.
+        </div>
+        <div class="feature-source">✓ iOS 26.1 Apple Music (Nov 2025)</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📳</div>
+        <div class="feature-name">Haptic Feedback</div>
+        <div class="feature-desc">
+          Subtle vibration on track changes, button presses, and gesture completions. Creates tactile confirmation of actions.
+        </div>
+        <div class="feature-source">✓ Spotify, Apple Music, YouTube Music</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">↕️</div>
+        <div class="feature-name">Expandable Sheet</div>
+        <div class="feature-desc">
+          Swipe up to expand mini player to full "Now Playing" screen. Swipe down to collapse. Matches native platform behavior.
+        </div>
+        <div class="feature-source">✓ Spotify, Apple Music, YouTube Music</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,3 +1,52 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Development Commands
+
+```bash
+# Start all services
+docker compose up -d
+
+# Restart all services
+docker compose down && docker compose up -d
+
+# View logs
+docker compose logs -f              # All services
+docker compose logs -f api          # API only
+docker compose logs -f worker       # Workers only
+docker compose logs -f frontend     # Frontend only
+
+# Restart workers (after backend code changes)
+docker compose restart worker
+
+# Frontend development (outside Docker, with hot reload)
+cd frontend && npm run dev
+
+# Build frontend
+cd frontend && npm run build        # TypeScript check + Vite build
+
+# TypeScript check only
+cd frontend && npx tsc --noEmit
+
+# Format code
+cd frontend && npx prettier --write src/
+
+# Scale workers
+docker compose up -d --scale worker=4
+
+# Rebuild containers
+docker compose up -d --build
+```
+
+**Service Ports:**
+- Nginx (main entry): http://localhost:9090
+- Frontend (direct): http://localhost:5173
+- API: http://localhost:8002
+- API Docs: http://localhost:8002/docs
+
+---
+
 # OnPlay Project (onplay.site)
 
 ## Overview
@@ -102,7 +151,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 ## Code Organization
 
 ```
-media-player/
+onplay/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -318,6 +367,43 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 - Works in both grid and list view
 - Auto-advance triggered in `onEnded` event handler
 
+### Player State Persistence (Mobile Page Reload Recovery)
+
+**Problem**: Mobile browsers aggressively discard background tabs to free memory. When user switches apps (e.g., takes a phone call) and returns after ~60 seconds, the page reloads and player state is lost.
+
+**Solution**: Persist player state to `localStorage` and restore on page load.
+
+**Persisted State** (`player-state` key):
+```typescript
+{
+  mediaId: string;      // Current track ID
+  currentTime: number;  // Position in seconds
+  volume: number;       // 0-1
+  wasPlaying: boolean;  // Was playing before hidden
+  savedAt: number;      // Timestamp for staleness check
+}
+```
+
+**When State is Saved**:
+- `visibilitychange` event (tab hidden) - most reliable for mobile
+- `freeze` event (Chrome-specific)
+- Every 10 seconds during playback (interval backup)
+- On pause (immediate save)
+- On seek (after 100ms delay)
+
+**Restoration Flow**:
+1. On mount, check `localStorage` for saved state
+2. Validate staleness (discard if >1 hour old)
+3. Send `RESTORE_STATE` event to queueMachine
+4. After track loads, seek to saved position
+5. Queue rebuilds automatically from GalleryContext
+
+**State is Cleared**: When user manually closes player via close button.
+
+**Implementation Files**:
+- `frontend/src/contexts/PlayerContext.tsx` - Save/restore logic
+- `frontend/src/machines/queueMachine.ts` - `RESTORE_STATE` event
+
 ### Mobile Navigation Architecture
 
 **Mobile-First Search**: Full-width search input integrated into top navigation bar for instant access.
@@ -439,13 +525,12 @@ DELETE_PASSWORD=ddd
 VITE_API_URL=http://localhost:8080/api
 ```
 
-## Development Workflow
+## Development Notes
 
-1. **Start Services**: `docker-compose up -d`
-2. **Frontend Dev**: `cd frontend && npm run dev`
-3. **Backend Dev**: Auto-reload enabled in Docker
-4. **Worker Logs**: `docker-compose logs -f worker`
-5. **Restart Workers**: `docker-compose restart worker` (after code changes)
+- **Backend Auto-reload**: Enabled in Docker via Uvicorn
+- **Frontend Hot Reload**: Run `npm run dev` in frontend directory
+- **Worker Code Changes**: Require `docker compose restart worker`
+- See **Development Commands** at top of this file for all commands
 
 ## Design Philosophy
 
@@ -488,3 +573,8 @@ VITE_API_URL=http://localhost:8080/api
 20. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
 21. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
 22. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
+
+**State Persistence:**
+23. **Player State Restore**: Use `RESTORE_STATE` event in queueMachine, not `LOAD_TRACK` (preserves saved time/volume)
+24. **Staleness Check**: Discard saved player state if older than 1 hour
+25. **Visibility Change**: Save state on `visibilitychange` event - most reliable for mobile tab discards

@@ -351,17 +351,21 @@ export default function PersistentPlayer() {
       {/* Expanded Full-Screen Player */}
       <div
         ref={expandedPlayerRef}
-        className={`fixed left-0 right-0 top-0 z-[100] transition-transform duration-300 ease-out ${
+        className={`fixed inset-0 z-[100] flex flex-col transition-transform duration-300 ease-out ${
           isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
-          height: "100dvh",
+          height: "100%",
+          maxHeight: "-webkit-fill-available",
           background: "linear-gradient(180deg, var(--bg-primary) 0%, rgba(0,0,0,0.98) 100%)",
         }}
         {...expandedPlayerGestures.handlers}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 pt-safe">
+        {/* Header - Fixed */}
+        <div
+          className="flex-shrink-0 flex items-center justify-between px-4 py-2"
+          style={{ paddingTop: "max(8px, env(safe-area-inset-top))" }}
+        >
           <button
             onClick={() => {
               haptics.buttonPress();
@@ -387,10 +391,14 @@ export default function PersistentPlayer() {
           </button>
         </div>
 
-        {/* Album Art / Video Thumbnail */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8 py-4">
+        {/* Scrollable Content */}
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center px-6"
+          style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+        >
+          {/* Album Art / Video Thumbnail */}
           <div
-            className="relative w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden shadow-2xl"
+            className="relative w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-2xl mt-2 flex-shrink-0"
             style={{
               boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
             }}
@@ -407,17 +415,17 @@ export default function PersistentPlayer() {
                 style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
               >
                 {isAudio ? (
-                  <Music className="w-24 h-24 text-white/80" />
+                  <Music className="w-20 h-20 text-white/80" />
                 ) : (
-                  <Video className="w-24 h-24 text-white/80" />
+                  <Video className="w-20 h-20 text-white/80" />
                 )}
               </div>
             )}
           </div>
 
           {/* Track Info */}
-          <div className="w-full max-w-[320px] mt-8 text-center">
-            <h2 className="text-xl font-bold theme-text-primary truncate">
+          <div className="w-full max-w-[300px] mt-4 text-center flex-shrink-0">
+            <h2 className="text-lg font-bold theme-text-primary truncate">
               {currentMedia.filename.replace(/\.[^/.]+$/, "")}
             </h2>
             <p className="text-sm theme-text-muted mt-1 flex items-center justify-center gap-2">
@@ -436,9 +444,9 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full max-w-[320px] mt-8">
+          <div className="w-full max-w-[300px] mt-5 flex-shrink-0">
             <div
-              className="w-full h-5 rounded-full cursor-pointer group"
+              className="w-full h-4 rounded-full cursor-pointer group"
               style={{ background: "var(--player-progress-bg)" }}
               onClick={handleExpandedProgressClick}
             >
@@ -450,7 +458,7 @@ export default function PersistentPlayer() {
                 }}
               >
                 <div
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full opacity-100 transition-opacity shadow-lg"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full opacity-100 transition-opacity shadow-lg"
                   style={{
                     background: "var(--btn-primary-bg)",
                     transform: "translate(50%, -50%)",
@@ -458,14 +466,14 @@ export default function PersistentPlayer() {
                 />
               </div>
             </div>
-            <div className="flex justify-between mt-2 text-xs theme-text-muted">
+            <div className="flex justify-between mt-1.5 text-xs theme-text-muted">
               <span>{formatDuration(currentTime)}</span>
               <span>{formatDuration(duration)}</span>
             </div>
           </div>
 
           {/* Main Controls */}
-          <div className="flex items-center justify-center gap-8 mt-8">
+          <div className="flex items-center justify-center gap-6 mt-5 flex-shrink-0">
             <button
               onClick={handlePlayPrevious}
               disabled={!hasPrevious}
@@ -508,7 +516,7 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Secondary Controls */}
-          <div className="flex items-center justify-center gap-4 mt-8">
+          <div className="flex items-center justify-center gap-4 mt-4 flex-shrink-0">
             {/* Wake Lock */}
             <button
               onClick={() => {
@@ -571,13 +579,13 @@ export default function PersistentPlayer() {
               />
             </div>
           </div>
-        </div>
 
-        {/* Swipe Hint */}
-        <div className="text-center pb-8 pb-safe">
-          <p className="text-xs theme-text-muted">
-            Swipe down to minimize • Swipe left/right to change tracks
-          </p>
+          {/* Swipe Hint */}
+          <div className="text-center mt-4 pb-4 flex-shrink-0">
+            <p className="text-xs theme-text-muted">
+              Swipe down to minimize • Swipe left/right to change tracks
+            </p>
+          </div>
         </div>
       </div>
 
@@ -930,7 +938,7 @@ export default function PersistentPlayer() {
 
         {/* Progress Bar - Enhanced touch target for mobile, positioned at bottom for thumb accessibility */}
         <div
-          className="w-full py-3.5 cursor-pointer group"
+          className="w-full pt-2 pb-1 md:py-3.5 cursor-pointer group"
           onClick={handleProgressClick}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
@@ -942,7 +950,7 @@ export default function PersistentPlayer() {
           aria-valuenow={currentTime}
         >
           <div
-            className="w-full h-4 rounded-full relative"
+            className="w-full h-2 md:h-4 rounded-full relative"
             style={{ background: "var(--player-progress-bg)" }}
           >
             <div
@@ -953,7 +961,7 @@ export default function PersistentPlayer() {
               }}
             />
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-lg"
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-lg"
               style={{
                 left: `${progress}%`,
                 transform: "translate(-50%, -50%)",
