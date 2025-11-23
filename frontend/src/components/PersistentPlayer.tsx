@@ -595,7 +595,7 @@ export default function PersistentPlayer() {
       {/* Mini Player Bottom Bar */}
       <div
         ref={miniPlayerRef}
-        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[56px] md:bottom-0 ${
+        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[72px] md:bottom-0 ${
           isVisible && !isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
@@ -941,7 +941,7 @@ export default function PersistentPlayer() {
 
         {/* Progress Bar - Full width at very bottom of mini player */}
         <div
-          className="w-full h-1 cursor-pointer"
+          className="w-full h-1.5 cursor-pointer"
           onClick={handleProgressClick}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={() => setIsDragging(false)}
@@ -951,7 +951,7 @@ export default function PersistentPlayer() {
           aria-valuemin={0}
           aria-valuemax={duration}
           aria-valuenow={currentTime}
-          style={{ background: "var(--player-progress-bg)" }}
+          style={{ background: "rgba(255,255,255,0.2)" }}
         >
           <div
             className="h-full transition-all duration-100"
