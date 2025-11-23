@@ -13,6 +13,7 @@ export const api = axios.create({
 export interface Tag {
   id: number;
   name: string;
+  media_count: number;
 }
 
 export interface Media {
@@ -137,5 +138,9 @@ export const mediaApi = {
 
   async removeTagFromMedia(mediaId: string, tagId: number) {
     return api.delete(`/media/${mediaId}/tags/${tagId}`);
+  },
+
+  async deleteTag(tagId: number) {
+    return api.delete(`/tags/${tagId}`);
   },
 };

@@ -235,6 +235,16 @@ export default function Gallery() {
     }
   };
 
+  const handleDeleteTag = async (tagId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await mediaApi.deleteTag(tagId);
+      refreshTags();
+    } catch (error) {
+      console.error("Failed to delete tag:", error);
+    }
+  };
+
   const toggleTagFilter = (tagId: number) => {
     setSelectedTags((prev) =>
       prev.includes(tagId)
@@ -291,9 +301,7 @@ export default function Gallery() {
     <div className="container mx-auto px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-0">
       {/* Controls - Sticky flush with nav (desktop only - mobile uses MobileBottomNav) */}
       <div className="hidden sm:block sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
-        {/* Mobile: Vertical Stacking (<=768px) | Desktop: Horizontal Layout */}
-
-        {/* Row 1: Media Type Filter + Tag Filter (mobile) + Sort + View */}
+        {/* Desktop: Type Filter + Tags Filter + Sort + View (all in one row) */}
         <div className="flex items-center justify-center gap-3 sm:gap-4">
           {/* Mobile: Media Type Dropdown - Now in MobileBottomNav */}
           <div className="hidden relative media-type-menu-container flex-shrink-0">
@@ -372,38 +380,41 @@ export default function Gallery() {
             className="hidden sm:flex flex-initial"
           />
 
-          {/* Mobile: Tag Filter (middle) - Now in MobileBottomNav */}
+          {/* Desktop: Tag Filter Dropdown (between Type and Sort) */}
           {allTags.length > 0 && (
-            <div className="hidden relative tag-filter-container flex-shrink-0">
+            <div className="hidden sm:block relative tag-filter-container flex-shrink-0">
               <button
                 onClick={() => setTagFilterOpen(!tagFilterOpen)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 relative w-[52px] theme-btn-secondary hover:theme-btn-secondary ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 w-auto theme-btn-secondary hover:theme-btn-secondary ${
                   selectedTags.length > 0
                     ? "ring-1 ring-white/30 bg-white/10"
                     : ""
                 }`}
                 title="Filter by tags"
               >
-                <TagIcon className="w-5 h-5" style={{ color: "var(--icon-tag)" }} />
-                {selectedTags.length > 0 && (
-                  <span className="text-[10px] font-semibold">
-                    {selectedTags.length}
-                  </span>
-                )}
+                <TagIcon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--icon-tag)" }} />
+                <span className="truncate flex-1 text-left">
+                  {selectedTags.length === 0
+                    ? "All"
+                    : selectedTags.length === 1
+                      ? allTags.find((t) => t.id === selectedTags[0])?.name
+                      : `${selectedTags.length} selected`}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
               </button>
               {tagFilterOpen && (
-                <div className="absolute left-0 mt-1 w-56 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
+                <div className="absolute left-0 mt-1 w-56 sm:w-64 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
                   {/* All option */}
                   <button
                     onClick={() => {
                       setSelectedTags([]);
                       setTagFilterOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm flex items-center justify-between first:rounded-t-lg"
+                    className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between first:rounded-t-lg"
                   >
                     <span>All</span>
                     {selectedTags.length === 0 && (
-                      <Check className="w-3.5 h-3.5 theme-text-primary" />
+                      <Check className="w-4 h-4 theme-text-primary" />
                     )}
                   </button>
                   {/* Divider */}
@@ -415,11 +426,11 @@ export default function Gallery() {
                       <button
                         key={tag.id}
                         onClick={() => toggleTagFilter(tag.id)}
-                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm flex items-center justify-between last:rounded-b-lg"
+                        className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between last:rounded-b-lg"
                       >
                         <span>{tag.name}</span>
                         {isSelected && (
-                          <Check className="w-3.5 h-3.5 theme-text-primary" />
+                          <Check className="w-4 h-4 theme-text-primary" />
                         )}
                       </button>
                     );
@@ -496,66 +507,6 @@ export default function Gallery() {
             </button>
           </div>
         </div>
-
-        {/* Row 2: Tag Filter Dropdown (Desktop only) */}
-        {allTags.length > 0 && (
-          <div className="hidden sm:block relative tag-filter-container">
-            <button
-              onClick={() => setTagFilterOpen(!tagFilterOpen)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 w-auto theme-btn-secondary hover:theme-btn-secondary ${
-                selectedTags.length > 0
-                  ? "ring-1 ring-white/30 bg-white/10"
-                  : ""
-              }`}
-              title="Filter by tags"
-            >
-              <TagIcon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--icon-tag)" }} />
-              <span className="truncate flex-1 text-left">
-                {selectedTags.length === 0
-                  ? "All"
-                  : selectedTags.length === 1
-                    ? allTags.find((t) => t.id === selectedTags[0])?.name
-                    : `${selectedTags.length} selected`}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-            </button>
-            {tagFilterOpen && (
-              <div className="absolute left-0 mt-1 w-56 sm:w-64 rounded-lg shadow-xl theme-dropdown z-50 max-h-[60vh] overflow-y-auto">
-                {/* All option */}
-                <button
-                  onClick={() => {
-                    setSelectedTags([]);
-                    setTagFilterOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between first:rounded-t-lg"
-                >
-                  <span>All</span>
-                  {selectedTags.length === 0 && (
-                    <Check className="w-4 h-4 theme-text-primary" />
-                  )}
-                </button>
-                {/* Divider */}
-                <div className="h-px bg-white/10 my-1" />
-                {/* Tag options with checkboxes */}
-                {allTags.map((tag) => {
-                  const isSelected = selectedTags.includes(tag.id);
-                  return (
-                    <button
-                      key={tag.id}
-                      onClick={() => toggleTagFilter(tag.id)}
-                      className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-sm sm:text-base flex items-center justify-between last:rounded-b-lg"
-                    >
-                      <span>{tag.name}</span>
-                      {isSelected && (
-                        <Check className="w-4 h-4 theme-text-primary" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Media Grid/List */}
@@ -1046,9 +997,20 @@ export default function Gallery() {
                     <button
                       key={tag.id}
                       onClick={() => setTagInput(tag.name)}
-                      className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors min-h-[36px]"
+                      className={`group flex items-center px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors min-h-[36px] ${
+                        tag.media_count === 0 ? "opacity-60 pr-1.5 sm:pr-2" : ""
+                      }`}
                     >
-                      {tag.name}
+                      <span>{tag.name}</span>
+                      {tag.media_count === 0 && (
+                        <span
+                          onClick={(e) => handleDeleteTag(tag.id, e)}
+                          className="ml-1.5 p-0.5 rounded hover:bg-red-500/40 text-white/40 hover:text-red-400 transition-colors"
+                          title="Delete unused tag"
+                        >
+                          <X className="w-3 h-3" />
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
