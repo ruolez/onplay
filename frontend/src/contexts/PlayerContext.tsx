@@ -82,7 +82,7 @@ const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
-  const { requestWakeLock, releaseWakeLock, isSupported: isWakeLockSupported, isActive: isWakeLockActive, error: wakeLockError } = useWakeLock();
+  const { requestWakeLock, releaseWakeLock, isSupported: isWakeLockSupported } = useWakeLock();
   const { sortedMedia } = useGallery();
 
   // Wake Lock toggle state (user preference, persisted to localStorage)
@@ -98,12 +98,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("player-wake-lock", String(wakeLockUserEnabled));
   }, [wakeLockUserEnabled]);
 
-  // Log wake lock errors
-  useEffect(() => {
-    if (wakeLockError) {
-      console.error("[PlayerContext] Wake lock error:", wakeLockError);
-    }
-  }, [wakeLockError]);
 
   // Track pending restore state (for seeking after track loads)
   const pendingRestoreRef = useRef<{
@@ -138,8 +132,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [releaseWakeLock, requestWakeLock, isWakeLockSupported],
   );
 
-  // The actual wake lock state for UI (reflects real status, not just user preference)
-  const isWakeLockEnabled = isWakeLockSupported ? isWakeLockActive : false;
+  // Show user preference for UI (not actual state - avoids toggle glitches)
+  const isWakeLockEnabled = wakeLockUserEnabled;
 
   // Extract state
   const { currentMedia, sessionId, playbackState, queue, currentIndex } =
