@@ -14,6 +14,7 @@ export function useWakeLock() {
   const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
   const usingFallbackRef = useRef(false);
   const videoReadyRef = useRef(false);
+  const keepAliveIntervalRef = useRef<number | null>(null);
 
   // Create fallback video element (silent video loop for iOS Safari)
   useEffect(() => {
@@ -32,13 +33,15 @@ export function useWakeLock() {
       video.setAttribute("loop", "");
       video.setAttribute("preload", "auto");
 
-      // Hide video off-screen
-      video.style.position = "absolute";
-      video.style.left = "-9999px";
-      video.style.top = "-9999px";
-      video.style.width = "1px";
-      video.style.height = "1px";
+      // Hide video off-screen but keep it "visible" to iOS
+      video.style.position = "fixed";
+      video.style.left = "-100px";
+      video.style.top = "-100px";
+      video.style.width = "10px";
+      video.style.height = "10px";
       video.style.opacity = "0.01";
+      video.style.pointerEvents = "none";
+      video.style.zIndex = "-1000";
 
       // Listen for when video is ready
       video.addEventListener("canplaythrough", () => {
@@ -54,7 +57,16 @@ export function useWakeLock() {
         console.error("[WakeLock] Video error:", e);
       });
 
-      // Use actual MP4 file instead of base64 (Safari handles this better)
+      video.addEventListener("pause", () => {
+        console.log("[WakeLock] Video paused event - will restart if active");
+        // If we're supposed to be active but video paused, restart it
+        if (usingFallbackRef.current && isActiveRef.current) {
+          console.log("[WakeLock] Restarting paused video...");
+          video.play().catch(console.error);
+        }
+      });
+
+      // Use actual MP4 file instead of base64
       video.src = "/silence.mp4";
 
       // Add to DOM
@@ -74,14 +86,18 @@ export function useWakeLock() {
         noSleepVideoRef.current = null;
         videoReadyRef.current = false;
       }
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
+        keepAliveIntervalRef.current = null;
+      }
     };
   }, []);
 
   const requestWakeLock = useCallback(async () => {
-    console.log("[WakeLock] Requesting wake lock, isIOS:", isIOS());
+    console.log("[WakeLock] Requesting wake lock, isIOS:", isIOS(), "hasNativeAPI:", "wakeLock" in navigator);
 
-    // Try Wake Lock API first (but NOT on iOS - use video fallback instead)
-    if ("wakeLock" in navigator && !isIOS()) {
+    // Try native Wake Lock API FIRST (works on iOS 16.4+ and all modern browsers)
+    if ("wakeLock" in navigator) {
       try {
         // Release existing wake lock if any
         if (wakeLockRef.current) {
@@ -100,15 +116,18 @@ export function useWakeLock() {
         // Listen for release
         wakeLock.addEventListener("release", () => {
           console.log("[WakeLock] Released by browser (native API)");
+          wakeLockRef.current = null;
+          // Don't set isActiveRef to false - we'll re-acquire on visibility change
         });
 
         return true;
-      } catch (err) {
-        console.warn("[WakeLock] Native API failed:", err);
+      } catch (err: any) {
+        console.warn("[WakeLock] Native API failed:", err.name, err.message);
+        // Fall through to video fallback on iOS
       }
     }
 
-    // iOS video fallback
+    // iOS video fallback (if native API failed or unavailable)
     if (isIOS()) {
       const video = noSleepVideoRef.current;
 
@@ -144,7 +163,6 @@ export function useWakeLock() {
               resolve();
             } else {
               video.addEventListener("canplaythrough", onReady);
-              // Trigger load again just in case
               video.load();
             }
           });
@@ -155,8 +173,30 @@ export function useWakeLock() {
         // Play the video
         await video.play();
 
+        // Verify it's actually playing
+        console.log("[WakeLock] After play() - paused:", video.paused, "currentTime:", video.currentTime);
+
+        if (video.paused) {
+          console.error("[WakeLock] ❌ Video still paused after play()!");
+          return false;
+        }
+
         isActiveRef.current = true;
         usingFallbackRef.current = true;
+
+        // Set up keep-alive interval to ensure video keeps playing
+        if (keepAliveIntervalRef.current) {
+          clearInterval(keepAliveIntervalRef.current);
+        }
+        keepAliveIntervalRef.current = window.setInterval(() => {
+          if (noSleepVideoRef.current && isActiveRef.current && usingFallbackRef.current) {
+            if (noSleepVideoRef.current.paused) {
+              console.log("[WakeLock] Keep-alive: video was paused, restarting...");
+              noSleepVideoRef.current.play().catch(console.error);
+            }
+          }
+        }, 5000);
+
         console.log("[WakeLock] ✅ Activated (iOS video fallback)");
         return true;
       } catch (err: any) {
@@ -171,6 +211,12 @@ export function useWakeLock() {
 
   const releaseWakeLock = useCallback(async () => {
     isActiveRef.current = false;
+
+    // Clear keep-alive interval
+    if (keepAliveIntervalRef.current) {
+      clearInterval(keepAliveIntervalRef.current);
+      keepAliveIntervalRef.current = null;
+    }
 
     // Release native wake lock
     if (wakeLockRef.current) {
@@ -212,6 +258,9 @@ export function useWakeLock() {
       }
       if (noSleepVideoRef.current) {
         noSleepVideoRef.current.pause();
+      }
+      if (keepAliveIntervalRef.current) {
+        clearInterval(keepAliveIntervalRef.current);
       }
     };
   }, []);
