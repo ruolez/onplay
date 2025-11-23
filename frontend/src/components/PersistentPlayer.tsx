@@ -76,15 +76,15 @@ export default function PersistentPlayer() {
     threshold: 50,
     maxTime: 300,
     onSwipeLeft: () => {
-      if (hasNext) {
-        haptics.trackChange();
-        playNext();
-      }
-    },
-    onSwipeRight: () => {
       if (hasPrevious) {
         haptics.trackChange();
         playPrevious();
+      }
+    },
+    onSwipeRight: () => {
+      if (hasNext) {
+        haptics.trackChange();
+        playNext();
       }
     },
     onSwipeUp: () => {
@@ -102,15 +102,15 @@ export default function PersistentPlayer() {
       setIsExpanded(false);
     },
     onSwipeLeft: () => {
-      if (hasNext) {
-        haptics.trackChange();
-        playNext();
-      }
-    },
-    onSwipeRight: () => {
       if (hasPrevious) {
         haptics.trackChange();
         playPrevious();
+      }
+    },
+    onSwipeRight: () => {
+      if (hasNext) {
+        haptics.trackChange();
+        playNext();
       }
     },
   });
