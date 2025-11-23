@@ -82,11 +82,11 @@ const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
-  const { requestWakeLock, releaseWakeLock } = useWakeLock();
+  const { requestWakeLock, releaseWakeLock, isSupported: isWakeLockSupported, isActive: isWakeLockActive, error: wakeLockError } = useWakeLock();
   const { sortedMedia } = useGallery();
 
-  // Wake Lock toggle state (persisted to localStorage)
-  const [isWakeLockEnabled, setIsWakeLockEnabledState] = useState<boolean>(
+  // Wake Lock toggle state (user preference, persisted to localStorage)
+  const [wakeLockUserEnabled, setWakeLockUserEnabled] = useState<boolean>(
     () => {
       const saved = localStorage.getItem("player-wake-lock");
       return saved !== null ? saved === "true" : true; // Default: enabled
@@ -95,8 +95,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Persist wake lock preference
   useEffect(() => {
-    localStorage.setItem("player-wake-lock", String(isWakeLockEnabled));
-  }, [isWakeLockEnabled]);
+    localStorage.setItem("player-wake-lock", String(wakeLockUserEnabled));
+  }, [wakeLockUserEnabled]);
+
+  // Log wake lock errors
+  useEffect(() => {
+    if (wakeLockError) {
+      console.error("[PlayerContext] Wake lock error:", wakeLockError);
+    }
+  }, [wakeLockError]);
 
   // Track pending restore state (for seeking after track loads)
   const pendingRestoreRef = useRef<{
@@ -106,28 +113,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Wrapper to conditionally request wake lock
   const conditionalRequestWakeLock = useCallback(() => {
-    if (isWakeLockEnabled) {
+    if (wakeLockUserEnabled && isWakeLockSupported) {
       requestWakeLock();
     }
-  }, [isWakeLockEnabled, requestWakeLock]);
+  }, [wakeLockUserEnabled, isWakeLockSupported, requestWakeLock]);
 
   // Public setter that also releases wake lock when disabled
   const setWakeLockEnabled = useCallback(
-    (enabled: boolean) => {
-      console.log("[PlayerContext] Wake lock toggle:", enabled);
-      setIsWakeLockEnabledState(enabled);
+    async (enabled: boolean) => {
+      console.log("[PlayerContext] Wake lock toggle:", enabled, "supported:", isWakeLockSupported);
+      setWakeLockUserEnabled(enabled);
 
       if (!enabled) {
         // Immediately release wake lock when user disables
-        releaseWakeLock();
+        await releaseWakeLock();
+      } else if (isWakeLockSupported) {
+        // Request wake lock when user enables
+        const success = await requestWakeLock();
+        console.log("[PlayerContext] Wake lock request result:", success);
       } else {
-        // Always request wake lock when user enables
-        // The user gesture from the button click satisfies browser requirements
-        requestWakeLock();
+        console.warn("[PlayerContext] Wake lock not supported on this device/browser");
       }
     },
-    [releaseWakeLock, requestWakeLock],
+    [releaseWakeLock, requestWakeLock, isWakeLockSupported],
   );
+
+  // The actual wake lock state for UI (reflects real status, not just user preference)
+  const isWakeLockEnabled = isWakeLockSupported ? isWakeLockActive : false;
 
   // Extract state
   const { currentMedia, sessionId, playbackState, queue, currentIndex } =

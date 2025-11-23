@@ -1,165 +1,120 @@
-import { useEffect, useRef, useCallback } from "react";
-
-const isIOS = () => {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-};
+import { useState, useEffect, useRef, useCallback } from "react";
 
 export function useWakeLock() {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-  const isActiveRef = useRef(false); // User wants wake lock active
-  const retryTimeoutRef = useRef<number | null>(null);
+  const [isActive, setIsActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Track if user wants wake lock enabled (for re-acquisition after tab switch)
+  const userWantsWakeLockRef = useRef(false);
+
+  // Check if Wake Lock API is supported
+  const isSupported = typeof navigator !== "undefined" && "wakeLock" in navigator;
 
   // Log initial setup info
   useEffect(() => {
     console.log("[WakeLock] 🔧 Initializing wake lock hook");
     console.log("[WakeLock] Browser support:", {
-      hasWakeLock: "wakeLock" in navigator,
-      isIOS: isIOS(),
+      hasWakeLock: isSupported,
       userAgent: navigator.userAgent,
+      standalone: (navigator as any).standalone || window.matchMedia("(display-mode: standalone)").matches,
     });
-  }, []);
+  }, [isSupported]);
 
-  // Request with retry logic
-  const requestWakeLockWithRetry = useCallback(async () => {
-    const iosDevice = isIOS();
-    const hasNativeAPI = "wakeLock" in navigator;
-
+  const requestWakeLock = useCallback(async (): Promise<boolean> => {
     console.log("[WakeLock] 🔓 Requesting wake lock...");
-    console.log("[WakeLock] 📱 Device info:", {
-      isIOS: iosDevice,
-      hasNativeAPI: hasNativeAPI,
-      userAgent: navigator.userAgent,
-    });
+    setError(null);
+    userWantsWakeLockRef.current = true;
 
-    // Try Wake Lock API first (works on iOS 16.4+ Safari, Chrome, Edge)
-    if (hasNativeAPI) {
-      try {
-        // Release existing wake lock if any
-        if (wakeLockRef.current) {
-          await wakeLockRef.current.release();
-          wakeLockRef.current = null;
-        }
-
-        console.log("[WakeLock] 🔒 Attempting native Wake Lock API...");
-
-        // Request new wake lock
-        const wakeLock = await navigator.wakeLock.request("screen");
-        wakeLockRef.current = wakeLock;
-        isActiveRef.current = true;
-
-        console.log("[WakeLock] ✅ Native API activated");
-
-        // Listen for release event (browser can release at any time)
-        wakeLock.addEventListener("release", () => {
-          console.log(
-            "[WakeLock] 🔄 Browser released wake lock, re-acquiring...",
-          );
-          wakeLockRef.current = null;
-
-          // Re-request if user still wants it active
-          if (isActiveRef.current) {
-            // Small delay before re-requesting
-            setTimeout(() => {
-              if (isActiveRef.current) {
-                requestWakeLockWithRetry();
-              }
-            }, 500);
-          }
-        });
-
-        return true;
-      } catch (err: any) {
-        console.error(
-          `[WakeLock] ❌ Native API failed: ${err.name} - ${err.message}`,
-        );
-        console.error("[WakeLock] Error details:", err);
-        // Fall through to try fallback
-      }
-    } else {
-      console.warn(
-        "[WakeLock] ⚠️ Native Wake Lock API not available on this browser",
-      );
-    }
-
-    // iOS without native Wake Lock API
-    if (iosDevice) {
-      console.error(
-        "[WakeLock] ❌ Wake Lock not supported on this iOS version",
-      );
-      console.error(
-        "[WakeLock] ℹ️ Please update to iOS 16.4+ for screen wake lock support",
-      );
+    if (!isSupported) {
+      const msg = "Wake Lock API not supported. Requires iOS 16.4+ or Chrome/Edge.";
+      console.warn("[WakeLock] ⚠️", msg);
+      setError(msg);
+      setIsActive(false);
       return false;
     }
 
-    // Desktop browser without Wake Lock API
-    console.warn("[WakeLock] ⚠️ Wake Lock API not supported on this browser");
-    console.warn(
-      "[WakeLock] ℹ️ Try using Chrome, Edge, or Safari 16.4+ for wake lock support",
-    );
-    return false;
-  }, []);
+    try {
+      // Release existing wake lock if any
+      if (wakeLockRef.current) {
+        console.log("[WakeLock] 🔄 Releasing existing lock before new request");
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      }
 
-  const requestWakeLock = useCallback(async () => {
-    // Clear any pending retries
-    if (retryTimeoutRef.current !== null) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
+      console.log("[WakeLock] 🔒 Attempting to acquire wake lock...");
+
+      // Request new wake lock
+      const wakeLock = await navigator.wakeLock.request("screen");
+      wakeLockRef.current = wakeLock;
+      setIsActive(true);
+      setError(null);
+
+      console.log("[WakeLock] ✅ Wake lock acquired successfully!");
+
+      // Listen for release event (browser can release at any time)
+      wakeLock.addEventListener("release", () => {
+        console.log("[WakeLock] 🔄 Wake lock was released by browser");
+        wakeLockRef.current = null;
+        setIsActive(false);
+        // Note: userWantsWakeLockRef stays true so we can re-acquire on visibility change
+      });
+
+      return true;
+    } catch (err: any) {
+      const msg = `Failed to acquire wake lock: ${err.name} - ${err.message}`;
+      console.error("[WakeLock] ❌", msg);
+      setError(msg);
+      setIsActive(false);
+      return false;
     }
-
-    await requestWakeLockWithRetry();
-  }, [requestWakeLockWithRetry]);
+  }, [isSupported]);
 
   const releaseWakeLock = useCallback(async () => {
-    console.log("[WakeLock] 📴 Releasing wake lock");
-    isActiveRef.current = false;
+    console.log("[WakeLock] 📴 Releasing wake lock (user requested)");
+    userWantsWakeLockRef.current = false;
 
-    // Clear any pending retries
-    if (retryTimeoutRef.current !== null) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-
-    // Release native wake lock
     if (wakeLockRef.current) {
       try {
         await wakeLockRef.current.release();
         wakeLockRef.current = null;
-        console.log("[WakeLock] ✅ Native wake lock released");
+        setIsActive(false);
+        console.log("[WakeLock] ✅ Wake lock released");
       } catch (err) {
-        console.error("[WakeLock] ❌ Failed to release native wake lock:", err);
+        console.error("[WakeLock] ❌ Failed to release wake lock:", err);
       }
+    } else {
+      setIsActive(false);
     }
   }, []);
 
-  // Re-acquire wake lock when page becomes visible again
+  // Re-acquire wake lock when page becomes visible again (if user wanted it)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isActiveRef.current) {
-        console.log(
-          "[WakeLock] 👁️ Page visible again, re-requesting wake lock",
-        );
-        requestWakeLock();
+    const handleVisibilityChange = async () => {
+      console.log("[WakeLock] 👁️ Visibility changed:", document.visibilityState);
+      console.log("[WakeLock] User wants wake lock:", userWantsWakeLockRef.current);
+      console.log("[WakeLock] Current lock:", wakeLockRef.current ? "active" : "null");
+
+      if (
+        document.visibilityState === "visible" &&
+        userWantsWakeLockRef.current &&
+        wakeLockRef.current === null
+      ) {
+        console.log("[WakeLock] 👁️ Page visible + user wants lock + no active lock -> re-acquiring");
+        // Small delay to let browser settle
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await requestWakeLock();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [requestWakeLock]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (retryTimeoutRef.current !== null) {
-        clearTimeout(retryTimeoutRef.current);
-      }
       if (wakeLockRef.current) {
+        console.log("[WakeLock] 🧹 Cleaning up wake lock on unmount");
         wakeLockRef.current.release().catch(console.error);
       }
     };
@@ -168,6 +123,8 @@ export function useWakeLock() {
   return {
     requestWakeLock,
     releaseWakeLock,
-    isSupported: "wakeLock" in navigator || isIOS(),
+    isSupported,
+    isActive,
+    error,
   };
 }
