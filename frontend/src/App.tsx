@@ -127,33 +127,6 @@ function AppContent() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isDesktopSearchOpen]);
 
-  // Click-outside handler for mobile search
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        isMobileSearchOpen &&
-        mobileSearchRef.current &&
-        !mobileSearchRef.current.contains(e.target as Node)
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        setIsMobileSearchOpen(false);
-      }
-    };
-
-    if (isMobileSearchOpen) {
-      // Listen to both mousedown and click in capture phase
-      document.addEventListener("mousedown", handleClickOutside, true);
-      document.addEventListener("click", handleClickOutside, true);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
-      document.removeEventListener("click", handleClickOutside, true);
-    };
-  }, [isMobileSearchOpen]);
-
   // Escape key handler for mobile search
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -176,7 +149,9 @@ function AppContent() {
   const desktopBottomPadding = currentMedia ? "md:pb-[100px]" : "md:pb-4";
 
   return (
-    <div className={`min-h-screen theme-bg ${mobileBottomPadding} ${desktopBottomPadding}`}>
+    <div
+      className={`min-h-screen theme-bg ${mobileBottomPadding} ${desktopBottomPadding}`}
+    >
       {/* Navigation */}
       <nav
         className="theme-nav sticky top-0 z-50"
@@ -184,6 +159,7 @@ function AppContent() {
       >
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Logo - always visible */}
             <Link
               to="/"
               className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0"
@@ -218,10 +194,44 @@ function AppContent() {
                   opacity="0.4"
                 />
               </svg>
-              <span className="logo-text text-sm sm:text-lg lg:text-xl theme-text-primary">
+              {/* Hide text on mobile when search is open */}
+              <span
+                className={`logo-text text-sm sm:text-lg lg:text-xl theme-text-primary ${isMobileSearchOpen && location.pathname === "/" ? "hidden" : "inline"} sm:inline`}
+              >
                 On<span className="middle-dot"> · </span>Play
               </span>
             </Link>
+
+            {/* Mobile Inline Search (Gallery only) */}
+            {isMobileSearchOpen && location.pathname === "/" && (
+              <div className="md:hidden flex-1 mx-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 theme-text-muted pointer-events-none" />
+                  <input
+                    ref={mobileSearchRef}
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="w-full pl-9 pr-9 py-2 rounded-lg text-sm theme-input focus:outline-none"
+                    style={{
+                      background: "var(--input-bg)",
+                      color: "var(--text-primary)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => handleSearchChange("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5 theme-text-muted" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
@@ -296,19 +306,25 @@ function AppContent() {
             </div>
 
             {/* Mobile Actions (right side) */}
-            <div className="md:hidden flex items-center space-x-2">
-              {/* Visual separator */}
-              <div className="w-px h-6 bg-white/10 mr-1" />
+            <div className="md:hidden flex items-center space-x-2 flex-shrink-0">
+              {/* Visual separator - hide when search is open */}
+              {!isMobileSearchOpen && (
+                <div className="w-px h-6 bg-white/10 mr-1" />
+              )}
 
-              {/* Mobile Search Icon (Gallery only) */}
+              {/* Mobile Search Toggle (Gallery only) */}
               {location.pathname === "/" && (
                 <button
-                  onClick={() => setIsMobileSearchOpen(true)}
+                  onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                   className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label="Search"
-                  title="Search"
+                  aria-label={isMobileSearchOpen ? "Close search" : "Search"}
+                  title={isMobileSearchOpen ? "Close search" : "Search"}
                 >
-                  <Search className="w-5 h-5 theme-text-primary" />
+                  {isMobileSearchOpen ? (
+                    <X className="w-5 h-5 theme-text-primary" />
+                  ) : (
+                    <Search className="w-5 h-5 theme-text-primary" />
+                  )}
                 </button>
               )}
 
@@ -358,49 +374,6 @@ function AppContent() {
               </Link>
               <div className="pt-2 border-t border-white/10">
                 <ThemeSelector />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile Search Modal */}
-        {isMobileSearchOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start pt-20">
-            <div className="container mx-auto px-4">
-              <div className="theme-card rounded-lg p-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 theme-text-muted pointer-events-none" />
-                  <input
-                    ref={mobileSearchRef}
-                    type="text"
-                    placeholder="Search media..."
-                    value={searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full pl-11 pr-11 py-3 rounded-lg text-base theme-input focus:outline-none focus:ring-2 focus:ring-offset-2"
-                    style={{
-                      background: "var(--input-bg)",
-                      color: "var(--text-primary)",
-                      borderColor: "var(--card-border)",
-                    }}
-                  />
-                  {searchQuery ? (
-                    <button
-                      onClick={() => handleSearchChange("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/10 rounded transition-colors"
-                      aria-label="Clear search"
-                    >
-                      <X className="w-5 h-5 theme-text-muted" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setIsMobileSearchOpen(false)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/10 rounded transition-colors"
-                      aria-label="Close search"
-                    >
-                      <X className="w-5 h-5 theme-text-muted" />
-                    </button>
-                  )}
-                </div>
               </div>
             </div>
           </div>
