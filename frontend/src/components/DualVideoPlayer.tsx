@@ -117,11 +117,12 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           });
 
           // Unmute after first play event (ensures autoplay policy satisfied)
+          // Preserve current volume instead of resetting to 1
           player.one("playing", () => {
             setTimeout(() => {
               if (player.muted()) {
                 player.muted(false);
-                player.volume(1);
+                // Don't reset volume - preserve saved volume from state
               }
             }, 100);
           });
@@ -129,41 +130,55 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
 
         // Quality monitoring
         player.ready(() => {
-          console.log("[DualPlayer] 🎬 Player ready, setting up quality monitoring");
+          console.log(
+            "[DualPlayer] 🎬 Player ready, setting up quality monitoring",
+          );
 
           try {
             const tech = player.tech({ IWillNotUseThisInPlugins: true });
             console.log("[DualPlayer] 🔧 Tech type:", tech?.name || "unknown");
-            console.log("[DualPlayer] 🔧 Tech constructor:", tech?.constructor?.name || "unknown");
+            console.log(
+              "[DualPlayer] 🔧 Tech constructor:",
+              tech?.constructor?.name || "unknown",
+            );
 
             if (tech) {
               const vhs = (tech as any).vhs;
               console.log("[DualPlayer] 🔧 VHS object exists:", !!vhs);
-              console.log("[DualPlayer] 🔧 Tech properties:", Object.keys(tech).slice(0, 10));
+              console.log(
+                "[DualPlayer] 🔧 Tech properties:",
+                Object.keys(tech).slice(0, 10),
+              );
 
               if (vhs) {
-                console.log("[DualPlayer] 📺 VHS available, monitoring quality");
+                console.log(
+                  "[DualPlayer] 📺 VHS available, monitoring quality",
+                );
 
                 // Log available variants after playlist loads
                 setTimeout(() => {
                   try {
                     if (vhs.playlists?.master?.playlists) {
-                      console.log("[DualPlayer] 📋 Available quality variants:",
+                      console.log(
+                        "[DualPlayer] 📋 Available quality variants:",
                         vhs.playlists.master.playlists.map((p: any) => ({
                           bandwidth: p.attributes?.BANDWIDTH,
-                          uri: p.uri?.split("/").pop()
-                        }))
+                          uri: p.uri?.split("/").pop(),
+                        })),
                       );
                     }
 
                     if (vhs.playlists?.media_) {
                       console.log("[DualPlayer] 🎵 Starting quality:", {
                         bandwidth: vhs.playlists.media_.attributes?.BANDWIDTH,
-                        uri: vhs.playlists.media_.uri?.split("/").pop()
+                        uri: vhs.playlists.media_.uri?.split("/").pop(),
                       });
                     }
                   } catch (err) {
-                    console.error("[DualPlayer] Error reading initial playlists:", err);
+                    console.error(
+                      "[DualPlayer] Error reading initial playlists:",
+                      err,
+                    );
                   }
                 }, 1500);
 
@@ -180,8 +195,13 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
                           bandwidth: current.attributes?.BANDWIDTH,
                           uri: uri.split("/").pop(),
                           systemBandwidth: Math.round(vhs.systemBandwidth || 0),
-                          bufferLevel: player.buffered() && player.buffered().length > 0 ?
-                            (player.buffered().end(0) - (player.currentTime() ?? 0)).toFixed(1) + "s" : "0s"
+                          bufferLevel:
+                            player.buffered() && player.buffered().length > 0
+                              ? (
+                                  player.buffered().end(0) -
+                                  (player.currentTime() ?? 0)
+                                ).toFixed(1) + "s"
+                              : "0s",
                         });
                       }
                     }
@@ -192,7 +212,9 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
 
                 setInterval(checkQuality, 2000);
               } else {
-                console.log("[DualPlayer] ⚠️ VHS not available - likely using Safari native HLS");
+                console.log(
+                  "[DualPlayer] ⚠️ VHS not available - likely using Safari native HLS",
+                );
                 console.log("[DualPlayer] 🍎 Safari native playback detected");
 
                 // Try to access Safari's native quality levels
@@ -209,18 +231,23 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
                     console.log("[DualPlayer] 📊 Native tracks:", {
                       textTracks: textTracks?.length || 0,
                       audioTracks: audioTracks?.length || 0,
-                      videoTracks: videoTracks?.length || 0
+                      videoTracks: videoTracks?.length || 0,
                     });
 
                     // Safari doesn't expose quality levels via standard API
                     // It handles ABR internally without JavaScript control
-                    console.log("[DualPlayer] ℹ️ Safari manages quality automatically (no manual control available)");
+                    console.log(
+                      "[DualPlayer] ℹ️ Safari manages quality automatically (no manual control available)",
+                    );
                   }, 2000);
                 }
               }
             }
           } catch (error) {
-            console.error("[DualPlayer] Error setting up quality monitoring:", error);
+            console.error(
+              "[DualPlayer] Error setting up quality monitoring:",
+              error,
+            );
           }
         });
 
@@ -261,7 +288,10 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
         // Auto-play after source change (maintains fullscreen)
         player.ready(() => {
           player.play()?.catch((err) => {
-            console.error("[DualPlayer] Failed to play after source change:", err);
+            console.error(
+              "[DualPlayer] Failed to play after source change:",
+              err,
+            );
           });
         });
       }
@@ -430,12 +460,20 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
         // CRITICAL: Check if we're currently in fullscreen before swap
         // Check both browser fullscreen API AND Video.js fullscreen state
         const wasInBrowserFullscreen = !!document.fullscreenElement;
-        const wasInVideoJsFullscreen = playerRef.current?.isFullscreen() || false;
+        const wasInVideoJsFullscreen =
+          playerRef.current?.isFullscreen() || false;
 
-        console.log("[DualPlayer] Browser fullscreen before swap:", wasInBrowserFullscreen);
-        console.log("[DualPlayer] Video.js fullscreen before swap:", wasInVideoJsFullscreen);
+        console.log(
+          "[DualPlayer] Browser fullscreen before swap:",
+          wasInBrowserFullscreen,
+        );
+        console.log(
+          "[DualPlayer] Video.js fullscreen before swap:",
+          wasInVideoJsFullscreen,
+        );
 
-        const wasInFullscreen = wasInBrowserFullscreen || wasInVideoJsFullscreen;
+        const wasInFullscreen =
+          wasInBrowserFullscreen || wasInVideoJsFullscreen;
 
         // Pause and clean up main player
         if (playerRef.current && !playerRef.current.isDisposed()) {

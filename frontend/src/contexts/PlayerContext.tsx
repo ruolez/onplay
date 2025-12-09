@@ -82,7 +82,11 @@ const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
-  const { requestWakeLock, releaseWakeLock, isSupported: isWakeLockSupported } = useWakeLock();
+  const {
+    requestWakeLock,
+    releaseWakeLock,
+    isSupported: isWakeLockSupported,
+  } = useWakeLock();
   const { sortedMedia } = useGallery();
 
   // Wake Lock toggle state (user preference, persisted to localStorage)
@@ -98,12 +102,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("player-wake-lock", String(wakeLockUserEnabled));
   }, [wakeLockUserEnabled]);
 
-
   // Track pending restore state (for seeking after track loads)
   const pendingRestoreRef = useRef<{
     currentTime: number;
+    volume: number;
     wasPlaying: boolean;
   } | null>(null);
+
+  // Track current volume for use in callbacks (avoids stale closures)
+  const volumeRef = useRef(1);
 
   // Wrapper to conditionally request wake lock
   const conditionalRequestWakeLock = useCallback(() => {
@@ -115,7 +122,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Public setter that also releases wake lock when disabled
   const setWakeLockEnabled = useCallback(
     async (enabled: boolean) => {
-      console.log("[PlayerContext] Wake lock toggle:", enabled, "supported:", isWakeLockSupported);
+      console.log(
+        "[PlayerContext] Wake lock toggle:",
+        enabled,
+        "supported:",
+        isWakeLockSupported,
+      );
       setWakeLockUserEnabled(enabled);
 
       if (!enabled) {
@@ -126,7 +138,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const success = await requestWakeLock();
         console.log("[PlayerContext] Wake lock request result:", success);
       } else {
-        console.warn("[PlayerContext] Wake lock not supported on this device/browser");
+        console.warn(
+          "[PlayerContext] Wake lock not supported on this device/browser",
+        );
       }
     },
     [releaseWakeLock, requestWakeLock, isWakeLockSupported],
@@ -152,6 +166,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Machine state for debugging
   const machineState = state.value as string;
   const errorMessage = state.context.errorMessage;
+
+  // Sync volumeRef with state (for use in callbacks to avoid stale closures)
+  useEffect(() => {
+    volumeRef.current = volume;
+  }, [volume]);
 
   // Save player state to localStorage
   const savePlayerState = useCallback(() => {
@@ -202,6 +221,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // Store pending restore info for seeking after track loads
       pendingRestoreRef.current = {
         currentTime: savedState.currentTime,
+        volume: savedState.volume,
         wasPlaying: savedState.wasPlaying,
       };
 
@@ -219,21 +239,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, []); // Only on mount
 
-  // Seek to saved position after track loads (for restore)
+  // Seek to saved position and restore volume after track loads (for restore)
   useEffect(() => {
     if (machineState !== "ready" || !pendingRestoreRef.current) return;
 
-    const { currentTime: savedTime, wasPlaying } = pendingRestoreRef.current;
+    const {
+      currentTime: savedTime,
+      volume: savedVolume,
+      wasPlaying,
+    } = pendingRestoreRef.current;
     pendingRestoreRef.current = null;
 
     console.log(
-      "[PlayerContext] 🎯 Seeking to restored position:",
+      "[PlayerContext] 🎯 Restoring position:",
       Math.round(savedTime) + "s",
+      "volume:",
+      Math.round(savedVolume * 100) + "%",
     );
 
     // Small delay to ensure player is ready
     setTimeout(() => {
       playerRef.current?.seek(savedTime);
+      playerRef.current?.setVolume(savedVolume);
       send({ type: "SEEK", time: savedTime });
 
       // Don't auto-resume - let user manually play
@@ -349,7 +376,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const player = playerRef.current?.getPlayer();
       if (player) {
         player.muted(false);
-        player.volume(1);
+        player.volume(volumeRef.current);
       }
       send({ type: "PLAY" });
       playerRef.current?.play();
@@ -435,9 +462,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (player) {
       if (player.paused()) {
         conditionalRequestWakeLock();
-        // Ensure unmuted when user manually plays
+        // Ensure unmuted when user manually plays, preserve saved volume
         player.muted(false);
-        player.volume(1);
+        player.volume(volumeRef.current);
         player.play();
         send({ type: "PLAY" });
       } else {
@@ -475,11 +502,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       playerRef.current.swapToPreloaded();
     }
 
-    // Ensure next track is unmuted
+    // Ensure next track is unmuted, preserve saved volume
     const player = playerRef.current?.getPlayer();
     if (player) {
       player.muted(false);
-      player.volume(1);
+      player.volume(volumeRef.current);
     }
 
     send({ type: "NEXT" });
@@ -488,11 +515,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playPrevious = useCallback(() => {
     conditionalRequestWakeLock();
 
-    // Ensure previous track is unmuted
+    // Ensure previous track is unmuted, preserve saved volume
     const player = playerRef.current?.getPlayer();
     if (player) {
       player.muted(false);
-      player.volume(1);
+      player.volume(volumeRef.current);
     }
 
     send({ type: "PREVIOUS" });
@@ -507,11 +534,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const track = queue[index];
       conditionalRequestWakeLock();
 
-      // Ensure jumped track is unmuted
+      // Ensure jumped track is unmuted, preserve saved volume
       const player = playerRef.current?.getPlayer();
       if (player) {
         player.muted(false);
-        player.volume(1);
+        player.volume(volumeRef.current);
       }
 
       send({ type: "LOAD_TRACK", mediaId: track.id, queueItems: queue });
