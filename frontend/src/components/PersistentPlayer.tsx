@@ -55,6 +55,7 @@ export default function PersistentPlayer() {
     currentIndex,
     jumpToTrack,
     isWakeLockEnabled,
+    isWakeLockActive,
     setWakeLockEnabled,
     closePlayer,
   } = usePlayer();
@@ -158,12 +159,12 @@ export default function PersistentPlayer() {
   // Prevent body scroll when expanded
   useEffect(() => {
     if (isExpanded) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [isExpanded]);
 
@@ -360,7 +361,8 @@ export default function PersistentPlayer() {
           right: 0,
           bottom: 0,
           height: "100dvh",
-          background: "linear-gradient(180deg, var(--bg-primary) 0%, rgba(0,0,0,0.98) 100%)",
+          background:
+            "linear-gradient(180deg, var(--bg-primary) 0%, rgba(0,0,0,0.98) 100%)",
         }}
         {...expandedPlayerGestures.handlers}
       >
@@ -415,7 +417,10 @@ export default function PersistentPlayer() {
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                }}
               >
                 {isAudio ? (
                   <Music className="w-20 h-20 text-white/80" />
@@ -495,14 +500,19 @@ export default function PersistentPlayer() {
                 background: "var(--btn-primary-bg)",
                 color: "var(--btn-primary-text)",
               }}
-              aria-label={isBuffering ? "Buffering" : isPlaying ? "Pause" : "Play"}
+              aria-label={
+                isBuffering ? "Buffering" : isPlaying ? "Pause" : "Play"
+              }
             >
               {isBuffering ? (
                 <Loader2 className="w-10 h-10 animate-spin" />
               ) : isPlaying ? (
                 <Pause className="w-10 h-10" fill="currentColor" />
               ) : (
-                <Play className="w-10 h-10 translate-x-[2px]" fill="currentColor" />
+                <Play
+                  className="w-10 h-10 translate-x-[2px]"
+                  fill="currentColor"
+                />
               )}
             </button>
 
@@ -527,11 +537,26 @@ export default function PersistentPlayer() {
                 setWakeLockEnabled(!isWakeLockEnabled);
               }}
               className={`p-3 rounded-full transition-colors ${
-                isWakeLockEnabled
+                isWakeLockEnabled && isWakeLockActive
                   ? "theme-text-primary bg-white/10"
-                  : "theme-text-muted"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "text-orange-400 bg-orange-400/10"
+                    : "theme-text-muted"
               }`}
-              aria-label={isWakeLockEnabled ? "Screen wake enabled" : "Screen wake disabled"}
+              aria-label={
+                isWakeLockEnabled && isWakeLockActive
+                  ? "Screen wake active"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "Screen wake failed"
+                    : "Screen wake disabled"
+              }
+              title={
+                isWakeLockEnabled && isWakeLockActive
+                  ? "Screen staying awake"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "Wake lock failed - tap to retry"
+                    : "Allow screen to sleep"
+              }
             >
               {isWakeLockEnabled ? (
                 <Monitor className="w-5 h-5" />
@@ -635,7 +660,10 @@ export default function PersistentPlayer() {
             ) : (
               <div
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded flex-shrink-0 flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                }}
               >
                 {isAudio ? (
                   <Music className="w-6 h-6 text-white/80" />
@@ -661,14 +689,18 @@ export default function PersistentPlayer() {
                 setWakeLockEnabled(!isWakeLockEnabled);
               }}
               className={`p-3 rounded-full transition-colors flex-shrink-0 ${
-                isWakeLockEnabled
+                isWakeLockEnabled && isWakeLockActive
                   ? "theme-text-primary"
-                  : "theme-text-muted hover:theme-text-primary"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "text-orange-400"
+                    : "theme-text-muted hover:theme-text-primary"
               }`}
               style={
-                isWakeLockEnabled
+                isWakeLockEnabled && isWakeLockActive
                   ? { background: "var(--player-bar-button-hover)" }
-                  : {}
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? { background: "rgba(251, 146, 60, 0.1)" }
+                    : {}
               }
               onMouseEnter={(e) =>
                 !isWakeLockEnabled &&
@@ -679,12 +711,18 @@ export default function PersistentPlayer() {
                 !isWakeLockEnabled && (e.currentTarget.style.background = "")
               }
               title={
-                isWakeLockEnabled ? "Keep screen awake" : "Allow screen sleep"
+                isWakeLockEnabled && isWakeLockActive
+                  ? "Screen staying awake"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "Wake lock failed - tap to retry"
+                    : "Allow screen to sleep"
               }
               aria-label={
-                isWakeLockEnabled
-                  ? "Keep screen awake (enabled)"
-                  : "Allow screen sleep (disabled)"
+                isWakeLockEnabled && isWakeLockActive
+                  ? "Screen wake active"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "Screen wake failed"
+                    : "Screen wake disabled"
               }
             >
               {isWakeLockEnabled ? (
@@ -732,8 +770,16 @@ export default function PersistentPlayer() {
                     background: "var(--btn-primary-bg)",
                     color: "var(--btn-primary-text)",
                   }}
-                  title={isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"}
-                  aria-label={isBuffering ? "Buffering media" : isPlaying ? "Pause playback" : "Play media"}
+                  title={
+                    isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"
+                  }
+                  aria-label={
+                    isBuffering
+                      ? "Buffering media"
+                      : isPlaying
+                        ? "Pause playback"
+                        : "Play media"
+                  }
                 >
                   {isBuffering ? (
                     <Loader2 className="w-6 h-6 animate-spin" />
@@ -807,8 +853,16 @@ export default function PersistentPlayer() {
                   background: "var(--btn-primary-bg)",
                   color: "var(--btn-primary-text)",
                 }}
-                title={isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"}
-                aria-label={isBuffering ? "Buffering media" : isPlaying ? "Pause playback" : "Play media"}
+                title={
+                  isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"
+                }
+                aria-label={
+                  isBuffering
+                    ? "Buffering media"
+                    : isPlaying
+                      ? "Pause playback"
+                      : "Play media"
+                }
               >
                 {isBuffering ? (
                   <Loader2 className="w-6 h-6 animate-spin" />

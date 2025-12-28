@@ -38,6 +38,7 @@ interface PlayerContextType {
 
   // Wake Lock
   isWakeLockEnabled: boolean;
+  isWakeLockActive: boolean;
   setWakeLockEnabled: (enabled: boolean) => void;
 
   // Actions
@@ -82,20 +83,27 @@ const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
-  const {
-    requestWakeLock,
-    releaseWakeLock,
-    isSupported: isWakeLockSupported,
-  } = useWakeLock();
-  const { sortedMedia } = useGallery();
-
   // Wake Lock toggle state (user preference, persisted to localStorage)
+  // Note: This needs to be declared BEFORE useWakeLock so we can pass it
   const [wakeLockUserEnabled, setWakeLockUserEnabled] = useState<boolean>(
     () => {
       const saved = localStorage.getItem("player-wake-lock");
       return saved !== null ? saved === "true" : true; // Default: enabled
     },
   );
+
+  const {
+    requestWakeLock,
+    releaseWakeLock,
+    isSupported: isWakeLockSupported,
+    isActive: isWakeLockActive,
+  } = useWakeLock({
+    userWantsWakeLock: wakeLockUserEnabled,
+    onFailure: (reason) => {
+      console.warn("[PlayerContext] Wake lock failed:", reason);
+    },
+  });
+  const { sortedMedia } = useGallery();
 
   // Persist wake lock preference
   useEffect(() => {
@@ -316,6 +324,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const timer = setTimeout(() => {
         const player = playerRef.current?.getPlayer();
         if (player) {
+          // Ensure wake lock is active for auto-advance
+          conditionalRequestWakeLock();
+
           // Note: Unmuting is handled by DualVideoPlayer's "playing" event listener
           // to comply with Chrome's autoplay policy (must wait for playback to start)
 
@@ -342,7 +353,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     prevStateRef.current = currentState;
-  }, [machineState, send]);
+  }, [machineState, send, conditionalRequestWakeLock]);
 
   // Handle preload completion
   const handlePreloadComplete = useCallback(
@@ -373,6 +384,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Media Session API integration
   useMediaSession(currentMedia, hasNext, hasPrevious, {
     onPlay: () => {
+      conditionalRequestWakeLock(); // Ensure wake lock activates on lock screen play
       const player = playerRef.current?.getPlayer();
       if (player) {
         player.muted(false);
@@ -614,6 +626,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         machineState,
         errorMessage,
         isWakeLockEnabled,
+        isWakeLockActive,
         setWakeLockEnabled,
         openPlayer,
         closePlayer,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 // Detect iOS devices (iPhone, iPad, iPod)
 const isIOS = () => {
@@ -8,13 +8,24 @@ const isIOS = () => {
   );
 };
 
-export function useWakeLock() {
+interface UseWakeLockOptions {
+  userWantsWakeLock: boolean;
+  onFailure?: (reason: string) => void;
+}
+
+const MAX_RETRIES = 5;
+
+export function useWakeLock(options?: UseWakeLockOptions) {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const isActiveRef = useRef(false);
   const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
   const usingFallbackRef = useRef(false);
   const videoReadyRef = useRef(false);
   const keepAliveIntervalRef = useRef<number | null>(null);
+  const retryCountRef = useRef(0);
+
+  // Expose actual wake lock state for UI feedback
+  const [isActive, setIsActive] = useState(false);
 
   // Create fallback video element (silent video loop for iOS Safari)
   useEffect(() => {
@@ -50,7 +61,10 @@ export function useWakeLock() {
       });
 
       video.addEventListener("loadeddata", () => {
-        console.log("[WakeLock] Video loadeddata, readyState:", video.readyState);
+        console.log(
+          "[WakeLock] Video loadeddata, readyState:",
+          video.readyState,
+        );
       });
 
       video.addEventListener("error", (e) => {
@@ -94,7 +108,12 @@ export function useWakeLock() {
   }, []);
 
   const requestWakeLock = useCallback(async () => {
-    console.log("[WakeLock] Requesting wake lock, isIOS:", isIOS(), "hasNativeAPI:", "wakeLock" in navigator);
+    console.log(
+      "[WakeLock] Requesting wake lock, isIOS:",
+      isIOS(),
+      "hasNativeAPI:",
+      "wakeLock" in navigator,
+    );
 
     // Try native Wake Lock API FIRST (works on iOS 16.4+ and all modern browsers)
     if ("wakeLock" in navigator) {
@@ -110,6 +129,8 @@ export function useWakeLock() {
         wakeLockRef.current = wakeLock;
         isActiveRef.current = true;
         usingFallbackRef.current = false;
+        setIsActive(true);
+        retryCountRef.current = 0; // Reset retry counter on success
 
         console.log("[WakeLock] ✅ Activated (native API)");
 
@@ -140,7 +161,14 @@ export function useWakeLock() {
         // Ensure muted is set (critical for iOS autoplay)
         video.muted = true;
 
-        console.log("[WakeLock] Video state - readyState:", video.readyState, "paused:", video.paused, "videoReady:", videoReadyRef.current);
+        console.log(
+          "[WakeLock] Video state - readyState:",
+          video.readyState,
+          "paused:",
+          video.paused,
+          "videoReady:",
+          videoReadyRef.current,
+        );
 
         // If video isn't ready, wait for it
         if (video.readyState < 3) {
@@ -174,7 +202,12 @@ export function useWakeLock() {
         await video.play();
 
         // Verify it's actually playing
-        console.log("[WakeLock] After play() - paused:", video.paused, "currentTime:", video.currentTime);
+        console.log(
+          "[WakeLock] After play() - paused:",
+          video.paused,
+          "currentTime:",
+          video.currentTime,
+        );
 
         if (video.paused) {
           console.error("[WakeLock] ❌ Video still paused after play()!");
@@ -183,16 +216,41 @@ export function useWakeLock() {
 
         isActiveRef.current = true;
         usingFallbackRef.current = true;
+        setIsActive(true);
+        retryCountRef.current = 0; // Reset retry counter on success
 
         // Set up keep-alive interval to ensure video keeps playing
         if (keepAliveIntervalRef.current) {
           clearInterval(keepAliveIntervalRef.current);
         }
         keepAliveIntervalRef.current = window.setInterval(() => {
-          if (noSleepVideoRef.current && isActiveRef.current && usingFallbackRef.current) {
+          if (
+            noSleepVideoRef.current &&
+            isActiveRef.current &&
+            usingFallbackRef.current
+          ) {
             if (noSleepVideoRef.current.paused) {
-              console.log("[WakeLock] Keep-alive: video was paused, restarting...");
+              retryCountRef.current++;
+              console.log(
+                `[WakeLock] Keep-alive retry ${retryCountRef.current}/${MAX_RETRIES}`,
+              );
+
+              if (retryCountRef.current > MAX_RETRIES) {
+                console.error("[WakeLock] Max retries exceeded, giving up");
+                clearInterval(keepAliveIntervalRef.current!);
+                keepAliveIntervalRef.current = null;
+                isActiveRef.current = false;
+                setIsActive(false);
+                options?.onFailure?.(
+                  "Screen wake lock failed after multiple retries",
+                );
+                return;
+              }
+
               noSleepVideoRef.current.play().catch(console.error);
+            } else {
+              // Video is playing - reset retry counter
+              retryCountRef.current = 0;
             }
           }
         }, 5000);
@@ -200,7 +258,12 @@ export function useWakeLock() {
         console.log("[WakeLock] ✅ Activated (iOS video fallback)");
         return true;
       } catch (err: any) {
-        console.error("[WakeLock] ❌ Video fallback failed:", err.name, err.message);
+        console.error(
+          "[WakeLock] ❌ Video fallback failed:",
+          err.name,
+          err.message,
+        );
+        setIsActive(false);
         return false;
       }
     }
@@ -211,6 +274,8 @@ export function useWakeLock() {
 
   const releaseWakeLock = useCallback(async () => {
     isActiveRef.current = false;
+    setIsActive(false);
+    retryCountRef.current = 0; // Reset retry counter
 
     // Clear keep-alive interval
     if (keepAliveIntervalRef.current) {
@@ -240,15 +305,21 @@ export function useWakeLock() {
   // Re-acquire wake lock when page becomes visible again
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isActiveRef.current) {
-        console.log("[WakeLock] Page visible, re-requesting");
+      // Use user preference to determine if we should re-acquire
+      // This fixes the issue where browser releases lock while tab is hidden
+      if (
+        document.visibilityState === "visible" &&
+        options?.userWantsWakeLock
+      ) {
+        console.log("[WakeLock] Page visible, user wants lock, re-requesting");
         requestWakeLock();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [requestWakeLock]);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [requestWakeLock, options?.userWantsWakeLock]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -269,5 +340,6 @@ export function useWakeLock() {
     requestWakeLock,
     releaseWakeLock,
     isSupported: "wakeLock" in navigator || isIOS(),
+    isActive,
   };
 }
