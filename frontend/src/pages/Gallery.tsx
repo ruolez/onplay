@@ -573,7 +573,7 @@ export default function Gallery() {
                         <img
                           src={`${item.thumbnail_path}?t=${loadTime}`}
                           alt={item.filename}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                           loading="lazy"
                         />
                       ) : (
