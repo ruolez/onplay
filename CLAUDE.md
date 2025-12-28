@@ -230,22 +230,31 @@ onplay/
 
 ### HLS Memory Management
 
-**Critical**: HLS.js default behavior keeps infinite back buffer, causing memory leaks and browser crashes in production.
+VHS (Video.js HTTP Streaming) handles back buffer management automatically with a hardcoded 30-second limit (`BACK_BUFFER_LENGTH: 30`). This prevents memory leaks without configuration.
 
-- **Problem**: Default `backBufferLength: Infinity` keeps ALL played segments in memory
-- **Symptoms**:
-  - Memory grows to 1.5GB+ after 15-20 minutes of playback
-  - Browser crashes with "Oops could not load page" error
-  - Page auto-refreshes unexpectedly in production
-- **Solution**: Set explicit back buffer limit in Video.js configuration: `backBufferLength: 30`
-- **Recommended Values**:
-  - **30 seconds**: Standard for VOD (allows backward seeking, stable memory)
-  - **10 seconds**: Live streams without DVR (minimal memory footprint)
-  - **60 seconds**: Better seeking UX (slightly higher memory usage)
+- **Built-in Protection**: VHS automatically removes segments older than 30 seconds
 - **Expected Results**:
   - Memory stays stable at ~200-300MB regardless of playback duration
   - No browser crashes or auto-refreshes
   - Smooth playback for hours
+
+### VHS Adaptive Bitrate Configuration
+
+Valid VHS options for ABR (as of v3.17.2):
+
+```typescript
+vhs: {
+  overrideNative: true,              // Use VHS instead of Safari native HLS
+  bufferBasedABR: true,              // Enable buffer-aware quality switching
+  useBandwidthFromLocalStorage: true, // Persist bandwidth estimates between sessions
+  enableLowInitialPlaylist: true,     // Start with lowest quality for faster startup
+  useNetworkInformationApi: true,     // Use browser Network Information API
+  limitRenditionByPlayerDimensions: true, // Don't select quality higher than player size
+  useDevicePixelRatio: true,          // Consider retina displays for quality selection
+}
+```
+
+**Note**: Do NOT set `bandwidth` option if using `enableLowInitialPlaylist` - they conflict.
 
 ### Progressive Web App (PWA)
 
@@ -620,32 +629,33 @@ VITE_API_URL=http://localhost:8080/api
 8. **GalleryContext Router**: GalleryContext cannot use `useSearchParams` (mounted outside Router)
 
 **Player:**
-9. **HLS Memory**: Set `backBufferLength: 30` to prevent memory leaks (see HLS Memory Management)
-10. **Wake Lock**: Requires iOS 16.4+ or Chrome/Edge - older browsers show error message (see Screen Wake Lock)
-11. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
-12. **Autoplay Requirements**: Start muted, unmute after play event
-13. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)
-14. **Persistent Player Data**: Fetch via `mediaApi.getMediaById()`, not Gallery list data
-15. **Event Listeners**: Separate listener attachment from player initialization to avoid stale closures
-16. **Auto-Advance**: Add PLAYBACK_ENDED handler to paused state (video.js pauses before ending)
+9. **HLS Memory**: VHS handles automatically with 30s back buffer (see HLS Memory Management)
+10. **VHS ABR Options**: Use `bufferBasedABR` not `experimentalBufferBasedABR`; don't set `bandwidth` with `enableLowInitialPlaylist`
+11. **Wake Lock**: Requires iOS 16.4+ or Chrome/Edge - older browsers show error message (see Screen Wake Lock)
+12. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
+13. **Autoplay Requirements**: Start muted, unmute after play event
+14. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)
+15. **Persistent Player Data**: Fetch via `mediaApi.getMediaById()`, not Gallery list data
+16. **Event Listeners**: Separate listener attachment from player initialization to avoid stale closures
+17. **Auto-Advance**: Add PLAYBACK_ENDED handler to paused state (video.js pauses before ending)
 
 **Queue Management:**
-17. **Live Updates**: Queue automatically rebuilds when filters/search/tags/sort change (via GalleryContext subscription)
-18. **State Machine**: Use XState `send()` for queue operations, don't manipulate queue directly
-19. **Index Preservation**: Queue updates preserve currentIndex by finding current media in new queue
+18. **Live Updates**: Queue automatically rebuilds when filters/search/tags/sort change (via GalleryContext subscription)
+19. **State Machine**: Use XState `send()` for queue operations, don't manipulate queue directly
+20. **Index Preservation**: Queue updates preserve currentIndex by finding current media in new queue
 
 **Layout & Styling:**
-20. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
-21. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
-22. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
+21. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
+22. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
+23. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
 
 **State Persistence:**
-23. **Player State Restore**: Use `RESTORE_STATE` event in queueMachine, not `LOAD_TRACK` (preserves saved time/volume)
-24. **Staleness Check**: Discard saved player state if older than 1 hour
-25. **Visibility Change**: Save state on `visibilitychange` event - most reliable for mobile tab discards
+24. **Player State Restore**: Use `RESTORE_STATE` event in queueMachine, not `LOAD_TRACK` (preserves saved time/volume)
+25. **Staleness Check**: Discard saved player state if older than 1 hour
+26. **Visibility Change**: Save state on `visibilitychange` event - most reliable for mobile tab discards
 
 **PWA & Mobile:**
-26. **iOS Safe Areas**: Use `env(safe-area-inset-*)` for notched devices
-27. **PWA Viewport**: Use `100dvh` not `-webkit-fill-available` for dynamic viewport height
-28. **Wake Lock Re-acquisition**: Use `userWantsWakeLockRef` (user intent) not `isActive` (actual state) in visibility handler
-29. **Haptic Feedback**: Only works on Android - iOS Safari doesn't support Web Vibration API
+27. **iOS Safe Areas**: Use `env(safe-area-inset-*)` for notched devices
+28. **PWA Viewport**: Use `100dvh` not `-webkit-fill-available` for dynamic viewport height
+29. **Wake Lock Re-acquisition**: Use `userWantsWakeLockRef` (user intent) not `isActive` (actual state) in visibility handler
+30. **Haptic Feedback**: Only works on Android - iOS Safari doesn't support Web Vibration API

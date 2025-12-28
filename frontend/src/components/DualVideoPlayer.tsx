@@ -91,15 +91,12 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           html5: {
             vhs: {
               overrideNative: true,
-              bandwidth: 4000000, // 4Mbps - balanced estimate, allows quick quality adaptation
-              backBufferLength: 30, // Keep 30 seconds of played video to prevent memory leaks
-              maxBufferLength: 30, // Buffer 30 seconds ahead (industry standard)
-              maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size to prevent memory issues
-              maxBufferHole: 0.5, // Jump over gaps up to 0.5s without rebuffering
-              experimentalBufferBasedABR: true, // Smart quality switching based on buffer health
-              smoothQualityChange: true, // Prevent jarring quality transitions
-              useBandwidthFromLocalStorage: true, // Persist bandwidth estimates between sessions
-              enableLowInitialPlaylist: true, // Faster startup with lower quality first
+              bufferBasedABR: true,
+              useBandwidthFromLocalStorage: true,
+              enableLowInitialPlaylist: true,
+              useNetworkInformationApi: true,
+              limitRenditionByPlayerDimensions: true,
+              useDevicePixelRatio: true,
             },
             nativeVideoTracks: false,
             nativeAudioTracks: false,
@@ -427,14 +424,12 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
             html5: {
               vhs: {
                 overrideNative: true,
-                bandwidth: 4000000, // 4Mbps - balanced estimate
-                backBufferLength: 10, // Smaller buffer for preload
-                maxBufferLength: 20, // Preload less
-                maxBufferSize: 30 * 1000 * 1000, // 30MB for preload
-                experimentalBufferBasedABR: true,
-                smoothQualityChange: true,
+                bufferBasedABR: true,
                 useBandwidthFromLocalStorage: true,
                 enableLowInitialPlaylist: true,
+                useNetworkInformationApi: true,
+                limitRenditionByPlayerDimensions: true,
+                useDevicePixelRatio: true,
               },
               nativeVideoTracks: false,
               nativeAudioTracks: false,
