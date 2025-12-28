@@ -616,8 +616,11 @@ export default function Gallery() {
 
                     {/* Info */}
                     <div className="p-2 xs:p-3 sm:p-4">
-                      {/* Filename - First Line */}
-                      <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
+                      {/* Filename - Allow 2 lines */}
+                      <h3
+                        className="theme-text-primary font-medium text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2"
+                        title={item.filename}
+                      >
                         {item.filename}
                       </h3>
 
