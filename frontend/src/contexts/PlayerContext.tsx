@@ -6,6 +6,7 @@ import {
   useRef,
   useEffect,
   useState,
+  useMemo,
 } from "react";
 import { useMachine } from "@xstate/react";
 import { queueMachine } from "../machines/queueMachine";
@@ -381,43 +382,55 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [state.value, queue, currentIndex, hasNext, handlePreloadComplete]);
 
-  // Media Session API integration
-  useMediaSession(currentMedia, hasNext, hasPrevious, {
-    onPlay: () => {
-      conditionalRequestWakeLock(); // Ensure wake lock activates on lock screen play
-      const player = playerRef.current?.getPlayer();
-      if (player) {
-        player.muted(false);
-        player.volume(volumeRef.current);
-      }
-      send({ type: "PLAY" });
-      playerRef.current?.play();
-    },
-    onPause: () => {
-      send({ type: "PAUSE" });
-      playerRef.current?.pause();
-    },
-    onNext: () => {
-      send({ type: "NEXT" });
-    },
-    onPrevious: () => {
-      send({ type: "PREVIOUS" });
-    },
-    onSeekBackward: (offset) => {
-      const newTime = Math.max(0, currentTime - offset);
-      playerRef.current?.seek(newTime);
-      send({ type: "SEEK", time: newTime });
-    },
-    onSeekForward: (offset) => {
-      const newTime = Math.min(duration, currentTime + offset);
-      playerRef.current?.seek(newTime);
-      send({ type: "SEEK", time: newTime });
-    },
-    onSeekTo: (time) => {
-      playerRef.current?.seek(time);
-      send({ type: "SEEK", time });
-    },
-  });
+  // Media Session API integration - memoize handlers to prevent lock screen thumbnail flickering
+  const mediaSessionHandlers = useMemo(
+    () => ({
+      onPlay: () => {
+        conditionalRequestWakeLock();
+        const player = playerRef.current?.getPlayer();
+        if (player) {
+          player.muted(false);
+          player.volume(volumeRef.current);
+        }
+        send({ type: "PLAY" });
+        playerRef.current?.play();
+      },
+      onPause: () => {
+        send({ type: "PAUSE" });
+        playerRef.current?.pause();
+      },
+      onNext: () => {
+        send({ type: "NEXT" });
+      },
+      onPrevious: () => {
+        send({ type: "PREVIOUS" });
+      },
+      onSeekBackward: (offset: number) => {
+        // Get current time directly from player to avoid stale state
+        const player = playerRef.current?.getPlayer();
+        const playerTime = player?.currentTime() ?? 0;
+        const newTime = Math.max(0, playerTime - offset);
+        playerRef.current?.seek(newTime);
+        send({ type: "SEEK", time: newTime });
+      },
+      onSeekForward: (offset: number) => {
+        // Get current time and duration directly from player to avoid stale state
+        const player = playerRef.current?.getPlayer();
+        const playerTime = player?.currentTime() ?? 0;
+        const playerDuration = player?.duration() ?? Infinity;
+        const newTime = Math.min(playerDuration, playerTime + offset);
+        playerRef.current?.seek(newTime);
+        send({ type: "SEEK", time: newTime });
+      },
+      onSeekTo: (time: number) => {
+        playerRef.current?.seek(time);
+        send({ type: "SEEK", time });
+      },
+    }),
+    [conditionalRequestWakeLock, send],
+  );
+
+  useMediaSession(currentMedia, hasNext, hasPrevious, mediaSessionHandlers);
 
   // Update Media Session position
   useEffect(() => {

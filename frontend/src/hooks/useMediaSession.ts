@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import type { Media } from "../lib/api";
 
 export interface MediaSessionHandlers {
@@ -17,26 +17,32 @@ export function useMediaSession(
   hasPrevious: boolean,
   handlers: MediaSessionHandlers,
 ) {
+  // Generate stable thumbnail URL - only changes when media ID or thumbnail path changes
+  // This prevents lock screen flickering from Date.now() generating new URLs on every render
+  const thumbnailUrl = useMemo(() => {
+    if (!currentMedia?.thumbnail_path) return null;
+    return `${window.location.origin}${currentMedia.thumbnail_path}?t=${Date.now()}`;
+  }, [currentMedia?.id, currentMedia?.thumbnail_path]);
+
+  // Effect for metadata - only runs when media or thumbnail URL changes
   useEffect(() => {
     if (!("mediaSession" in navigator)) {
       return;
     }
 
     if (!currentMedia) {
-      // Clear metadata when no media
       navigator.mediaSession.metadata = null;
       return;
     }
 
-    // Set metadata
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentMedia.filename,
       artist: "OnPlay",
       album: currentMedia.media_type === "video" ? "Videos" : "Audio",
-      artwork: currentMedia.thumbnail_path
+      artwork: thumbnailUrl
         ? [
             {
-              src: `${window.location.origin}${currentMedia.thumbnail_path}?t=${Date.now()}`,
+              src: thumbnailUrl,
               sizes: "512x512",
               type: "image/jpeg",
             },
@@ -49,8 +55,14 @@ export function useMediaSession(
             },
           ],
     });
+  }, [currentMedia, thumbnailUrl]);
 
-    // Set action handlers
+  // Effect for action handlers - separate from metadata to avoid thumbnail refresh
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !currentMedia) {
+      return;
+    }
+
     navigator.mediaSession.setActionHandler("play", () => {
       handlers.onPlay();
     });
@@ -94,7 +106,6 @@ export function useMediaSession(
     });
 
     return () => {
-      // Clean up action handlers
       if ("mediaSession" in navigator) {
         navigator.mediaSession.setActionHandler("play", null);
         navigator.mediaSession.setActionHandler("pause", null);
@@ -106,16 +117,6 @@ export function useMediaSession(
       }
     };
   }, [currentMedia, hasNext, hasPrevious, handlers]);
-
-  // Update playback state
-  useEffect(() => {
-    if (!("mediaSession" in navigator) || !currentMedia) {
-      return;
-    }
-
-    // This will be controlled by the player's play/pause events
-    // The state is managed automatically by the browser based on the media element
-  }, [currentMedia]);
 }
 
 /**
