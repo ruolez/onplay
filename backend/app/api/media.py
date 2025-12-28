@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from ..database import get_db
@@ -8,6 +8,8 @@ from pydantic import BaseModel
 import os
 import shutil
 from pathlib import Path
+from PIL import Image
+import io
 
 router = APIRouter()
 
@@ -159,6 +161,81 @@ async def set_thumbnail(
             raise HTTPException(status_code=500, detail="Failed to generate thumbnail")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Thumbnail generation failed: {str(e)}")
+
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+@router.post("/media/{media_id}/thumbnail/upload")
+async def upload_thumbnail(
+    media_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Upload a custom thumbnail image for any media type (video or audio)."""
+    media = db.query(Media).filter(Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    # Validate content type
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: JPEG, PNG, WebP, GIF"
+        )
+
+    # Read file content
+    content = await file.read()
+
+    # Validate file size
+    if len(content) > MAX_THUMBNAIL_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is 5MB"
+        )
+
+    try:
+        # Open and process image
+        img = Image.open(io.BytesIO(content))
+
+        # Convert to RGB if necessary (handles RGBA, P mode, etc.)
+        if img.mode in ("RGBA", "P", "LA"):
+            # Create white background for transparent images
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            if img.mode == "P":
+                img = img.convert("RGBA")
+            background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+            img = background
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+
+        # Resize to max 640x360 maintaining aspect ratio
+        img.thumbnail((640, 360), Image.Resampling.LANCZOS)
+
+        # Save to thumbnails directory
+        media_root = os.getenv("MEDIA_ROOT", "/media")
+        thumbnail_dir = Path(media_root) / "thumbnails"
+        thumbnail_dir.mkdir(parents=True, exist_ok=True)
+
+        thumbnail_path = thumbnail_dir / f"{media_id}.jpg"
+        img.save(thumbnail_path, "JPEG", quality=85)
+
+        # Update database
+        media.thumbnail_path = f"/media/thumbnails/{media_id}.jpg"
+        db.commit()
+
+        return {
+            "message": "Thumbnail uploaded successfully",
+            "thumbnail_path": media.thumbnail_path
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process image: {str(e)}"
+        )
+
 
 @router.patch("/media/{media_id}")
 async def rename_media(

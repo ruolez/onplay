@@ -98,6 +98,16 @@ export const mediaApi = {
     return api.post(`/media/${id}/thumbnail`, { timestamp });
   },
 
+  async uploadThumbnail(id: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post(`/media/${id}/thumbnail/upload`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   async getUploadStatus(id: string) {
     return api.get(`/upload/status/${id}`);
   },

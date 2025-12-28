@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { mediaApi, Media } from "../lib/api";
 import VideoPlayer, { VideoPlayerRef } from "../components/VideoPlayer";
-import { ArrowLeft, Eye, TrendingUp, Image, X } from "lucide-react";
+import { ArrowLeft, Eye, TrendingUp, Image, X, Upload } from "lucide-react";
 import { formatFileSize, formatDuration } from "../lib/utils";
 
 export default function Player() {
@@ -13,8 +13,10 @@ export default function Player() {
   const [loading, setLoading] = useState(true);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const [thumbnailSaving, setThumbnailSaving] = useState(false);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailTimestamp, setThumbnailTimestamp] = useState(Date.now());
   const playerRef = useRef<VideoPlayerRef>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -69,6 +71,33 @@ export default function Player() {
       alert("Failed to set thumbnail. Please try again.");
     } finally {
       setThumbnailSaving(false);
+    }
+  };
+
+  const handleUploadThumbnail = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !id) return;
+
+    // Reset the input so the same file can be selected again
+    event.target.value = "";
+
+    try {
+      setThumbnailUploading(true);
+      await mediaApi.uploadThumbnail(id, file);
+
+      // Update timestamp to force thumbnail reload (cache bust)
+      setThumbnailTimestamp(Date.now());
+
+      alert("Thumbnail uploaded successfully!");
+    } catch (error: any) {
+      console.error("Failed to upload thumbnail:", error);
+      const message =
+        error.response?.data?.detail || "Failed to upload thumbnail";
+      alert(message);
+    } finally {
+      setThumbnailUploading(false);
     }
   };
 
@@ -144,27 +173,52 @@ export default function Player() {
             />
           </div>
 
-          {/* Thumbnail capture button */}
-          {media.media_type === "video" && (
-            <div className="mb-4 sm:mb-6">
+          {/* Hidden file input for thumbnail upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleUploadThumbnail}
+            className="hidden"
+          />
+
+          {/* Thumbnail buttons */}
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              {/* Set frame button - video only */}
+              {media.media_type === "video" && (
+                <button
+                  onClick={handleSetThumbnail}
+                  disabled={thumbnailSaving || thumbnailUploading}
+                  className="flex items-center justify-center space-x-2 px-4 py-3 theme-btn-secondary rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] w-full sm:w-auto text-sm sm:text-base"
+                >
+                  <Image className="w-4 h-4" />
+                  <span>
+                    {thumbnailSaving
+                      ? "Saving..."
+                      : "Set Current Frame as Thumbnail"}
+                  </span>
+                </button>
+              )}
+
+              {/* Upload button - both video and audio */}
               <button
-                onClick={handleSetThumbnail}
-                disabled={thumbnailSaving}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={thumbnailSaving || thumbnailUploading}
                 className="flex items-center justify-center space-x-2 px-4 py-3 theme-btn-secondary rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] w-full sm:w-auto text-sm sm:text-base"
               >
-                <Image className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
                 <span>
-                  {thumbnailSaving
-                    ? "Saving..."
-                    : "Set Current Frame as Thumbnail"}
+                  {thumbnailUploading ? "Uploading..." : "Upload Thumbnail"}
                 </span>
               </button>
-              <p className="text-xs sm:text-sm theme-text-muted mt-2">
-                Pause the video at your desired moment and click this button to
-                set it as the thumbnail
-              </p>
             </div>
-          )}
+            <p className="text-xs sm:text-sm theme-text-muted mt-2">
+              {media.media_type === "video"
+                ? "Pause the video and set current frame, or upload a custom image (JPEG, PNG, WebP, GIF up to 5MB)"
+                : "Upload a custom thumbnail image (JPEG, PNG, WebP, GIF up to 5MB)"}
+            </p>
+          </div>
 
           {/* Media info */}
           <div className="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/10">
