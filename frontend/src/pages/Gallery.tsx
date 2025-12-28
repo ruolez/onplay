@@ -566,18 +566,18 @@ export default function Gallery() {
                   >
                     {/* Thumbnail */}
                     <div
-                      className="relative aspect-video overflow-hidden rounded-t-lg sm:rounded-t-xl"
+                      className="relative overflow-hidden rounded-t-lg sm:rounded-t-xl"
                       style={{ background: "var(--card-bg)" }}
                     >
                       {item.thumbnail_path ? (
                         <img
                           src={`${item.thumbnail_path}?t=${loadTime}`}
                           alt={item.filename}
-                          className="w-full h-full object-contain"
+                          className="w-full h-auto"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full">
+                        <div className="flex items-center justify-center aspect-video">
                           {item.media_type === "video" ? (
                             <Play
                               className="w-16 h-16 opacity-50"
