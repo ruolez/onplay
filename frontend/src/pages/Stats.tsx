@@ -45,7 +45,7 @@ export default function Stats() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+    <div className="container mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold theme-text-primary flex items-center space-x-2 sm:space-x-3">
           <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10" />
@@ -68,7 +68,7 @@ export default function Stats() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="theme-stat-card-1 rounded-lg sm:rounded-xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <p className="theme-text-secondary text-sm sm:text-base">
@@ -110,23 +110,29 @@ export default function Stats() {
           <p className="text-2xl sm:text-4xl font-bold theme-text-primary">
             {formatFileSize(overview?.total_size_bytes || 0)}
           </p>
-          <div className="mt-2 text-xs sm:text-sm theme-text-muted">All media files</div>
+          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
+            All media files
+          </div>
         </div>
 
         <div className="theme-stat-card-4 rounded-lg sm:rounded-xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <p className="theme-text-secondary text-sm sm:text-base">Duration</p>
+            <p className="theme-text-secondary text-sm sm:text-base">
+              Duration
+            </p>
             <Clock className="w-6 h-6 sm:w-8 sm:h-8 theme-icon-accent" />
           </div>
           <p className="text-2xl sm:text-4xl font-bold theme-text-primary">
             {Math.round((overview?.total_duration_seconds || 0) / 60)}m
           </p>
-          <div className="mt-2 text-xs sm:text-sm theme-text-muted">All content</div>
+          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
+            All content
+          </div>
         </div>
       </div>
 
       {/* Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
         {/* Playback Stats */}
         <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold theme-text-primary mb-4 sm:mb-6 flex items-center space-x-2">
@@ -134,10 +140,15 @@ export default function Stats() {
             <span>Playback Stats</span>
           </h2>
 
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-            <div className="p-3 sm:p-4 rounded-lg" style={{ background: "var(--input-bg)" }}>
+          <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6 mb-4 sm:mb-6">
+            <div
+              className="p-3 sm:p-4 rounded-lg"
+              style={{ background: "var(--input-bg)" }}
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="theme-text-secondary text-sm">Total Plays</span>
+                <span className="theme-text-secondary text-sm">
+                  Total Plays
+                </span>
                 <Play className="w-4 h-4 sm:w-5 sm:h-5 theme-icon-accent" />
               </div>
               <p className="text-2xl sm:text-3xl font-bold theme-text-primary">
@@ -145,9 +156,14 @@ export default function Stats() {
               </p>
             </div>
 
-            <div className="p-3 sm:p-4 rounded-lg" style={{ background: "var(--input-bg)" }}>
+            <div
+              className="p-3 sm:p-4 rounded-lg"
+              style={{ background: "var(--input-bg)" }}
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="theme-text-secondary text-sm">Completions</span>
+                <span className="theme-text-secondary text-sm">
+                  Completions
+                </span>
                 <CheckCircle
                   className="w-4 h-4 sm:w-5 sm:h-5"
                   style={{ color: "var(--status-success)" }}
@@ -161,11 +177,13 @@ export default function Stats() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="theme-text-secondary text-sm">Completion Rate</span>
+              <span className="theme-text-secondary text-sm">
+                Completion Rate
+              </span>
               <span className="theme-text-primary font-medium text-sm">
                 {analytics?.total_plays > 0
                   ? Math.round(
-                      (analytics.total_completes / analytics.total_plays) * 100
+                      (analytics.total_completes / analytics.total_plays) * 100,
                     )
                   : 0}
                 %
@@ -181,7 +199,8 @@ export default function Stats() {
                   background: "var(--status-success)",
                   width: `${
                     analytics?.total_plays > 0
-                      ? (analytics.total_completes / analytics.total_plays) * 100
+                      ? (analytics.total_completes / analytics.total_plays) *
+                        100
                       : 0
                   }%`,
                 }}

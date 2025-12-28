@@ -158,8 +158,15 @@ export default function Gallery() {
     const handleViewModeChange = (e: CustomEvent<"grid" | "list">) => {
       setViewMode(e.detail);
     };
-    window.addEventListener("viewModeChange", handleViewModeChange as EventListener);
-    return () => window.removeEventListener("viewModeChange", handleViewModeChange as EventListener);
+    window.addEventListener(
+      "viewModeChange",
+      handleViewModeChange as EventListener,
+    );
+    return () =>
+      window.removeEventListener(
+        "viewModeChange",
+        handleViewModeChange as EventListener,
+      );
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -298,7 +305,7 @@ export default function Gallery() {
   );
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-0">
+    <div className="container mx-auto px-3 xs:px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-0">
       {/* Controls - Sticky flush with nav (desktop only - mobile uses MobileBottomNav) */}
       <div className="hidden sm:block sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
         {/* Desktop: Type Filter + Tags Filter + Sort + View (all in one row) */}
@@ -313,7 +320,12 @@ export default function Gallery() {
               title="Filter by media type"
             >
               {filter === "all" ? (
-                <span className="text-sm font-semibold" style={{ color: "var(--icon-all)" }}>All</span>
+                <span
+                  className="text-sm font-semibold"
+                  style={{ color: "var(--icon-all)" }}
+                >
+                  All
+                </span>
               ) : filter === "video" ? (
                 <Play
                   className="w-5 h-5"
@@ -345,7 +357,12 @@ export default function Gallery() {
                     >
                       <span className="flex items-center gap-2">
                         {option.value === "all" ? (
-                          <span className="text-sm font-semibold" style={{ color: "var(--icon-all)" }}>{option.label}</span>
+                          <span
+                            className="text-sm font-semibold"
+                            style={{ color: "var(--icon-all)" }}
+                          >
+                            {option.label}
+                          </span>
                         ) : option.value === "video" ? (
                           <Play
                             className="w-5 h-5"
@@ -392,7 +409,10 @@ export default function Gallery() {
                 }`}
                 title="Filter by tags"
               >
-                <TagIcon className="w-5 h-5 flex-shrink-0" style={{ color: "var(--icon-tag)" }} />
+                <TagIcon
+                  className="w-5 h-5 flex-shrink-0"
+                  style={{ color: "var(--icon-tag)" }}
+                />
                 <span className="truncate flex-1 text-left">
                   {selectedTags.length === 0
                     ? "All"
@@ -521,7 +541,7 @@ export default function Gallery() {
       ) : (
         <>
           {viewMode === "grid" ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+            <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 xs:gap-3 sm:gap-4 md:gap-5">
               {sortedMedia.map((item) => {
                 const isCurrentTrack = currentMedia?.id === item.id;
                 return (
@@ -595,7 +615,7 @@ export default function Gallery() {
                     </div>
 
                     {/* Info */}
-                    <div className="p-2 sm:p-4">
+                    <div className="p-2 xs:p-3 sm:p-4">
                       {/* Filename - First Line */}
                       <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
                         {item.filename}
@@ -629,17 +649,17 @@ export default function Gallery() {
                             <MoreVertical className="w-4 h-4 theme-text-muted" />
                           </button>
                           {menuOpen === item.id && (
-                            <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
+                            <div className="absolute right-0 xs:right-auto xs:left-0 mt-1 w-36 xs:w-40 sm:w-44 rounded-lg shadow-xl theme-dropdown z-[100]">
                               <button
                                 onClick={(e) => handleViewDetails(e, item.id)}
-                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
+                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
                               >
                                 <Play className="w-3.5 h-3.5" />
                                 View Details
                               </button>
                               <button
                                 onClick={(e) => handleTagClick(e, item.id)}
-                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
                               >
                                 <TagIcon className="w-3.5 h-3.5" />
                                 Add Tag
@@ -648,14 +668,14 @@ export default function Gallery() {
                                 onClick={(e) =>
                                   handleRenameClick(e, item.id, item.filename)
                                 }
-                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                                 Rename
                               </button>
                               <button
                                 onClick={(e) => handleDeleteClick(e, item.id)}
-                                className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
+                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 Delete
@@ -789,17 +809,17 @@ export default function Gallery() {
                           <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
                         </button>
                         {menuOpen === item.id && (
-                          <div className="absolute right-0 mt-1 w-40 rounded-lg shadow-xl theme-dropdown z-[100]">
+                          <div className="absolute right-0 mt-1 w-36 xs:w-40 sm:w-44 rounded-lg shadow-xl theme-dropdown z-[100]">
                             <button
                               onClick={(e) => handleViewDetails(e, item.id)}
-                              className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
+                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
                             >
                               <Play className="w-3.5 h-3.5" />
                               View Details
                             </button>
                             <button
                               onClick={(e) => handleTagClick(e, item.id)}
-                              className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
                             >
                               <TagIcon className="w-3.5 h-3.5" />
                               Add Tag
@@ -808,14 +828,14 @@ export default function Gallery() {
                               onClick={(e) =>
                                 handleRenameClick(e, item.id, item.filename)
                               }
-                              className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
+                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                               Rename
                             </button>
                             <button
                               onClick={(e) => handleDeleteClick(e, item.id)}
-                              className="w-full text-left px-3 py-2 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
+                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               Delete
@@ -849,11 +869,11 @@ export default function Gallery() {
           onClick={() => setDeleteModal({ show: false, id: null })}
         >
           <div
-            className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
+            className="theme-card rounded-lg sm:rounded-xl p-4 xs:p-5 sm:p-6 w-full max-w-[92vw] xs:max-w-[88vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-bold theme-text-primary">
+              <h2 className="text-lg xs:text-xl font-bold theme-text-primary">
                 Delete Media
               </h2>
               <button
@@ -910,11 +930,11 @@ export default function Gallery() {
           }
         >
           <div
-            className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md"
+            className="theme-card rounded-lg sm:rounded-xl p-4 xs:p-5 sm:p-6 w-full max-w-[92vw] xs:max-w-[88vw] sm:max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-bold theme-text-primary">
+              <h2 className="text-lg xs:text-xl font-bold theme-text-primary">
                 Rename Media
               </h2>
               <button
@@ -963,11 +983,11 @@ export default function Gallery() {
           onClick={() => setTagModal({ show: false, mediaId: null })}
         >
           <div
-            className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
+            className="theme-card rounded-lg sm:rounded-xl p-4 xs:p-5 sm:p-6 w-full max-w-[92vw] xs:max-w-[88vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-lg sm:text-xl font-bold theme-text-primary">
+              <h2 className="text-lg xs:text-xl font-bold theme-text-primary">
                 Add Tag
               </h2>
               <button

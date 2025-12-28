@@ -155,7 +155,9 @@ function AppContent() {
   // Calculate bottom padding based on active elements
   // Mobile: bottom nav (56px) + player (115px if active) + safe area
   // Desktop: player only (85px if active)
-  const mobileBottomPadding = currentMedia ? "pb-[180px]" : "pb-[72px]";
+  const mobileBottomPadding = currentMedia
+    ? "pb-[160px] xs:pb-[170px] sm:pb-[180px]"
+    : "pb-[64px] xs:pb-[68px] sm:pb-[72px]";
   const desktopBottomPadding = currentMedia ? "md:pb-[100px]" : "md:pb-4";
 
   return (
@@ -167,8 +169,8 @@ function AppContent() {
         className="theme-nav sticky top-0 z-50"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-14 sm:h-16">
+        <div className="container mx-auto px-3 xs:px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14 xs:h-[60px] sm:h-16">
             {/* Logo - always visible */}
             <Link
               to="/"
@@ -176,7 +178,7 @@ function AppContent() {
               onClick={() => setMobileMenuOpen(false)}
             >
               <svg
-                className="w-8 h-8 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
+                className="w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
                 viewBox="0 0 32 32"
                 fill="none"
                 style={{ color: "var(--accent-primary)" }}

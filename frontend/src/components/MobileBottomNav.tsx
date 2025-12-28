@@ -107,11 +107,12 @@ export default function MobileBottomNav() {
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      <div className="flex items-center gap-2 px-3 py-3">
+      <div className="flex items-center gap-1.5 xs:gap-2 px-2 xs:px-3 py-2.5 xs:py-3">
         {/* Media Type Dropdown */}
-        <div className="relative mobile-media-type-menu w-[90px]">
+        <div className="relative mobile-media-type-menu w-[80px] xs:w-[90px]">
           <button
             onClick={() => {
               setMediaTypeMenuOpen(!mediaTypeMenuOpen);
@@ -142,7 +143,7 @@ export default function MobileBottomNav() {
 
           {mediaTypeMenuOpen && (
             <div
-              className="fixed left-3 right-3 rounded-xl shadow-2xl z-[200] overflow-hidden"
+              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] overflow-hidden"
               style={{
                 bottom: dropdownBottom,
                 background: "rgba(30, 30, 30, 0.95)",
@@ -206,7 +207,7 @@ export default function MobileBottomNav() {
               setMediaTypeMenuOpen(false);
               setSortMenuOpen(false);
             }}
-            className={`w-[90px] ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
+            className={`w-[80px] xs:w-[90px] ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
           >
             <div className="relative">
               <TagIcon
@@ -229,7 +230,7 @@ export default function MobileBottomNav() {
 
           {tagFilterOpen && (
             <div
-              className="fixed left-3 right-3 rounded-xl shadow-2xl z-[200] max-h-[50vh] overflow-y-auto"
+              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] max-h-[50vh] overflow-y-auto"
               style={{
                 bottom: dropdownBottom,
                 background: "rgba(30, 30, 30, 0.95)",
@@ -288,7 +289,7 @@ export default function MobileBottomNav() {
               setMediaTypeMenuOpen(false);
               setTagFilterOpen(false);
             }}
-            className={`px-5 ${buttonBase} ${buttonInactive}`}
+            className={`px-3 xs:px-5 ${buttonBase} ${buttonInactive}`}
           >
             <span className="text-sm font-medium theme-text-primary capitalize">
               {sortBy}
@@ -300,7 +301,7 @@ export default function MobileBottomNav() {
 
           {sortMenuOpen && (
             <div
-              className="fixed left-3 right-3 rounded-xl shadow-2xl z-[200] overflow-hidden"
+              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] overflow-hidden"
               style={{
                 bottom: dropdownBottom,
                 background: "rgba(30, 30, 30, 0.95)",
@@ -346,7 +347,7 @@ export default function MobileBottomNav() {
         {/* View Mode Toggle */}
         <button
           onClick={toggleViewMode}
-          className={`w-[48px] ${buttonBase} ${buttonInactive}`}
+          className={`w-[44px] xs:w-[48px] ${buttonBase} ${buttonInactive}`}
           aria-label={
             viewMode === "grid" ? "Switch to list view" : "Switch to grid view"
           }

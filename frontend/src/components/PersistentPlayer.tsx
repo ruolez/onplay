@@ -620,7 +620,7 @@ export default function PersistentPlayer() {
       {/* Mini Player Bottom Bar */}
       <div
         ref={miniPlayerRef}
-        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[72px] md:bottom-0 ${
+        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[68px] xs:bottom-[72px] md:bottom-0 ${
           isVisible && !isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
@@ -642,7 +642,7 @@ export default function PersistentPlayer() {
         </div>
 
         {/* Main Controls - Two rows on mobile, single row on desktop */}
-        <div className="px-2 sm:px-4 py-2 sm:py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+        <div className="px-2 xs:px-3 sm:px-4 py-2 sm:py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
           {/* Row 1 (Mobile) / Left Section (Desktop): Thumbnail + Title + Wake Lock */}
           <div
             className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 cursor-pointer"
@@ -655,11 +655,11 @@ export default function PersistentPlayer() {
               <img
                 src={`${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`}
                 alt={currentMedia.filename}
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0"
+                className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0"
               />
             ) : (
               <div
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded flex-shrink-0 flex items-center justify-center"
+                className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded flex-shrink-0 flex items-center justify-center"
                 style={{
                   background:
                     "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -736,8 +736,8 @@ export default function PersistentPlayer() {
           {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
           <div className="flex items-center md:justify-start w-full md:w-auto gap-2 sm:gap-3">
             {/* Mobile layout: 48px spacer + flex-1 buttons + 48px queue (mirrors Row 1 exactly) */}
-            {/* Invisible 48px spacer (Mobile only) - Mirrors Row 1's thumbnail */}
-            <div className="md:hidden w-12 h-12 flex-shrink-0" />
+            {/* Invisible spacer (Mobile only) - Mirrors Row 1's thumbnail */}
+            <div className="md:hidden w-10 h-10 xs:w-12 xs:h-12 flex-shrink-0" />
 
             {/* Centered play buttons within flex-1 (Mobile only) - Mirrors Row 1's title section */}
             <div className="md:hidden flex-1 min-w-0 flex items-center justify-center">

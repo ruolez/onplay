@@ -127,14 +127,14 @@ export default function Upload() {
   };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
+    <div className="container mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold theme-text-primary mb-6 sm:mb-8">
         Upload Media
       </h1>
 
       {/* Drop zone */}
       <div
-        className={`relative border-2 border-dashed rounded-lg sm:rounded-xl p-6 sm:p-8 lg:p-12 text-center transition-all ${
+        className={`relative border-2 border-dashed rounded-lg sm:rounded-xl p-5 xs:p-6 sm:p-8 lg:p-12 text-center transition-all ${
           dragActive ? "theme-card-border-hover" : ""
         }`}
         style={{
@@ -148,7 +148,7 @@ export default function Upload() {
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <UploadIcon className="w-12 h-12 sm:w-16 sm:h-16 theme-text-muted mx-auto mb-3 sm:mb-4" />
+        <UploadIcon className="w-10 h-10 xs:w-12 xs:h-12 sm:w-16 sm:h-16 theme-text-muted mx-auto mb-3 sm:mb-4" />
         <h3 className="text-lg sm:text-xl font-semibold theme-text-primary mb-2">
           Drop your media files here
         </h3>

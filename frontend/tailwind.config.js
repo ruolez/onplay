@@ -2,18 +2,21 @@
 export default {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
   ],
-  safelist: [
-    'w-6',
-    'h-6',
-    'w-5',
-    'h-5',
-  ],
+  safelist: ["w-6", "h-6", "w-5", "h-5"],
   theme: {
+    screens: {
+      xs: "420px", // Large phones (iPhone Plus/Max, Galaxy S)
+      sm: "640px", // Tailwind default
+      md: "768px", // Tablets
+      lg: "1024px", // Laptops
+      xl: "1280px", // Desktops
+      "2xl": "1536px", // Large screens
+    },
     container: {
       center: true,
       padding: "2rem",
@@ -79,4 +82,4 @@ export default {
     },
   },
   plugins: [],
-}
+};
