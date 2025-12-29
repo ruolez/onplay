@@ -31,16 +31,9 @@ export function useWakeLock(options?: UseWakeLockOptions) {
   // Check if we're in the known broken iOS PWA configuration
   const isBrokenIOSPWA = useMemo(() => isWakeLockBroken(), []);
 
-  // Create fallback video element (silent video loop for iOS Safari)
+  // Create fallback video element (silent video loop for iOS)
   useEffect(() => {
-    // Don't create video for broken iOS PWA - it won't help
-    if (isBrokenIOSPWA) {
-      console.log(
-        "[WakeLock] Skipping video creation - known broken iOS PWA config",
-      );
-      return;
-    }
-
+    // Create video element for all iOS devices - we'll try it as fallback
     if (isIOS() && !noSleepVideoRef.current) {
       const video = document.createElement("video");
 
@@ -117,18 +110,14 @@ export function useWakeLock(options?: UseWakeLockOptions) {
         keepAliveIntervalRef.current = null;
       }
     };
-  }, [isBrokenIOSPWA]);
+  }, []);
 
   const requestWakeLock = useCallback(async () => {
-    // Check for known broken iOS PWA configuration FIRST
+    // Log if we're in known broken iOS PWA configuration
     if (isBrokenIOSPWA) {
       console.warn(
-        "[WakeLock] ❌ Known broken iOS PWA configuration (iOS 16.4-18.3 in standalone mode)",
+        "[WakeLock] ⚠️ Known broken iOS PWA configuration (iOS 16.4-18.3 in standalone mode) - will try anyway",
       );
-      setFailureReason("ios_pwa_bug");
-      setIsActive(false);
-      options?.onFailure?.("ios_pwa_bug");
-      return false;
     }
 
     console.log(
@@ -136,6 +125,8 @@ export function useWakeLock(options?: UseWakeLockOptions) {
       isIOS(),
       "hasNativeAPI:",
       isWakeLockSupported(),
+      "isBrokenIOSPWA:",
+      isBrokenIOSPWA,
     );
 
     // Clear any previous failure reason
@@ -309,16 +300,19 @@ export function useWakeLock(options?: UseWakeLockOptions) {
           err.message,
         );
         setIsActive(false);
-        setFailureReason("video_blocked");
-        options?.onFailure?.("video_blocked");
+        // If we're on broken iOS PWA, set that as the reason
+        const reason = isBrokenIOSPWA ? "ios_pwa_bug" : "video_blocked";
+        setFailureReason(reason);
+        options?.onFailure?.(reason);
         return false;
       }
     }
 
     // No wake lock method available
     console.warn("[WakeLock] No wake lock method available");
-    setFailureReason("not_supported");
-    options?.onFailure?.("not_supported");
+    const reason = isBrokenIOSPWA ? "ios_pwa_bug" : "not_supported";
+    setFailureReason(reason);
+    options?.onFailure?.(reason);
     return false;
   }, [isBrokenIOSPWA, options]);
 
