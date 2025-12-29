@@ -19,6 +19,7 @@ import {
   updateMediaSessionPosition,
 } from "../hooks/useMediaSession";
 import { useGallery } from "./GalleryContext";
+import type { WakeLockFailureReason } from "../lib/platformDetection";
 
 interface PlayerContextType {
   // State
@@ -40,7 +41,11 @@ interface PlayerContextType {
   // Wake Lock
   isWakeLockEnabled: boolean;
   isWakeLockActive: boolean;
+  wakeLockFailureReason: WakeLockFailureReason | null;
+  isBrokenIOSPWA: boolean;
+  showWakeLockInfoModal: boolean;
   setWakeLockEnabled: (enabled: boolean) => void;
+  setShowWakeLockInfoModal: (show: boolean) => void;
 
   // Actions
   openPlayer: (mediaId: string, queueItems?: Media[]) => void;
@@ -98,13 +103,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     releaseWakeLock,
     isSupported: isWakeLockSupported,
     isActive: isWakeLockActive,
+    failureReason: wakeLockFailureReason,
+    isBrokenIOSPWA,
   } = useWakeLock({
     userWantsWakeLock: wakeLockUserEnabled,
     onFailure: (reason) => {
       console.warn("[PlayerContext] Wake lock failed:", reason);
+      // Auto-show info modal on first failure for broken iOS PWA
+      if (reason === "ios_pwa_bug") {
+        const dismissed = sessionStorage.getItem("wake-lock-info-dismissed");
+        if (!dismissed) {
+          setShowWakeLockInfoModal(true);
+        }
+      }
     },
   });
   const { sortedMedia } = useGallery();
+
+  // Wake lock info modal state
+  const [showWakeLockInfoModal, setShowWakeLockInfoModal] = useState(false);
 
   // Persist wake lock preference
   useEffect(() => {
@@ -640,7 +657,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         errorMessage,
         isWakeLockEnabled,
         isWakeLockActive,
+        wakeLockFailureReason,
+        isBrokenIOSPWA,
+        showWakeLockInfoModal,
         setWakeLockEnabled,
+        setShowWakeLockInfoModal,
         openPlayer,
         closePlayer,
         togglePlayPause,

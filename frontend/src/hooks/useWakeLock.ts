@@ -1,19 +1,18 @@
-import { useEffect, useRef, useCallback, useState } from "react";
-
-// Detect iOS devices (iPhone, iPad, iPod)
-const isIOS = () => {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-};
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import {
+  isIOS,
+  isWakeLockBroken,
+  isWakeLockSupported,
+  type WakeLockFailureReason,
+} from "../lib/platformDetection";
 
 interface UseWakeLockOptions {
   userWantsWakeLock: boolean;
-  onFailure?: (reason: string) => void;
+  onFailure?: (reason: WakeLockFailureReason) => void;
 }
 
 const MAX_RETRIES = 5;
+const KEEP_ALIVE_INTERVAL = 50; // NoSleep.js uses 50ms for random seek
 
 export function useWakeLock(options?: UseWakeLockOptions) {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -26,9 +25,22 @@ export function useWakeLock(options?: UseWakeLockOptions) {
 
   // Expose actual wake lock state for UI feedback
   const [isActive, setIsActive] = useState(false);
+  const [failureReason, setFailureReason] =
+    useState<WakeLockFailureReason | null>(null);
+
+  // Check if we're in the known broken iOS PWA configuration
+  const isBrokenIOSPWA = useMemo(() => isWakeLockBroken(), []);
 
   // Create fallback video element (silent video loop for iOS Safari)
   useEffect(() => {
+    // Don't create video for broken iOS PWA - it won't help
+    if (isBrokenIOSPWA) {
+      console.log(
+        "[WakeLock] Skipping video creation - known broken iOS PWA config",
+      );
+      return;
+    }
+
     if (isIOS() && !noSleepVideoRef.current) {
       const video = document.createElement("video");
 
@@ -105,18 +117,32 @@ export function useWakeLock(options?: UseWakeLockOptions) {
         keepAliveIntervalRef.current = null;
       }
     };
-  }, []);
+  }, [isBrokenIOSPWA]);
 
   const requestWakeLock = useCallback(async () => {
+    // Check for known broken iOS PWA configuration FIRST
+    if (isBrokenIOSPWA) {
+      console.warn(
+        "[WakeLock] ❌ Known broken iOS PWA configuration (iOS 16.4-18.3 in standalone mode)",
+      );
+      setFailureReason("ios_pwa_bug");
+      setIsActive(false);
+      options?.onFailure?.("ios_pwa_bug");
+      return false;
+    }
+
     console.log(
       "[WakeLock] Requesting wake lock, isIOS:",
       isIOS(),
       "hasNativeAPI:",
-      "wakeLock" in navigator,
+      isWakeLockSupported(),
     );
 
-    // Try native Wake Lock API FIRST (works on iOS 16.4+ and all modern browsers)
-    if ("wakeLock" in navigator) {
+    // Clear any previous failure reason
+    setFailureReason(null);
+
+    // Try native Wake Lock API FIRST (works on iOS 16.4+ Safari and all modern browsers)
+    if (isWakeLockSupported()) {
       try {
         // Release existing wake lock if any
         if (wakeLockRef.current) {
@@ -130,7 +156,7 @@ export function useWakeLock(options?: UseWakeLockOptions) {
         isActiveRef.current = true;
         usingFallbackRef.current = false;
         setIsActive(true);
-        retryCountRef.current = 0; // Reset retry counter on success
+        retryCountRef.current = 0;
 
         console.log("[WakeLock] ✅ Activated (native API)");
 
@@ -144,6 +170,14 @@ export function useWakeLock(options?: UseWakeLockOptions) {
         return true;
       } catch (err: any) {
         console.warn("[WakeLock] Native API failed:", err.name, err.message);
+
+        // Check for permission denied
+        if (err.name === "NotAllowedError") {
+          setFailureReason("permission_denied");
+          options?.onFailure?.("permission_denied");
+          return false;
+        }
+
         // Fall through to video fallback on iOS
       }
     }
@@ -154,6 +188,8 @@ export function useWakeLock(options?: UseWakeLockOptions) {
 
       if (!video) {
         console.error("[WakeLock] ❌ Video element not found");
+        setFailureReason("video_blocked");
+        options?.onFailure?.("video_blocked");
         return false;
       }
 
@@ -211,15 +247,18 @@ export function useWakeLock(options?: UseWakeLockOptions) {
 
         if (video.paused) {
           console.error("[WakeLock] ❌ Video still paused after play()!");
+          setFailureReason("video_blocked");
+          options?.onFailure?.("video_blocked");
           return false;
         }
 
         isActiveRef.current = true;
         usingFallbackRef.current = true;
         setIsActive(true);
-        retryCountRef.current = 0; // Reset retry counter on success
+        retryCountRef.current = 0;
 
-        // Set up keep-alive interval to ensure video keeps playing
+        // Set up keep-alive interval with random seek (NoSleep.js technique)
+        // This prevents iOS from detecting the video is "complete" and pausing it
         if (keepAliveIntervalRef.current) {
           clearInterval(keepAliveIntervalRef.current);
         }
@@ -229,7 +268,9 @@ export function useWakeLock(options?: UseWakeLockOptions) {
             isActiveRef.current &&
             usingFallbackRef.current
           ) {
-            if (noSleepVideoRef.current.paused) {
+            const vid = noSleepVideoRef.current;
+
+            if (vid.paused) {
               retryCountRef.current++;
               console.log(
                 `[WakeLock] Keep-alive retry ${retryCountRef.current}/${MAX_RETRIES}`,
@@ -241,19 +282,23 @@ export function useWakeLock(options?: UseWakeLockOptions) {
                 keepAliveIntervalRef.current = null;
                 isActiveRef.current = false;
                 setIsActive(false);
-                options?.onFailure?.(
-                  "Screen wake lock failed after multiple retries",
-                );
+                setFailureReason("video_blocked");
+                options?.onFailure?.("video_blocked");
                 return;
               }
 
-              noSleepVideoRef.current.play().catch(console.error);
+              vid.play().catch(console.error);
             } else {
               // Video is playing - reset retry counter
               retryCountRef.current = 0;
+
+              // NoSleep.js technique: random seek to prevent completion detection
+              if (vid.currentTime > 0.5) {
+                vid.currentTime = Math.random();
+              }
             }
           }
-        }, 5000);
+        }, KEEP_ALIVE_INTERVAL);
 
         console.log("[WakeLock] ✅ Activated (iOS video fallback)");
         return true;
@@ -264,18 +309,24 @@ export function useWakeLock(options?: UseWakeLockOptions) {
           err.message,
         );
         setIsActive(false);
+        setFailureReason("video_blocked");
+        options?.onFailure?.("video_blocked");
         return false;
       }
     }
 
+    // No wake lock method available
     console.warn("[WakeLock] No wake lock method available");
+    setFailureReason("not_supported");
+    options?.onFailure?.("not_supported");
     return false;
-  }, []);
+  }, [isBrokenIOSPWA, options]);
 
   const releaseWakeLock = useCallback(async () => {
     isActiveRef.current = false;
     setIsActive(false);
-    retryCountRef.current = 0; // Reset retry counter
+    setFailureReason(null);
+    retryCountRef.current = 0;
 
     // Clear keep-alive interval
     if (keepAliveIntervalRef.current) {
@@ -305,8 +356,10 @@ export function useWakeLock(options?: UseWakeLockOptions) {
   // Re-acquire wake lock when page becomes visible again
   useEffect(() => {
     const handleVisibilityChange = () => {
+      // Don't try to re-acquire on broken iOS PWA
+      if (isBrokenIOSPWA) return;
+
       // Use user preference to determine if we should re-acquire
-      // This fixes the issue where browser releases lock while tab is hidden
       if (
         document.visibilityState === "visible" &&
         options?.userWantsWakeLock
@@ -319,7 +372,7 @@ export function useWakeLock(options?: UseWakeLockOptions) {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [requestWakeLock, options?.userWantsWakeLock]);
+  }, [requestWakeLock, options?.userWantsWakeLock, isBrokenIOSPWA]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -339,7 +392,9 @@ export function useWakeLock(options?: UseWakeLockOptions) {
   return {
     requestWakeLock,
     releaseWakeLock,
-    isSupported: "wakeLock" in navigator || isIOS(),
+    isSupported: isWakeLockSupported() || isIOS(),
     isActive,
+    failureReason,
+    isBrokenIOSPWA,
   };
 }

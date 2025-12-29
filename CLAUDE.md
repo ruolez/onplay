@@ -280,12 +280,26 @@ OnPlay is installable as a PWA for a native-like fullscreen experience without b
 
 Keeps mobile device screen awake during media playback to prevent dimming/locking while browsing or playing audio.
 
-**Implementation**: `useWakeLock` hook in `frontend/src/hooks/useWakeLock.ts`
+**Implementation**:
+- `useWakeLock` hook in `frontend/src/hooks/useWakeLock.ts`
+- Platform detection in `frontend/src/lib/platformDetection.ts`
+- Info modal in `frontend/src/components/WakeLockInfoModal.tsx`
 
 **Browser Support**:
-- iOS 16.4+: Native Wake Lock API
+- iOS 16.4+ Safari: Native Wake Lock API (works)
+- iOS 16.4-18.3 PWA: **BROKEN** - Known Apple bug, silently ignored
+- iOS 18.4+ PWA: Native Wake Lock API (fixed)
 - Chrome/Edge (all platforms): Native Wake Lock API
 - Older browsers: Feature disabled, clear error message shown
+
+**iOS PWA Bug (iOS 16.4-18.3)**:
+- Wake Lock API call succeeds but iOS silently ignores it in standalone PWA mode
+- Detected by `isWakeLockBroken()` in platformDetection.ts
+- When detected: Shows `WakeLockInfoModal` with user options:
+  1. Update to iOS 18.4+ (recommended)
+  2. Open in Safari browser instead
+  3. Manually disable auto-lock in iOS Settings
+- Modal auto-shows on first failure, dismissable with session persistence
 
 **User Control**:
 - Toggle button in persistent player bottom bar (Monitor/MonitorOff icon)
@@ -293,10 +307,12 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 - Preference persists to localStorage (`player-wake-lock`, default: enabled)
 - When disabled: Immediately releases wake lock, saves battery
 - When enabled: Requests wake lock on media playback
+- Info button (orange) appears when wake lock fails, opens explanation modal
 
 **State Management**:
-- `userWantsWakeLockRef` tracks user intent (survives browser-initiated releases)
 - `isActive` state reflects actual wake lock status
+- `failureReason` state explains why wake lock failed
+- `isBrokenIOSPWA` flag indicates known broken configuration
 - UI toggle shows actual state (`isWakeLockActive`), not just user preference
 
 **Integration Points**:
@@ -307,8 +323,14 @@ Keeps mobile device screen awake during media playback to prevent dimming/lockin
 
 **Auto-Reacquisition**:
 - Listens for `visibilitychange` event
-- Uses `userWantsWakeLockRef` (not `isActive`) to determine if re-acquisition needed
-- 100ms delay before retry to let browser settle
+- Skipped for broken iOS PWA configuration
+- Uses `userWantsWakeLock` option to determine if re-acquisition needed
+
+**Video Fallback** (iOS Safari when native API fails):
+- Silent MP4 video loop at `/silence.mp4`
+- NoSleep.js technique: random seek every 50ms prevents iOS from pausing
+- Keep-alive interval restarts video if paused
+- Max 5 retries before giving up
 
 ### Swipe Gestures (Mobile Player)
 
@@ -631,7 +653,7 @@ VITE_API_URL=http://localhost:8080/api
 **Player:**
 9. **HLS Memory**: VHS handles automatically with 30s back buffer (see HLS Memory Management)
 10. **VHS ABR Options**: Use `bufferBasedABR` not `experimentalBufferBasedABR`; don't set `bandwidth` with `enableLowInitialPlaylist`
-11. **Wake Lock**: Requires iOS 16.4+ or Chrome/Edge - older browsers show error message (see Screen Wake Lock)
+11. **Wake Lock**: iOS 16.4-18.3 PWAs have broken wake lock (silently ignored) - detect with `isWakeLockBroken()` and show info modal
 12. **VideoPlayer Positioning**: Off-screen (`fixed -top-[9999px]`), not `display: none`
 13. **Autoplay Requirements**: Start muted, unmute after play event
 14. **Fullscreen Maintenance**: Keep same Video.js player instance, use `player.src()` to change tracks (recreating player exits fullscreen)

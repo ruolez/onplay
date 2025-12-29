@@ -23,7 +23,9 @@ import {
   X,
   Music,
   Video,
+  Info,
 } from "lucide-react";
+import { WakeLockInfoModal } from "./WakeLockInfoModal";
 
 export default function PersistentPlayer() {
   const {
@@ -56,7 +58,11 @@ export default function PersistentPlayer() {
     jumpToTrack,
     isWakeLockEnabled,
     isWakeLockActive,
+    wakeLockFailureReason,
+    isBrokenIOSPWA,
+    showWakeLockInfoModal,
     setWakeLockEnabled,
+    setShowWakeLockInfoModal,
     closePlayer,
   } = usePlayer();
 
@@ -682,55 +688,88 @@ export default function PersistentPlayer() {
             </div>
 
             {/* Wake Lock Toggle - 48px touch target */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                haptics.buttonPress();
-                setWakeLockEnabled(!isWakeLockEnabled);
-              }}
-              className={`p-3 rounded-full transition-colors flex-shrink-0 ${
-                isWakeLockEnabled && isWakeLockActive
-                  ? "theme-text-primary"
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? "text-orange-400"
-                    : "theme-text-muted hover:theme-text-primary"
-              }`}
-              style={
-                isWakeLockEnabled && isWakeLockActive
-                  ? { background: "var(--player-bar-button-hover)" }
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? { background: "rgba(251, 146, 60, 0.1)" }
-                    : {}
-              }
-              onMouseEnter={(e) =>
-                !isWakeLockEnabled &&
-                (e.currentTarget.style.background =
-                  "var(--player-bar-button-hover)")
-              }
-              onMouseLeave={(e) =>
-                !isWakeLockEnabled && (e.currentTarget.style.background = "")
-              }
-              title={
-                isWakeLockEnabled && isWakeLockActive
-                  ? "Screen staying awake"
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? "Wake lock failed - tap to retry"
-                    : "Allow screen to sleep"
-              }
-              aria-label={
-                isWakeLockEnabled && isWakeLockActive
-                  ? "Screen wake active"
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? "Screen wake failed"
-                    : "Screen wake disabled"
-              }
-            >
-              {isWakeLockEnabled ? (
-                <Monitor className="w-6 h-6" />
-              ) : (
-                <MonitorOff className="w-6 h-6" />
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptics.buttonPress();
+                  // If broken iOS PWA, show info modal instead of toggling
+                  if (isBrokenIOSPWA && !isWakeLockEnabled) {
+                    setShowWakeLockInfoModal(true);
+                  } else {
+                    setWakeLockEnabled(!isWakeLockEnabled);
+                  }
+                }}
+                className={`p-3 rounded-full transition-colors ${
+                  isWakeLockEnabled && isWakeLockActive
+                    ? "theme-text-primary"
+                    : isWakeLockEnabled && !isWakeLockActive
+                      ? "text-orange-400"
+                      : wakeLockFailureReason
+                        ? "text-orange-400"
+                        : "theme-text-muted hover:theme-text-primary"
+                }`}
+                style={
+                  isWakeLockEnabled && isWakeLockActive
+                    ? { background: "var(--player-bar-button-hover)" }
+                    : isWakeLockEnabled && !isWakeLockActive
+                      ? { background: "rgba(251, 146, 60, 0.1)" }
+                      : wakeLockFailureReason
+                        ? { background: "rgba(251, 146, 60, 0.1)" }
+                        : {}
+                }
+                onMouseEnter={(e) =>
+                  !isWakeLockEnabled &&
+                  !wakeLockFailureReason &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  !isWakeLockEnabled &&
+                  !wakeLockFailureReason &&
+                  (e.currentTarget.style.background = "")
+                }
+                title={
+                  isWakeLockEnabled && isWakeLockActive
+                    ? "Screen staying awake"
+                    : wakeLockFailureReason
+                      ? "Wake lock unavailable - tap for info"
+                      : isWakeLockEnabled && !isWakeLockActive
+                        ? "Wake lock failed - tap to retry"
+                        : "Allow screen to sleep"
+                }
+                aria-label={
+                  isWakeLockEnabled && isWakeLockActive
+                    ? "Screen wake active"
+                    : wakeLockFailureReason
+                      ? "Screen wake unavailable"
+                      : isWakeLockEnabled && !isWakeLockActive
+                        ? "Screen wake failed"
+                        : "Screen wake disabled"
+                }
+              >
+                {isWakeLockEnabled ? (
+                  <Monitor className="w-6 h-6" />
+                ) : (
+                  <MonitorOff className="w-6 h-6" />
+                )}
+              </button>
+              {/* Info button when wake lock has failure reason */}
+              {wakeLockFailureReason && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    haptics.buttonPress();
+                    setShowWakeLockInfoModal(true);
+                  }}
+                  className="p-2 rounded-full text-orange-400 hover:bg-orange-400/10 transition-colors"
+                  title="Learn why wake lock is unavailable"
+                  aria-label="Wake lock info"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
               )}
-            </button>
+            </div>
           </div>
 
           {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
@@ -1016,6 +1055,17 @@ export default function PersistentPlayer() {
           />
         </div>
       </div>
+
+      {/* Wake Lock Info Modal */}
+      <WakeLockInfoModal
+        isOpen={showWakeLockInfoModal}
+        onClose={() => {
+          setShowWakeLockInfoModal(false);
+          // Mark as dismissed for this session
+          sessionStorage.setItem("wake-lock-info-dismissed", "true");
+        }}
+        failureReason={wakeLockFailureReason}
+      />
     </>
   );
 }
