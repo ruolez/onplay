@@ -762,11 +762,11 @@ export default function PersistentPlayer() {
                     haptics.buttonPress();
                     setShowWakeLockInfoModal(true);
                   }}
-                  className="p-2 rounded-full text-orange-400 hover:bg-orange-400/10 transition-colors"
+                  className="p-2.5 rounded-full text-orange-400 hover:bg-orange-400/10 transition-colors"
                   title="Learn why wake lock is unavailable"
                   aria-label="Wake lock info"
                 >
-                  <Info className="w-4 h-4" />
+                  <Info className="w-5 h-5" />
                 </button>
               )}
             </div>
@@ -781,7 +781,7 @@ export default function PersistentPlayer() {
             {/* Centered play buttons within flex-1 (Mobile only) - Mirrors Row 1's title section */}
             <div className="md:hidden flex-1 min-w-0 flex items-center justify-center">
               {/* Primary Controls - Centered within flex-1 section */}
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-3 xs:gap-4">
                 <button
                   onClick={handlePlayPrevious}
                   disabled={!hasPrevious}
@@ -799,12 +799,12 @@ export default function PersistentPlayer() {
                   title="Previous"
                   aria-label="Previous track"
                 >
-                  <SkipBack className="w-6 h-6" />
+                  <SkipBack className="w-6 h-6 xs:w-7 xs:h-7" />
                 </button>
 
                 <button
                   onClick={handleTogglePlayPause}
-                  className="p-3 sm:p-4 rounded-full transition-all hover:scale-105"
+                  className="p-3.5 xs:p-4 rounded-full transition-all hover:scale-105 active:scale-95"
                   style={{
                     background: "var(--btn-primary-bg)",
                     color: "var(--btn-primary-text)",
@@ -821,12 +821,15 @@ export default function PersistentPlayer() {
                   }
                 >
                   {isBuffering ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <Loader2 className="w-7 h-7 xs:w-8 xs:h-8 animate-spin" />
                   ) : isPlaying ? (
-                    <Pause className="w-6 h-6" fill="currentColor" />
+                    <Pause
+                      className="w-7 h-7 xs:w-8 xs:h-8"
+                      fill="currentColor"
+                    />
                   ) : (
                     <Play
-                      className="w-6 h-6 translate-x-[1px]"
+                      className="w-7 h-7 xs:w-8 xs:h-8 translate-x-[2px]"
                       fill="currentColor"
                     />
                   )}
@@ -849,7 +852,7 @@ export default function PersistentPlayer() {
                   title="Next"
                   aria-label="Next track"
                 >
-                  <SkipForward className="w-6 h-6" />
+                  <SkipForward className="w-6 h-6 xs:w-7 xs:h-7" />
                 </button>
               </div>
             </div>
