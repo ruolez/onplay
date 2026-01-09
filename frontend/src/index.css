@@ -91,6 +91,18 @@
   transform: translate(-50%, -50%);
 }
 
+/* Force control bar to hide in fullscreen when user is inactive */
+.video-js.vjs-fullscreen.vjs-user-inactive .vjs-control-bar {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: visibility 0.5s, opacity 0.5s !important;
+}
+
+.video-js.vjs-fullscreen.vjs-user-active .vjs-control-bar {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
 /* Theme CSS Variables - Applied dynamically via JS */
 :root {
   --bg-primary: #0f172a;

@@ -72,6 +72,7 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           playsinline: true,
           autoplay: autoplay || false,
           muted: autoplay ? true : false,
+          inactivityTimeout: 2500,
           sources: [
             {
               src,
