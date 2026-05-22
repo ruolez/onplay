@@ -853,6 +853,18 @@ update_installation() {
         fi
     done
 
+    # Remove known-obsolete files that were deleted from the repo at some
+    # point but may still linger as untracked files on long-lived installs
+    # (predating the deletion). They can break the build — for example, an
+    # orphan .ts file is still type-checked by `tsc` and may fail compilation.
+    OBSOLETE_FILES="frontend/src/lib/theme-professional.ts"
+    for f in $OBSOLETE_FILES; do
+        if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+            print_warning "Removing obsolete untracked $f"
+            rm -f "$f"
+        fi
+    done
+
     git pull origin main
     if [ $? -ne 0 ]; then
         print_error "Failed to pull latest code"
