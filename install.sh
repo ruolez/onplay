@@ -837,6 +837,22 @@ update_installation() {
     # Pull latest code
     print_info "Pulling latest code from GitHub..."
     git fetch origin
+
+    # One-time migration: older install.sh versions generated some files
+    # (e.g. frontend/nginx.conf) directly into the install dir as untracked
+    # files. Those same paths are now tracked in the repo, which would make
+    # `git pull` abort with "untracked working tree files would be overwritten".
+    # Remove any local untracked copies that the incoming commit will provide.
+    MIGRATED_FILES="frontend/nginx.conf"
+    for f in $MIGRATED_FILES; do
+        if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+            if git cat-file -e "origin/main:$f" 2>/dev/null; then
+                print_warning "Removing untracked $f (now provided by the repo)"
+                rm -f "$f"
+            fi
+        fi
+    done
+
     git pull origin main
     if [ $? -ne 0 ]; then
         print_error "Failed to pull latest code"
