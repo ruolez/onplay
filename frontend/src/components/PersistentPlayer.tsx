@@ -892,6 +892,12 @@ export default function PersistentPlayer() {
                 >
                   <SkipForward className="w-6 h-6 xs:w-7 xs:h-7" />
                 </button>
+
+                {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
+                <div
+                  className="w-11 h-11 xs:w-12 xs:h-12 flex-shrink-0"
+                  aria-hidden="true"
+                />
               </div>
             </div>
 
@@ -1010,6 +1016,9 @@ export default function PersistentPlayer() {
               >
                 <SkipForward className="w-6 h-6" />
               </button>
+
+              {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
+              <div className="w-11 h-11 flex-shrink-0" aria-hidden="true" />
             </div>
 
             {/* Desktop-only controls */}
