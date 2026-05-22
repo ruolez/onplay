@@ -47,6 +47,10 @@ interface PlayerContextType {
   setWakeLockEnabled: (enabled: boolean) => void;
   setShowWakeLockInfoModal: (show: boolean) => void;
 
+  // Shuffle
+  isShuffled: boolean;
+  toggleShuffle: () => void;
+
   // Actions
   openPlayer: (mediaId: string, queueItems?: Media[]) => void;
   closePlayer: () => void;
@@ -84,7 +88,27 @@ interface PlayerPersistedState {
 }
 
 const PLAYER_STATE_KEY = "player-state";
+const SHUFFLE_STORAGE_KEY = "player-shuffle";
 const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
+
+function shuffleWithCurrentFirst(
+  items: Media[],
+  currentId: string | undefined,
+): Media[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  if (currentId) {
+    const idx = arr.findIndex((m) => m.id === currentId);
+    if (idx > 0) {
+      const [cur] = arr.splice(idx, 1);
+      arr.unshift(cur);
+    }
+  }
+  return arr;
+}
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
@@ -127,6 +151,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem("player-wake-lock", String(wakeLockUserEnabled));
   }, [wakeLockUserEnabled]);
+
+  // Shuffle state (persisted to localStorage)
+  const [isShuffled, setIsShuffled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SHUFFLE_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const shuffledQueueRef = useRef<Media[] | null>(null);
 
   // Track pending restore state (for seeking after track loads)
   const pendingRestoreRef = useRef<{
@@ -464,21 +498,61 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     console.log("[PlayerContext] Current queue size:", queue.length);
     console.log("[PlayerContext] New sortedMedia size:", sortedMedia.length);
     console.log("[PlayerContext] Current index:", currentIndex);
+    console.log("[PlayerContext] Shuffle:", isShuffled);
+
+    const nextQueue = isShuffled
+      ? shuffleWithCurrentFirst(sortedMedia, currentMedia.id)
+      : sortedMedia;
+
+    if (isShuffled) {
+      shuffledQueueRef.current = nextQueue;
+    } else {
+      shuffledQueueRef.current = null;
+    }
 
     // Send UPDATE_QUEUE event to state machine
-    send({ type: "UPDATE_QUEUE", queueItems: sortedMedia });
+    send({ type: "UPDATE_QUEUE", queueItems: nextQueue });
 
     console.log("[PlayerContext] ✅ UPDATE_QUEUE event sent");
-  }, [sortedMedia, currentMedia, send]);
+  }, [sortedMedia, currentMedia, send, isShuffled]);
 
   // Actions
   const openPlayer = useCallback(
     (mediaId: string, queueItems?: Media[]) => {
       conditionalRequestWakeLock();
-      send({ type: "LOAD_TRACK", mediaId, queueItems });
+      let finalQueue = queueItems;
+      if (isShuffled && queueItems && queueItems.length > 1) {
+        finalQueue = shuffleWithCurrentFirst(queueItems, mediaId);
+        shuffledQueueRef.current = finalQueue;
+      }
+      send({ type: "LOAD_TRACK", mediaId, queueItems: finalQueue });
     },
-    [send, conditionalRequestWakeLock],
+    [send, conditionalRequestWakeLock, isShuffled],
   );
+
+  const toggleShuffle = useCallback(() => {
+    const next = !isShuffled;
+    setIsShuffled(next);
+    try {
+      localStorage.setItem(SHUFFLE_STORAGE_KEY, String(next));
+    } catch {
+      // ignore localStorage errors (private mode etc.)
+    }
+
+    // If no active queue, just persist the preference
+    if (sortedMedia.length === 0) return;
+
+    if (next) {
+      const shuffled = shuffleWithCurrentFirst(sortedMedia, currentMedia?.id);
+      shuffledQueueRef.current = shuffled;
+      send({ type: "UPDATE_QUEUE", queueItems: shuffled });
+      console.log("[PlayerContext] 🔀 Shuffle enabled");
+    } else {
+      shuffledQueueRef.current = null;
+      send({ type: "UPDATE_QUEUE", queueItems: sortedMedia });
+      console.log("[PlayerContext] ➡️ Shuffle disabled");
+    }
+  }, [isShuffled, sortedMedia, currentMedia, send]);
 
   const closePlayer = useCallback(() => {
     // Clear saved state when user manually closes
@@ -651,6 +725,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         showWakeLockInfoModal,
         setWakeLockEnabled,
         setShowWakeLockInfoModal,
+        isShuffled,
+        toggleShuffle,
         openPlayer,
         closePlayer,
         togglePlayPause,

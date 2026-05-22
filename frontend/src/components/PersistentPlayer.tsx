@@ -11,6 +11,7 @@ import {
   Pause,
   SkipBack,
   SkipForward,
+  Shuffle,
   Volume2,
   VolumeX,
   Maximize,
@@ -63,6 +64,8 @@ export default function PersistentPlayer() {
     showWakeLockInfoModal,
     setWakeLockEnabled,
     setShowWakeLockInfoModal,
+    isShuffled,
+    toggleShuffle,
     closePlayer,
   } = usePlayer();
 
@@ -783,6 +786,41 @@ export default function PersistentPlayer() {
               {/* Primary Controls - Centered within flex-1 section */}
               <div className="flex items-center gap-3 xs:gap-4">
                 <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    haptics.buttonPress();
+                    toggleShuffle();
+                  }}
+                  disabled={queue.length < 2}
+                  className={`p-3 rounded-full transition-colors ${
+                    queue.length < 2
+                      ? "theme-text-muted opacity-30 cursor-not-allowed"
+                      : isShuffled
+                        ? ""
+                        : "theme-text-muted"
+                  }`}
+                  style={
+                    isShuffled && queue.length >= 2
+                      ? { color: "var(--btn-orange-bg)" }
+                      : {}
+                  }
+                  onMouseEnter={(e) =>
+                    queue.length >= 2 &&
+                    !isShuffled &&
+                    (e.currentTarget.style.background =
+                      "var(--player-bar-button-hover)")
+                  }
+                  onMouseLeave={(e) =>
+                    !isShuffled && (e.currentTarget.style.background = "")
+                  }
+                  title={isShuffled ? "Shuffle on" : "Shuffle"}
+                  aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
+                  aria-pressed={isShuffled}
+                >
+                  <Shuffle className="w-5 h-5 xs:w-6 xs:h-6" />
+                </button>
+
+                <button
                   onClick={handlePlayPrevious}
                   disabled={!hasPrevious}
                   className={`p-3 rounded-full transition-colors theme-text-primary ${
@@ -868,6 +906,41 @@ export default function PersistentPlayer() {
 
             {/* Desktop play buttons */}
             <div className="hidden md:flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptics.buttonPress();
+                  toggleShuffle();
+                }}
+                disabled={queue.length < 2}
+                className={`p-3 rounded-full transition-colors ${
+                  queue.length < 2
+                    ? "theme-text-muted opacity-30 cursor-not-allowed"
+                    : isShuffled
+                      ? ""
+                      : "theme-text-muted hover:theme-text-primary"
+                }`}
+                style={
+                  isShuffled && queue.length >= 2
+                    ? { color: "var(--btn-orange-bg)" }
+                    : {}
+                }
+                onMouseEnter={(e) =>
+                  queue.length >= 2 &&
+                  !isShuffled &&
+                  (e.currentTarget.style.background =
+                    "var(--player-bar-button-hover)")
+                }
+                onMouseLeave={(e) =>
+                  !isShuffled && (e.currentTarget.style.background = "")
+                }
+                title={isShuffled ? "Shuffle on" : "Shuffle"}
+                aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
+                aria-pressed={isShuffled}
+              >
+                <Shuffle className="w-5 h-5" />
+              </button>
+
               <button
                 onClick={handlePlayPrevious}
                 disabled={!hasPrevious}
