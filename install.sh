@@ -345,7 +345,7 @@ services:
 
   worker:
     build: ./backend
-    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     environment:
       - DATABASE_URL=postgresql://mediauser:${DB_PASSWORD}@postgres:5432/mediadb
       - REDIS_URL=redis://redis:6379/0
@@ -358,8 +358,6 @@ services:
       - redis
       - postgres
     restart: unless-stopped
-    deploy:
-      replicas: 2
 
   beat:
     build: ./backend
@@ -445,14 +443,15 @@ http {
     types_hash_max_size 2048;
     client_max_body_size 5G;
 
-    # Gzip compression
+    # Gzip compression — text/script types only.
+    # Do NOT gzip already-compressed payloads (HLS .ts segments, JPEG/PNG
+    # thumbnails, fonts) — pure CPU cost with no size reduction.
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
     gzip_types text/plain text/css text/xml text/javascript
-               application/x-javascript application/javascript application/xml+rss
-               application/json application/vnd.ms-fontobject application/x-font-ttf
-               font/opentype image/svg+xml image/x-icon;
+               application/javascript application/json application/xml+rss
+               image/svg+xml;
 
     upstream frontend {
         server frontend:5173;
@@ -734,76 +733,24 @@ EOF
     print_success "Environment configuration created"
 }
 
-# Update frontend Dockerfile for production
-update_frontend_dockerfile() {
-    print_info "Updating frontend Dockerfile for production..."
+# Configure logrotate for nginx bandwidth log (volume-mounted, written by
+# the containerized nginx). copytruncate avoids needing to signal the container.
+setup_log_rotation() {
+    print_info "Configuring logrotate for bandwidth logs..."
 
-    cat > "$INSTALL_DIR/frontend/Dockerfile" << 'EOF'
-FROM node:20-alpine as builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Build arguments for environment variables
-ARG VITE_API_URL
-ARG VITE_WS_URL
-
-# Set environment variables
-ENV VITE_API_URL=${VITE_API_URL}
-ENV VITE_WS_URL=${VITE_WS_URL}
-
-# Build application
-RUN npm run build
-
-# Production stage
-FROM nginx:alpine
-
-# Copy built assets from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 5173
-
-CMD ["nginx", "-g", "daemon off;"]
-EOF
-
-    # Create nginx config for frontend container
-    cat > "$INSTALL_DIR/frontend/nginx.conf" << 'EOF'
-server {
-    listen 5173;
-    server_name localhost;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/javascript application/xml+rss application/json;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
+    cat > /etc/logrotate.d/onplay-bandwidth << 'EOF'
+/var/lib/docker/volumes/onplay_nginx_logs/_data/bandwidth.log {
+    daily
+    rotate 7
+    size 100M
+    compress
+    missingok
+    notifempty
+    copytruncate
 }
 EOF
 
-    print_success "Frontend Dockerfile updated for production"
+    print_success "Log rotation configured (/etc/logrotate.d/onplay-bandwidth)"
 }
 
 # Start application
@@ -897,6 +844,22 @@ update_installation() {
     fi
     print_success "Code updated successfully"
 
+    # Regenerate host-side prod configs from the (possibly updated) install.sh
+    # so improvements to docker-compose.prod.yml / nginx.prod.conf / logrotate
+    # land on existing installs too. All three are idempotent overwrites.
+    print_info "Refreshing production configuration files..."
+    # Load DOMAIN/DB_PASSWORD from .env so the heredocs interpolate correctly.
+    if [ -f .env ]; then
+        set -a
+        # shellcheck disable=SC1091
+        . ./.env
+        set +a
+    fi
+    create_production_compose
+    create_production_nginx_conf
+    setup_log_rotation
+    print_success "Production configuration refreshed"
+
     # Stop containers
     print_info "Stopping containers..."
     docker compose -f docker-compose.prod.yml down --remove-orphans
@@ -910,9 +873,12 @@ update_installation() {
     fi
     print_success "Docker images rebuilt successfully"
 
-    # Clean up dangling images and build cache
-    print_info "Cleaning up dangling images and build cache..."
-    docker image prune -f
+    # Aggressive cleanup: remove ALL unused images (not just dangling) plus
+    # build cache, so old onplay-* image layers don't pile up between updates.
+    # Volumes (postgres_data, redis_data, nginx_logs, media) are NOT touched.
+    print_info "Pruning unused images and build cache..."
+    docker image prune -a -f
+    docker builder prune -a -f
     docker system prune -f
     print_success "Cleanup completed successfully"
 
@@ -1053,7 +1019,7 @@ main() {
     setup_application
     create_production_compose
     create_production_nginx_conf
-    update_frontend_dockerfile
+    setup_log_rotation
     create_env_file
 
     # Setup nginx (HTTP only first)

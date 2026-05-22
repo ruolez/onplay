@@ -26,6 +26,6 @@ celery_app.conf.update(
 celery_app.conf.beat_schedule = {
     'process-bandwidth-logs': {
         'task': 'app.worker.tasks.process_bandwidth_logs',
-        'schedule': 60.0,  # Run every 60 seconds
+        'schedule': 300.0,  # Run every 5 minutes
     },
 }

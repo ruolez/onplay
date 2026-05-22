@@ -180,35 +180,6 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
                   }
                 }, 1500);
 
-                // Track quality switches every 2 seconds
-                let lastQuality = "";
-                const checkQuality = () => {
-                  try {
-                    if (vhs.playlists?.media_) {
-                      const current = vhs.playlists.media_;
-                      const uri = current.uri || "";
-                      if (uri && uri !== lastQuality) {
-                        lastQuality = uri;
-                        console.log("[DualPlayer] 🔄 Quality switched to:", {
-                          bandwidth: current.attributes?.BANDWIDTH,
-                          uri: uri.split("/").pop(),
-                          systemBandwidth: Math.round(vhs.systemBandwidth || 0),
-                          bufferLevel:
-                            player.buffered() && player.buffered().length > 0
-                              ? (
-                                  player.buffered().end(0) -
-                                  (player.currentTime() ?? 0)
-                                ).toFixed(1) + "s"
-                              : "0s",
-                        });
-                      }
-                    }
-                  } catch (err) {
-                    // Silently ignore
-                  }
-                };
-
-                setInterval(checkQuality, 2000);
               } else {
                 console.log(
                   "[DualPlayer] ⚠️ VHS not available - likely using Safari native HLS",

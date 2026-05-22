@@ -60,7 +60,6 @@ export default function Gallery() {
     currentName: string;
   }>({ show: false, id: null, currentName: "" });
   const [newFilename, setNewFilename] = useState("");
-  const [loadTime] = useState(Date.now());
   const [tagModal, setTagModal] = useState<{
     show: boolean;
     mediaId: string | null;
@@ -571,7 +570,7 @@ export default function Gallery() {
                     >
                       {item.thumbnail_path ? (
                         <img
-                          src={`${item.thumbnail_path}?t=${loadTime}`}
+                          src={item.thumbnail_path}
                           alt={item.filename}
                           className="w-full h-auto"
                           loading="lazy"

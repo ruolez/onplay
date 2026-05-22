@@ -12,7 +12,7 @@ interface UseWakeLockOptions {
 }
 
 const MAX_RETRIES = 5;
-const KEEP_ALIVE_INTERVAL = 50; // NoSleep.js uses 50ms for random seek
+const KEEP_ALIVE_INTERVAL = 500; // 500ms is sufficient to defeat iOS pause detection while keeping CPU usage low
 
 export function useWakeLock(options?: UseWakeLockOptions) {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);

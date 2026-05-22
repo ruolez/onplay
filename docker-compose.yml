@@ -68,7 +68,12 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      # Stop at the node builder stage; the runtime nginx stage has no node
+      # and is only for production.
+      target: builder
+    command: npm run dev -- --host 0.0.0.0
     ports:
       - "5173:5173"
     environment:

@@ -3,11 +3,19 @@ from ..database import SessionLocal
 from ..models import Media, MediaVariant, MediaStatus, MediaType
 import ffmpeg
 import os
+import redis
 from pathlib import Path
 from PIL import Image
 import mutagen
 
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/media")
+
+# Shared Redis connection for cross-worker state.
+# Bandwidth tracking uses this to persist the nginx log file offset between
+# task runs — the previous module-level global was per-process, causing every
+# worker to re-parse the entire log from byte 0 when it picked up the task.
+_redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+_BANDWIDTH_POSITION_KEY = "onplay:bandwidth:last_position"
 
 @celery_app.task(bind=True, name="app.worker.tasks.process_media")
 def process_media(self, media_id: str, original_path: str):
@@ -368,27 +376,29 @@ def generate_audio_thumbnail(media_id: str) -> str:
     return "/media/thumbnails/audio-default.jpg"
 
 
-# Bandwidth tracking state (stores last log file position)
-_last_log_position = 0
-
-
 @celery_app.task(bind=True, name="app.worker.tasks.process_bandwidth_logs")
 def process_bandwidth_logs_task(self):
     """
     Celery task to process nginx bandwidth logs.
     Runs periodically to track actual bandwidth usage.
-    """
-    global _last_log_position
 
+    The read position is persisted in Redis so it is shared across all worker
+    processes (prefork workers each have their own Python globals — using a
+    module-level variable caused every run to re-parse the entire log).
+    """
     from .bandwidth_tracker import process_bandwidth_logs, cleanup_old_logs
     from ..database import SessionLocal
 
     try:
-        # Process logs from last position
-        _last_log_position = process_bandwidth_logs(
+        raw_position = _redis_client.get(_BANDWIDTH_POSITION_KEY)
+        last_position = int(raw_position) if raw_position else 0
+
+        new_position = process_bandwidth_logs(
             log_file_path="/var/log/nginx/bandwidth.log",
-            last_position=_last_log_position
+            last_position=last_position,
         )
+
+        _redis_client.set(_BANDWIDTH_POSITION_KEY, new_position)
 
         # Cleanup old logs (keep last 90 days)
         db = SessionLocal()
@@ -397,7 +407,7 @@ def process_bandwidth_logs_task(self):
         finally:
             db.close()
 
-        return {"status": "success", "last_position": _last_log_position}
+        return {"status": "success", "last_position": new_position}
 
     except Exception as e:
         print(f"Error in bandwidth tracking task: {e}")

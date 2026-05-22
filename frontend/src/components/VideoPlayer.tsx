@@ -192,28 +192,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
                   }
                 }, 1000);
 
-                // Track quality switches
-                let lastQuality = "";
-                const checkQuality = () => {
-                  try {
-                    if (vhs.playlists?.media_) {
-                      const current = vhs.playlists.media_;
-                      const uri = current.uri || "";
-                      if (uri && uri !== lastQuality) {
-                        lastQuality = uri;
-                        console.log("[VideoPlayer] 🔄 Quality changed:", {
-                          bandwidth: current.attributes?.BANDWIDTH,
-                          uri: uri.split("/").pop(),
-                          systemBandwidth: vhs.systemBandwidth
-                        });
-                      }
-                    }
-                  } catch (err) {
-                    // Silently fail
-                  }
-                };
-
-                setInterval(checkQuality, 2000); // Check every 2 seconds
               }
             }
           } catch (error) {

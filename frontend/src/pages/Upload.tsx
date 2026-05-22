@@ -109,7 +109,7 @@ export default function Upload() {
       } catch (error) {
         clearInterval(interval);
       }
-    }, 2000);
+    }, 5000);
   };
 
   const getStatusIcon = (status: string) => {

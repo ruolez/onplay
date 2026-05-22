@@ -6,18 +6,28 @@ from ..models import Analytics, Media, BandwidthStats
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
+import functools
 import socket
 
 router = APIRouter()
 
+# Cap DNS lookups: gethostbyaddr blocks the FastAPI worker, and many client
+# IPs have no reverse record (we'd otherwise wait the OS default ~5s).
+socket.setdefaulttimeout(0.5)
+
+
+@functools.lru_cache(maxsize=1024)
 def get_hostname(ip: str) -> str:
-    """Try to resolve IP to hostname, return IP if fails"""
+    """Try to resolve IP to hostname, return IP if fails.
+
+    Cached per-process to avoid repeating the same blocking lookup on every
+    analytics overview request.
+    """
     if not ip or ip == "unknown":
         return "unknown"
     try:
-        hostname = socket.gethostbyaddr(ip)[0]
-        return hostname
-    except:
+        return socket.gethostbyaddr(ip)[0]
+    except (socket.herror, socket.gaierror, socket.timeout, OSError):
         return ip
 
 class AnalyticsEvent(BaseModel):

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from pathlib import Path
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, tuple_
 from ..models import BandwidthLog, BandwidthStats, Media
 from ..database import SessionLocal
 import logging
@@ -44,15 +44,15 @@ def parse_log_line(line: str) -> Optional[dict]:
     try:
         data = match.groupdict()
 
+        # Only track HLS segment requests (.ts files)
+        if not data['uri'].endswith('.ts'):
+            return None
+
         # Parse timestamp
         timestamp = datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
 
         # Extract media ID from URI
         media_id = extract_media_id(data['uri'])
-
-        # Only track HLS segment requests (.ts files)
-        if not data['uri'].endswith('.ts'):
-            return None
 
         return {
             'ip_address': data['ip'],
@@ -75,51 +75,109 @@ def process_bandwidth_logs(
     """
     Process nginx bandwidth logs and store in database.
 
-    Returns the new file position for incremental processing.
+    Reads from `last_position` to end of file, parses HLS segment entries,
+    and writes them in bulk. Aggregates per-(media_id, ip, hour) stats in
+    memory to minimize DB round-trips.
+
+    Returns the new file position for incremental processing on the next run.
+    Detects log rotation (file shrunk below last_position) and restarts from 0.
     """
-    db = SessionLocal()
+    log_path = Path(log_file_path)
 
+    if not log_path.exists():
+        logger.warning(f"Bandwidth log file not found: {log_file_path}")
+        return 0
+
+    # Detect log rotation: if the file is smaller than where we left off,
+    # logrotate (or anything else) truncated/replaced it. Start over from 0.
     try:
-        log_path = Path(log_file_path)
+        file_size = log_path.stat().st_size
+    except OSError as e:
+        logger.error(f"Could not stat bandwidth log: {e}")
+        return last_position
 
-        if not log_path.exists():
-            logger.warning(f"Bandwidth log file not found: {log_file_path}")
-            return 0
+    if last_position > file_size:
+        logger.info(
+            f"Bandwidth log appears rotated (size {file_size} < last_position "
+            f"{last_position}); resetting to 0"
+        )
+        last_position = 0
 
-        # Read from last position (incremental processing)
-        with open(log_path, 'r') as f:
-            f.seek(last_position)
-            lines = f.readlines()
-            new_position = f.tell()
+    # Read from last position (incremental processing)
+    with open(log_path, 'r') as f:
+        f.seek(last_position)
+        lines = f.readlines()
+        new_position = f.tell()
 
-        if not lines:
-            return last_position
+    if not lines:
+        return last_position
 
-        # Parse and store logs
-        processed_count = 0
-        for line in lines:
-            parsed = parse_log_line(line)
-            if not parsed:
-                continue
+    # Parse all lines up front
+    parsed_entries = []
+    for line in lines:
+        parsed = parse_log_line(line)
+        if parsed:
+            parsed_entries.append(parsed)
 
-            # Store raw bandwidth log
-            bandwidth_log = BandwidthLog(**parsed)
-            db.add(bandwidth_log)
+    if not parsed_entries:
+        return new_position
 
-            # Update aggregated stats (hourly)
-            update_bandwidth_stats(
-                db,
-                media_id=parsed['media_id'],
-                ip_address=parsed['ip_address'],
-                timestamp=parsed['timestamp'],
-                bytes_sent=parsed['bytes_sent']
-            )
+    # Aggregate stats in memory per (media_id, ip, hour) bucket
+    # so we only need one SELECT + one bulk INSERT/UPDATE for stats.
+    bucket_totals: dict = {}
+    for entry in parsed_entries:
+        hour_bucket = entry['timestamp'].replace(minute=0, second=0, microsecond=0)
+        key = (entry['media_id'], entry['ip_address'], hour_bucket)
+        if key in bucket_totals:
+            bucket_totals[key][0] += entry['bytes_sent']
+            bucket_totals[key][1] += 1
+        else:
+            bucket_totals[key] = [entry['bytes_sent'], 1]
 
-            processed_count += 1
+    db = SessionLocal()
+    try:
+        # Bulk insert raw bandwidth logs in a single round-trip.
+        db.bulk_insert_mappings(BandwidthLog, parsed_entries)
 
-        if processed_count > 0:
-            db.commit()
-            logger.info(f"Processed {processed_count} bandwidth log entries")
+        # Look up existing stats rows for all touched buckets in one query.
+        bucket_keys = list(bucket_totals.keys())
+        existing_rows = db.query(BandwidthStats).filter(
+            tuple_(
+                BandwidthStats.media_id,
+                BandwidthStats.ip_address,
+                BandwidthStats.date,
+            ).in_(bucket_keys)
+        ).all()
+
+        existing_index = {
+            (row.media_id, row.ip_address, row.date): row
+            for row in existing_rows
+        }
+
+        new_rows = []
+        for key, (bytes_sent, request_count) in bucket_totals.items():
+            row = existing_index.get(key)
+            if row is not None:
+                row.total_bytes = (row.total_bytes or 0) + bytes_sent
+                row.request_count = (row.request_count or 0) + request_count
+            else:
+                media_id, ip_address, hour_bucket = key
+                new_rows.append({
+                    'media_id': media_id,
+                    'ip_address': ip_address,
+                    'date': hour_bucket,
+                    'total_bytes': bytes_sent,
+                    'request_count': request_count,
+                })
+
+        if new_rows:
+            db.bulk_insert_mappings(BandwidthStats, new_rows)
+
+        db.commit()
+        logger.info(
+            f"Processed {len(parsed_entries)} bandwidth entries "
+            f"({len(bucket_keys)} buckets, {len(new_rows)} new)"
+        )
 
         return new_position
 
@@ -129,39 +187,6 @@ def process_bandwidth_logs(
         return last_position
     finally:
         db.close()
-
-
-def update_bandwidth_stats(
-    db: Session,
-    media_id: Optional[str],
-    ip_address: str,
-    timestamp: datetime,
-    bytes_sent: int
-):
-    """Update or create aggregated bandwidth stats (hourly buckets)"""
-
-    # Truncate to hour
-    hour_bucket = timestamp.replace(minute=0, second=0, microsecond=0)
-
-    # Find or create stats record
-    stats = db.query(BandwidthStats).filter(
-        BandwidthStats.media_id == media_id,
-        BandwidthStats.ip_address == ip_address,
-        BandwidthStats.date == hour_bucket
-    ).first()
-
-    if stats:
-        stats.total_bytes += bytes_sent
-        stats.request_count += 1
-    else:
-        stats = BandwidthStats(
-            media_id=media_id,
-            ip_address=ip_address,
-            date=hour_bucket,
-            total_bytes=bytes_sent,
-            request_count=1
-        )
-        db.add(stats)
 
 
 def get_bandwidth_summary(

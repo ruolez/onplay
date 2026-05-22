@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import desc, func
 from ..database import get_db
 from ..models import Media, MediaStatus, MediaType, MediaVariant, Analytics
@@ -38,7 +38,7 @@ async def list_media(
     status: Optional[MediaStatus] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Media)
+    query = db.query(Media).options(selectinload(Media.tags))
 
     if media_type:
         query = query.filter(Media.media_type == media_type)

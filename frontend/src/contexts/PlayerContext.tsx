@@ -319,17 +319,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [currentMedia, savePlayerState]);
 
-  // Debounced save during playback (every 10 seconds)
-  useEffect(() => {
-    if (!isPlaying || !currentMedia) return;
-
-    const interval = setInterval(() => {
-      savePlayerState();
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentMedia, savePlayerState]);
-
   // Auto-play when transitioning to ready state (for auto-advance)
   const prevStateRef = useRef<string>(machineState);
   useEffect(() => {
