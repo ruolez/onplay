@@ -629,7 +629,7 @@ export default function PersistentPlayer() {
       {/* Mini Player Bottom Bar */}
       <div
         ref={miniPlayerRef}
-        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[68px] xs:bottom-[72px] md:bottom-0 ${
+        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[80px] xs:bottom-[84px] md:bottom-0 ${
           isVisible && !isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
