@@ -616,7 +616,7 @@ export default function Gallery() {
                     {/* Info */}
                     <div className="p-2 xs:p-3 sm:p-4">
                       {/* Filename - First Line */}
-                      <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
+                      <h3 className="theme-text-primary font-medium truncate text-base xs:text-sm sm:text-base mb-1 sm:mb-2">
                         {item.filename}
                       </h3>
 
