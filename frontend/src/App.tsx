@@ -226,7 +226,7 @@ function AppContent() {
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full pl-9 pr-9 py-2 rounded-lg text-sm theme-input focus:outline-none"
+                    className="w-full pl-9 pr-9 py-2 rounded-lg text-base sm:text-sm theme-input focus:outline-none"
                     style={{
                       background: "var(--input-bg)",
                       color: "var(--text-primary)",

@@ -952,7 +952,7 @@ export default function Gallery() {
               onChange={(e) => setNewFilename(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleRename()}
               placeholder="New filename"
-              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-sm sm:text-base"
+              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-base"
               autoFocus
             />
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -1003,7 +1003,7 @@ export default function Gallery() {
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
               placeholder="Tag name"
-              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-sm sm:text-base"
+              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-base"
               autoFocus
             />
             {allTags.length > 0 && (
