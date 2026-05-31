@@ -711,7 +711,7 @@ export default function Gallery() {
                     key={item.id}
                     ref={(el) => el && mediaRefs.current.set(item.id, el)}
                     onClick={() => handleCardClick(item)}
-                    className={`relative theme-card rounded-lg p-2 transition-all ${
+                    className={`relative theme-card rounded-lg p-2.5 sm:p-2 transition-all ${
                       item.status === "ready"
                         ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
                         : "cursor-default"
@@ -738,12 +738,12 @@ export default function Gallery() {
                       <div className="flex-shrink-0">
                         {item.media_type === "video" ? (
                           <Play
-                            className="w-4 h-4"
+                            className="w-[18px] h-[18px] sm:w-4 sm:h-4"
                             style={{ color: "var(--icon-video)" }}
                           />
                         ) : (
                           <Music
-                            className="w-4 h-4"
+                            className="w-[18px] h-[18px] sm:w-4 sm:h-4"
                             style={{ color: "var(--icon-audio)" }}
                           />
                         )}
@@ -752,7 +752,7 @@ export default function Gallery() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="theme-text-primary font-medium text-sm sm:text-base truncate flex-1">
+                          <h3 className="theme-text-primary font-medium text-base truncate flex-1">
                             {item.filename}
                           </h3>
 
