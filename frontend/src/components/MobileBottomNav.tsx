@@ -5,7 +5,7 @@
  * Only visible on mobile (hidden on md+ breakpoints).
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Music,
   Play,
@@ -15,17 +15,15 @@ import {
   Grid3x3,
   List,
   Search,
-  X,
 } from "lucide-react";
 import { useGallery } from "../contexts/GalleryContext";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 type FilterType = "all" | "video" | "audio";
 type SortType = "new" | "name" | "popular" | "duration";
 
 export default function MobileBottomNav() {
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
     filter,
@@ -42,21 +40,14 @@ export default function MobileBottomNav() {
   const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [tagFilterOpen, setTagFilterOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(
-    () => !!searchParams.get("q"),
-  );
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     const saved = localStorage.getItem("gallery-view") as "grid" | "list";
     if (saved) return saved;
     return window.innerWidth <= 768 ? "list" : "grid";
   });
 
-  // Keep local search input in sync with URL changes (back/forward, deep links)
-  useEffect(() => {
-    setSearchQuery(searchParams.get("q") || "");
-  }, [searchParams]);
+  // Active state for the search button mirrors the URL ?q= param
+  const hasActiveSearch = !!searchParams.get("q");
 
   // Close menus when clicking outside
   // IMPORTANT: This useEffect must be BEFORE any early returns to follow React's rules of hooks
@@ -77,33 +68,10 @@ export default function MobileBottomNav() {
       ) {
         setTagFilterOpen(false);
       }
-      if (
-        searchOpen &&
-        !(e.target as Element).closest(".mobile-search-menu")
-      ) {
-        setSearchOpen(false);
-      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [mediaTypeMenuOpen, sortMenuOpen, tagFilterOpen, searchOpen]);
-
-  // Auto-focus search input when popover opens
-  useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [searchOpen]);
-
-  // Escape key closes search popover
-  useEffect(() => {
-    if (!searchOpen) return;
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSearchOpen(false);
-    };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [searchOpen]);
+  }, [mediaTypeMenuOpen, sortMenuOpen, tagFilterOpen]);
 
   // Only show on Gallery page (must be AFTER all hooks)
   if (location.pathname !== "/") {
@@ -112,17 +80,6 @@ export default function MobileBottomNav() {
 
   // Position dropdowns just above the (taller) bottom nav bar
   const dropdownBottom = "74px";
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set("q", value);
-    } else {
-      params.delete("q");
-    }
-    navigate(`?${params.toString()}`, { replace: true });
-  };
 
   const toggleTagFilter = (tagId: number) => {
     setSelectedTags(
@@ -159,60 +116,21 @@ export default function MobileBottomNav() {
       }}
     >
       <div className="flex items-center gap-1.5 xs:gap-2 px-2 xs:px-3 py-3 xs:py-3.5">
-        {/* Search Button */}
-        <div className="relative mobile-search-menu">
-          <button
-            onClick={() => {
-              setSearchOpen(!searchOpen);
-              setMediaTypeMenuOpen(false);
-              setSortMenuOpen(false);
-              setTagFilterOpen(false);
-            }}
-            className={`w-[44px] xs:w-[48px] ${buttonBase} ${searchQuery ? buttonActive : buttonInactive}`}
-            aria-label={searchOpen ? "Close search" : "Search"}
-            title={searchOpen ? "Close search" : "Search"}
-          >
-            <Search className="w-5 h-5 theme-text-primary" />
-          </button>
-
-          {searchOpen && (
-            <div
-              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] p-2"
-              style={{
-                bottom: dropdownBottom,
-                background: "rgba(30, 30, 30, 0.95)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-              }}
-            >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 theme-text-muted pointer-events-none" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full pl-9 pr-9 py-2 rounded-lg text-sm theme-input focus:outline-none"
-                  style={{
-                    background: "var(--input-bg)",
-                    color: "var(--text-primary)",
-                    borderColor: "var(--card-border)",
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => handleSearchChange("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5 theme-text-muted" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Search Button — opens the top-bar search input via custom event */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("toggleMobileSearch"));
+            setMediaTypeMenuOpen(false);
+            setSortMenuOpen(false);
+            setTagFilterOpen(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className={`w-[44px] xs:w-[48px] ${buttonBase} ${hasActiveSearch ? buttonActive : buttonInactive}`}
+          aria-label="Search"
+          title="Search"
+        >
+          <Search className="w-5 h-5 theme-text-primary" />
+        </button>
 
         {/* Media Type Dropdown */}
         <div className="relative mobile-media-type-menu w-[72px] xs:w-[80px]">
@@ -221,7 +139,6 @@ export default function MobileBottomNav() {
               setMediaTypeMenuOpen(!mediaTypeMenuOpen);
               setSortMenuOpen(false);
               setTagFilterOpen(false);
-              setSearchOpen(false);
             }}
             className={`w-full px-2 ${buttonBase} ${filter !== "all" ? buttonActive : buttonInactive}`}
           >
@@ -310,7 +227,6 @@ export default function MobileBottomNav() {
               setTagFilterOpen(!tagFilterOpen);
               setMediaTypeMenuOpen(false);
               setSortMenuOpen(false);
-              setSearchOpen(false);
             }}
             className={`w-[72px] xs:w-[80px] ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
           >
@@ -393,7 +309,6 @@ export default function MobileBottomNav() {
               setSortMenuOpen(!sortMenuOpen);
               setMediaTypeMenuOpen(false);
               setTagFilterOpen(false);
-              setSearchOpen(false);
             }}
             className={`px-2.5 xs:px-4 ${buttonBase} ${buttonInactive}`}
           >

@@ -30,7 +30,9 @@ function AppContent() {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const desktopSearchRef = useRef<HTMLInputElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const themeConfig = themes[theme];
@@ -61,10 +63,11 @@ function AppContent() {
     navigate(`?${params.toString()}`, { replace: true });
   };
 
-  // Auto-open desktop search if query exists
+  // Auto-open search if query exists (deep links)
   useEffect(() => {
     if (searchParams.get("q")) {
       setIsDesktopSearchOpen(true);
+      setIsMobileSearchOpen(true);
     }
   }, [searchParams]);
 
@@ -74,6 +77,30 @@ function AppContent() {
       desktopSearchRef.current.focus();
     }
   }, [isDesktopSearchOpen]);
+
+  // Auto-focus mobile search when opened
+  useEffect(() => {
+    if (isMobileSearchOpen && mobileSearchRef.current) {
+      mobileSearchRef.current.focus();
+    }
+  }, [isMobileSearchOpen]);
+
+  // Listen for the bottom-nav search-toggle event (mobile)
+  useEffect(() => {
+    const handleToggle = () => setIsMobileSearchOpen((prev) => !prev);
+    window.addEventListener("toggleMobileSearch", handleToggle);
+    return () => window.removeEventListener("toggleMobileSearch", handleToggle);
+  }, []);
+
+  // Escape key closes the mobile search input
+  useEffect(() => {
+    if (!isMobileSearchOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMobileSearchOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isMobileSearchOpen]);
 
   // Click-outside handler for desktop search
   useEffect(() => {
@@ -181,10 +208,51 @@ function AppContent() {
                   opacity="0.4"
                 />
               </svg>
-              <span className="logo-text text-sm sm:text-lg lg:text-xl theme-text-primary">
+              <span
+                className={`logo-text text-sm sm:text-lg lg:text-xl theme-text-primary ${isMobileSearchOpen && location.pathname === "/" ? "hidden" : "inline"} sm:inline`}
+              >
                 On<span className="middle-dot"> · </span>Play
               </span>
             </Link>
+
+            {/* Mobile Inline Search (Gallery only) — toggled by the bottom-nav search button */}
+            {isMobileSearchOpen && location.pathname === "/" && (
+              <div className="md:hidden flex-1 mx-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 theme-text-muted pointer-events-none" />
+                  <input
+                    ref={mobileSearchRef}
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="w-full pl-9 pr-9 py-2 rounded-lg text-sm theme-input focus:outline-none"
+                    style={{
+                      background: "var(--input-bg)",
+                      color: "var(--text-primary)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  />
+                  {searchQuery ? (
+                    <button
+                      onClick={() => handleSearchChange("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5 theme-text-muted" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setIsMobileSearchOpen(false)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                      aria-label="Close search"
+                    >
+                      <X className="w-3.5 h-3.5 theme-text-muted" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
