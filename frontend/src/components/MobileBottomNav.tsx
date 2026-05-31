@@ -129,7 +129,7 @@ export default function MobileBottomNav() {
           aria-label="Search"
           title="Search"
         >
-          <Search className="w-5 h-5 theme-text-primary" />
+          <Search className="w-6 h-6 theme-text-primary" />
         </button>
 
         {/* Media Type Dropdown */}
