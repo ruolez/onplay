@@ -177,6 +177,13 @@ export default function PersistentPlayer() {
     };
   }, [isExpanded]);
 
+  // Listen for the auto-expand event (dispatched by Gallery when a song starts on mobile)
+  useEffect(() => {
+    const handleExpand = () => setIsExpanded(true);
+    window.addEventListener("expandPlayer", handleExpand);
+    return () => window.removeEventListener("expandPlayer", handleExpand);
+  }, []);
+
   // Memoize trackEvent to prevent recreating callbacks
   const trackEvent = useCallback(
     async (eventType: string, data?: any) => {
@@ -490,7 +497,33 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Main Controls */}
-          <div className="flex items-center justify-center gap-6 mt-5 flex-shrink-0">
+          <div className="flex items-center justify-center gap-4 xs:gap-5 mt-5 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                haptics.buttonPress();
+                toggleShuffle();
+              }}
+              disabled={queue.length < 2}
+              className={`p-3 rounded-full transition-colors ${
+                queue.length < 2
+                  ? "theme-text-muted opacity-30 cursor-not-allowed"
+                  : isShuffled
+                    ? ""
+                    : "theme-text-primary"
+              }`}
+              style={
+                isShuffled && queue.length >= 2
+                  ? { color: "var(--btn-orange-bg)" }
+                  : {}
+              }
+              title={isShuffled ? "Shuffle on" : "Shuffle"}
+              aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
+              aria-pressed={isShuffled}
+            >
+              <Shuffle className="w-6 h-6" />
+            </button>
+
             <button
               onClick={handlePlayPrevious}
               disabled={!hasPrevious}

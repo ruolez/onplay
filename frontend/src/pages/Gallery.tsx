@@ -286,6 +286,13 @@ export default function Gallery() {
           requestFullscreen();
         }, 800);
       }
+
+      // Auto-expand the in-app player when a song starts on mobile
+      if (item.media_type === "audio" && window.innerWidth < 768) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("expandPlayer"));
+        }, 150);
+      }
     }
   };
 
