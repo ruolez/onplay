@@ -568,6 +568,9 @@ export default function PersistentPlayer() {
             >
               <SkipForward className="w-8 h-8" fill="currentColor" />
             </button>
+
+            {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
+            <div className="w-12 h-12 flex-shrink-0" aria-hidden="true" />
           </div>
 
           {/* Secondary Controls */}
