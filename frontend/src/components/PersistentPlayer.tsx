@@ -797,7 +797,7 @@ export default function PersistentPlayer() {
                       ? "theme-text-muted opacity-30 cursor-not-allowed"
                       : isShuffled
                         ? ""
-                        : "theme-text-secondary"
+                        : "theme-text-primary"
                   }`}
                   style={
                     isShuffled && queue.length >= 2
@@ -924,7 +924,7 @@ export default function PersistentPlayer() {
                     ? "theme-text-muted opacity-30 cursor-not-allowed"
                     : isShuffled
                       ? ""
-                      : "theme-text-secondary hover:theme-text-primary"
+                      : "theme-text-primary"
                 }`}
                 style={
                   isShuffled && queue.length >= 2
