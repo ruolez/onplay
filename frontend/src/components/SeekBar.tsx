@@ -95,9 +95,7 @@ export default function SeekBar({
   const displayTime = scrubTime ?? currentTime;
   const progress = duration ? (displayTime / duration) * 100 : 0;
   const bufferedPercent =
-    duration && bufferedEnd
-      ? Math.min(100, (bufferedEnd / duration) * 100)
-      : 0;
+    duration && bufferedEnd ? Math.min(100, (bufferedEnd / duration) * 100) : 0;
 
   return (
     <div

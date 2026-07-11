@@ -55,7 +55,7 @@ export default function QueuePanel({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[95]"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110]"
         onClick={onClose}
       />
 
@@ -64,7 +64,7 @@ export default function QueuePanel({
         role="dialog"
         aria-modal="true"
         aria-label="Play queue"
-        className="fixed inset-x-0 bottom-0 z-[96] max-h-[70vh] rounded-t-2xl overflow-hidden"
+        className="fixed inset-x-0 bottom-0 z-[111] max-h-[70vh] rounded-t-2xl overflow-hidden"
         style={{
           background: "var(--card-bg)",
           borderTop: "1px solid var(--card-border)",

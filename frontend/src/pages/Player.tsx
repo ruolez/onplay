@@ -291,7 +291,9 @@ export default function Player() {
             {/* Tags */}
             {media.tags && media.tags.length > 0 && (
               <div className="mt-4 sm:mt-6">
-                <p className="theme-text-muted text-xs sm:text-sm mb-2">Tags:</p>
+                <p className="theme-text-muted text-xs sm:text-sm mb-2">
+                  Tags:
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {media.tags.map((tag) => (
                     <button
@@ -338,7 +340,9 @@ export default function Player() {
                 </div>
 
                 <div>
-                  <p className="theme-text-muted text-sm mb-1">Completion Rate</p>
+                  <p className="theme-text-muted text-sm mb-1">
+                    Completion Rate
+                  </p>
                   <div className="flex items-center space-x-2">
                     <div
                       className="flex-1 rounded-full h-2"

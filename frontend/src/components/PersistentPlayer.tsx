@@ -472,7 +472,7 @@ export default function PersistentPlayer() {
                 className="w-full h-full flex items-center justify-center"
                 style={{
                   background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 55%, #1a1a2e) 0%, color-mix(in srgb, var(--accent-secondary, var(--accent-primary)) 45%, #16162a) 100%)",
                 }}
               >
                 {isAudio ? (
@@ -637,6 +637,19 @@ export default function PersistentPlayer() {
               )}
             </button>
 
+            {/* Queue */}
+            <button
+              onClick={() => {
+                haptics.buttonPress();
+                setIsQueueOpen(true);
+              }}
+              className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+              aria-label="View play queue"
+              title="Play queue"
+            >
+              <List className="w-5 h-5" />
+            </button>
+
             {/* Fullscreen (Video only) */}
             {!isAudio && (
               <button
@@ -708,7 +721,7 @@ export default function PersistentPlayer() {
       >
         {/* Drag Handle Indicator */}
         <div
-          className="flex justify-center pt-2 pb-1 cursor-pointer"
+          className="flex justify-center pt-2.5 pb-2 cursor-pointer"
           onClick={() => {
             haptics.buttonPress();
             setIsExpanded(true);
@@ -740,7 +753,7 @@ export default function PersistentPlayer() {
                 className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded flex-shrink-0 flex items-center justify-center"
                 style={{
                   background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    "linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 55%, #1a1a2e) 0%, color-mix(in srgb, var(--accent-secondary, var(--accent-primary)) 45%, #16162a) 100%)",
                 }}
               >
                 {isAudio ? (
@@ -752,7 +765,7 @@ export default function PersistentPlayer() {
             )}
             <div className="min-w-0 flex-1">
               <h3 className="theme-text-primary font-medium text-sm truncate">
-                {currentMedia.filename}
+                {currentMedia.filename.replace(/\.[^/.]+$/, "")}
               </h3>
               <p className="theme-text-muted text-xs">
                 {formatDuration(currentTime)} / {formatDuration(duration)}
