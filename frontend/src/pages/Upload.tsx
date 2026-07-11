@@ -6,6 +6,8 @@ import {
   CheckCircle,
   XCircle,
   Loader,
+  RotateCcw,
+  X,
 } from "lucide-react";
 
 interface UploadItem {
@@ -51,46 +53,87 @@ export default function Upload() {
     [],
   );
 
+  // Mirrors nginx client_max_body_size 2G
+  const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+
+  const validateFile = (file: File): string | null => {
+    const isMedia =
+      file.type.startsWith("video/") || file.type.startsWith("audio/");
+    if (!isMedia) return "Unsupported file type — upload a video or audio file";
+    if (file.size > MAX_FILE_SIZE) return "File exceeds the 2 GB upload limit";
+    return null;
+  };
+
+  const uploadItem = async (upload: UploadItem) => {
+    try {
+      const response = await mediaApi.uploadFile(upload.file, (progress) => {
+        setUploads((prev) =>
+          prev.map((u) => (u.id === upload.id ? { ...u, progress } : u)),
+        );
+      });
+
+      const mediaId = response.data.id;
+
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === upload.id
+            ? { ...u, status: "processing", mediaId, progress: 100 }
+            : u,
+        ),
+      );
+
+      // Poll for processing status
+      pollStatus(upload.id, mediaId);
+    } catch (error: any) {
+      setUploads((prev) =>
+        prev.map((u) =>
+          u.id === upload.id
+            ? {
+                ...u,
+                status: "failed",
+                error: error.message || "Upload failed",
+              }
+            : u,
+        ),
+      );
+    }
+  };
+
   const handleFiles = async (files: File[]) => {
-    const newUploads: UploadItem[] = files.map((file) => ({
-      id: Math.random().toString(36).substring(7),
-      file,
-      progress: 0,
-      status: "uploading",
-    }));
+    const newUploads: UploadItem[] = files.map((file) => {
+      const validationError = validateFile(file);
+      return {
+        id: Math.random().toString(36).substring(7),
+        file,
+        progress: 0,
+        status: validationError ? ("failed" as const) : ("uploading" as const),
+        error: validationError ?? undefined,
+      };
+    });
 
     setUploads((prev) => [...prev, ...newUploads]);
 
     for (const upload of newUploads) {
-      try {
-        const response = await mediaApi.uploadFile(upload.file, (progress) => {
-          setUploads((prev) =>
-            prev.map((u) => (u.id === upload.id ? { ...u, progress } : u)),
-          );
-        });
-
-        const mediaId = response.data.id;
-
-        setUploads((prev) =>
-          prev.map((u) =>
-            u.id === upload.id
-              ? { ...u, status: "processing", mediaId, progress: 100 }
-              : u,
-          ),
-        );
-
-        // Poll for processing status
-        pollStatus(upload.id, mediaId);
-      } catch (error: any) {
-        setUploads((prev) =>
-          prev.map((u) =>
-            u.id === upload.id
-              ? { ...u, status: "failed", error: error.message }
-              : u,
-          ),
-        );
-      }
+      if (upload.status === "failed") continue;
+      await uploadItem(upload);
     }
+  };
+
+  const retryUpload = (upload: UploadItem) => {
+    const validationError = validateFile(upload.file);
+    if (validationError) return;
+    setUploads((prev) =>
+      prev.map((u) =>
+        u.id === upload.id
+          ? { ...u, status: "uploading", progress: 0, error: undefined }
+          : u,
+      ),
+    );
+    uploadItem(upload);
+  };
+
+  const dismissUpload = (id: string) => {
+    setUploads((prev) => prev.filter((u) => u.id !== id));
   };
 
   const pollStatus = async (uploadId: string, mediaId: string) => {
@@ -100,7 +143,18 @@ export default function Upload() {
         const status = response.data.status;
 
         setUploads((prev) =>
-          prev.map((u) => (u.id === uploadId ? { ...u, status } : u)),
+          prev.map((u) =>
+            u.id === uploadId
+              ? {
+                  ...u,
+                  status,
+                  error:
+                    status === "failed"
+                      ? "Processing failed on the server"
+                      : u.error,
+                }
+              : u,
+          ),
         );
 
         if (status === "ready" || status === "failed") {
@@ -108,6 +162,17 @@ export default function Upload() {
         }
       } catch (error) {
         clearInterval(interval);
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.id === uploadId
+              ? {
+                  ...u,
+                  status: "failed",
+                  error: "Lost connection while checking processing status",
+                }
+              : u,
+          ),
+        );
       }
     }, 5000);
   };
@@ -189,14 +254,35 @@ export default function Upload() {
                   </div>
                 </div>
 
-                {upload.status === "ready" && upload.mediaId && (
-                  <button
-                    onClick={() => navigate(`/player/${upload.mediaId}`)}
-                    className="px-4 py-2 theme-btn-primary rounded-lg text-sm"
-                  >
-                    View
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {upload.status === "ready" && upload.mediaId && (
+                    <button
+                      onClick={() => navigate(`/player/${upload.mediaId}`)}
+                      className="px-4 py-2 theme-btn-primary rounded-lg text-sm"
+                    >
+                      View
+                    </button>
+                  )}
+                  {upload.status === "failed" && !validateFile(upload.file) && (
+                    <button
+                      onClick={() => retryUpload(upload)}
+                      className="px-3 py-2 theme-btn-secondary rounded-lg text-sm flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Retry
+                    </button>
+                  )}
+                  {(upload.status === "ready" ||
+                    upload.status === "failed") && (
+                    <button
+                      onClick={() => dismissUpload(upload.id)}
+                      aria-label={`Remove ${upload.file.name} from list`}
+                      className="p-2 rounded-lg theme-text-muted hover:theme-text-primary transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Progress bar */}

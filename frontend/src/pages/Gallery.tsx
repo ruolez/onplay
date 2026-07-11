@@ -20,6 +20,8 @@ import {
   MoreVertical,
   ChevronDown,
   Check,
+  SearchX,
+  UploadCloud,
 } from "lucide-react";
 
 export default function Gallery() {
@@ -558,13 +560,45 @@ export default function Gallery() {
 
       {/* Media Grid/List */}
       {sortedMedia.length === 0 ? (
-        <div className="text-center py-12 sm:py-20">
-          <p className="theme-text-muted text-base sm:text-lg px-4">
-            {searchQuery
-              ? `No media found matching "${searchQuery}"`
-              : "No media files found. Upload some files to get started!"}
-          </p>
-        </div>
+        searchQuery || selectedTags.length > 0 || filter !== "all" ? (
+          <div className="text-center py-12 sm:py-20 px-4">
+            <SearchX className="w-12 h-12 theme-text-muted mx-auto mb-4 opacity-60" />
+            <p className="theme-text-primary text-base sm:text-lg font-medium mb-1">
+              No matching media
+            </p>
+            <p className="theme-text-muted text-sm mb-6">
+              {searchQuery
+                ? `Nothing matches "${searchQuery}" with the current filters.`
+                : "Nothing matches the current filters."}
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedTags([]);
+                setFilter("all");
+              }}
+              className="theme-btn-secondary px-5 py-3 rounded-lg font-medium min-h-[44px]"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-12 sm:py-20 px-4">
+            <UploadCloud className="w-12 h-12 theme-text-muted mx-auto mb-4 opacity-60" />
+            <p className="theme-text-primary text-base sm:text-lg font-medium mb-1">
+              No media yet
+            </p>
+            <p className="theme-text-muted text-sm mb-6">
+              Upload video or audio files to build your library.
+            </p>
+            <button
+              onClick={() => navigate("/upload")}
+              className="theme-btn-primary px-5 py-3 rounded-lg font-medium min-h-[44px]"
+            >
+              Upload media
+            </button>
+          </div>
+        )
       ) : (
         <>
           {viewMode === "grid" ? (
