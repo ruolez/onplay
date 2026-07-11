@@ -42,8 +42,40 @@ export default function Stats() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
-        <div className="theme-text-primary text-xl">Loading statistics...</div>
+      <div className="container mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+        <p className="sr-only" role="status">
+          Loading statistics…
+        </p>
+        <div
+          className="h-9 sm:h-10 w-48 skeleton-block rounded-lg animate-pulse mb-6 sm:mb-8"
+          aria-hidden="true"
+        />
+        <div
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6 mb-6 sm:mb-8"
+          aria-hidden="true"
+        >
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 animate-pulse"
+            >
+              <div className="h-4 w-24 skeleton-block mb-4" />
+              <div className="h-8 w-16 skeleton-block mb-2" />
+              <div className="h-3 w-20 skeleton-block" />
+            </div>
+          ))}
+        </div>
+        <div
+          className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 animate-pulse"
+          aria-hidden="true"
+        >
+          <div className="h-5 w-36 skeleton-block mb-4" />
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-10 skeleton-block" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

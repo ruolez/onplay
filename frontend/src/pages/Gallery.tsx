@@ -6,6 +6,7 @@ import { usePlayer } from "../contexts/PlayerContext";
 import { useGallery } from "../contexts/GalleryContext";
 import { useToast } from "../contexts/ToastContext";
 import SegmentedControl from "../components/SegmentedControl";
+import GallerySkeleton from "../components/GallerySkeleton";
 import {
   Play,
   Music,
@@ -314,8 +315,11 @@ export default function Gallery() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
-        <div className="theme-text-primary text-xl">Loading media...</div>
+      <div className="container mx-auto px-3 xs:px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-16">
+        <p className="sr-only" role="status">
+          Loading media…
+        </p>
+        <GallerySkeleton view={viewMode} />
       </div>
     );
   }
@@ -565,7 +569,7 @@ export default function Gallery() {
         <>
           {viewMode === "grid" ? (
             <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 xs:gap-3 sm:gap-4 md:gap-5">
-              {sortedMedia.map((item) => {
+              {sortedMedia.map((item, index) => {
                 const isCurrentTrack = currentMedia?.id === item.id;
                 return (
                   <div
@@ -601,7 +605,7 @@ export default function Gallery() {
                           src={item.thumbnail_path}
                           alt={item.filename}
                           className="w-full aspect-video object-cover"
-                          loading="lazy"
+                          loading={index < 6 ? "eager" : "lazy"}
                         />
                       ) : (
                         <div className="flex items-center justify-center aspect-video">
