@@ -68,6 +68,31 @@
   /* Smooth scroll for better mobile experience */
   html {
     scroll-behavior: smooth;
+    /* Keep keyboard-focused elements clear of the sticky header and the
+       fixed bottom bars (WCAG 2.4.11 Focus Not Obscured) */
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: calc(
+      var(--bottom-nav-height, 0px) + var(--mini-player-height, 0px) + 8px
+    );
+  }
+
+  /* Visible keyboard focus (WCAG 2.4.7) — mouse/touch focus unaffected */
+  :focus-visible {
+    outline: 2px solid var(--accent-primary, #94a3b8);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* Optimize font rendering on mobile */
@@ -249,9 +274,12 @@
 }
 
 .theme-input:focus {
-  outline: none;
   border-color: var(--input-focus);
-  box-shadow: 0 0 0 3px rgba(var(--input-focus), 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--input-focus) 25%, transparent);
+}
+
+.theme-input:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .theme-stat-card-1 {

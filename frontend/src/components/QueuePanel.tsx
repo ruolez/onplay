@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Play,
@@ -29,6 +29,18 @@ export default function QueuePanel({
   onTrackClick,
 }: QueuePanelProps) {
   const [loadingTrack, setLoadingTrack] = useState<number | null>(null);
+  // Stable per-mount timestamp: cache-busts stale thumbnails without
+  // forcing a refetch on every render
+  const [thumbTimestamp] = useState(Date.now());
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
 
   const handleTrackClick = (index: number) => {
     setLoadingTrack(index);
@@ -49,6 +61,9 @@ export default function QueuePanel({
 
       {/* Panel */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Play queue"
         className="fixed inset-x-0 bottom-0 z-[96] max-h-[70vh] rounded-t-2xl overflow-hidden"
         style={{
           background: "var(--card-bg)",
@@ -85,6 +100,7 @@ export default function QueuePanel({
               (e.currentTarget.style.background = "transparent")
             }
             title="Close queue"
+            aria-label="Close queue"
           >
             <X className="w-5 h-5" />
           </button>
@@ -108,6 +124,16 @@ export default function QueuePanel({
                   <div
                     key={track.id}
                     onClick={() => !isCurrent && handleTrackClick(index)}
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" || e.key === " ") && !isCurrent) {
+                        e.preventDefault();
+                        handleTrackClick(index);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={isCurrent ? -1 : 0}
+                    aria-label={`Play ${track.filename}`}
+                    aria-current={isCurrent ? "true" : undefined}
                     className={`flex items-center gap-3 px-4 py-3 transition-colors ${
                       !isCurrent ? "cursor-pointer" : "cursor-default"
                     }`}
@@ -156,8 +182,9 @@ export default function QueuePanel({
                     {/* Thumbnail */}
                     {track.thumbnail_path && (
                       <img
-                        src={`${track.thumbnail_path}?t=${Date.now()}`}
-                        alt={track.filename}
+                        src={`${track.thumbnail_path}?t=${thumbTimestamp}`}
+                        alt=""
+                        loading="lazy"
                         className="w-12 h-12 rounded object-cover flex-shrink-0"
                       />
                     )}

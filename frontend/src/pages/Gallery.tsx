@@ -276,6 +276,13 @@ export default function Gallery() {
     navigate(`/player/${mediaId}`);
   };
 
+  const handleCardKeyDown = (e: React.KeyboardEvent, item: Media) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleCardClick(item);
+    }
+  };
+
   const handleCardClick = (item: Media) => {
     if (item.status === "ready") {
       openPlayer(item.id, sortedMedia);
@@ -312,6 +319,7 @@ export default function Gallery() {
 
   return (
     <div className="container mx-auto px-3 xs:px-4 sm:px-6 pb-6 sm:pb-8 pt-4 sm:pt-0">
+      <h1 className="sr-only">Media Gallery</h1>
       {/* Controls - Sticky flush with nav (desktop only - mobile uses MobileBottomNav) */}
       <div className="hidden sm:block sticky top-14 sm:top-16 z-40 theme-nav backdrop-blur-md mb-6 sm:mb-8 space-y-2 py-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
         {/* Desktop: Type Filter + Tags Filter + Sort + View (all in one row) */}
@@ -555,6 +563,10 @@ export default function Gallery() {
                     key={item.id}
                     ref={(el) => el && mediaRefs.current.set(item.id, el)}
                     onClick={() => handleCardClick(item)}
+                    onKeyDown={(e) => handleCardKeyDown(e, item)}
+                    role="button"
+                    tabIndex={item.status === "ready" ? 0 : -1}
+                    aria-label={`Play ${item.filename}`}
                     className={`group relative theme-card rounded-lg sm:rounded-xl transition-all active:scale-95 sm:hover:scale-105 ${
                       item.status === "ready"
                         ? "cursor-pointer"
@@ -651,6 +663,9 @@ export default function Gallery() {
                             onClick={(e) => handleMenuClick(e, item.id)}
                             className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="More options"
+                            aria-label="More options"
+                            aria-haspopup="menu"
+                            aria-expanded={menuOpen === item.id}
                           >
                             <MoreVertical className="w-4 h-4 theme-text-muted" />
                           </button>
@@ -718,6 +733,10 @@ export default function Gallery() {
                     key={item.id}
                     ref={(el) => el && mediaRefs.current.set(item.id, el)}
                     onClick={() => handleCardClick(item)}
+                    onKeyDown={(e) => handleCardKeyDown(e, item)}
+                    role="button"
+                    tabIndex={item.status === "ready" ? 0 : -1}
+                    aria-label={`Play ${item.filename}`}
                     className={`relative theme-card rounded-lg p-2.5 sm:p-2 transition-all ${
                       item.status === "ready"
                         ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
@@ -901,8 +920,13 @@ export default function Gallery() {
                 setDeletePassword(e.target.value);
                 setDeleteError("");
               }}
-              onKeyDown={(e) => e.key === "Enter" && handleDelete()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleDelete();
+                if (e.key === "Escape")
+                  setDeleteModal({ show: false, id: null });
+              }}
               placeholder="Password"
+              aria-label="Password"
               className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-2 text-base"
               autoFocus
             />
@@ -957,8 +981,13 @@ export default function Gallery() {
               type="text"
               value={newFilename}
               onChange={(e) => setNewFilename(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleRename()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape")
+                  setRenameModal({ show: false, id: null, currentName: "" });
+              }}
               placeholder="New filename"
+              aria-label="New filename"
               className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-base"
               autoFocus
             />
@@ -1008,8 +1037,13 @@ export default function Gallery() {
               type="text"
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddTag();
+                if (e.key === "Escape")
+                  setTagModal({ show: false, mediaId: null });
+              }}
               placeholder="Tag name"
+              aria-label="Tag name"
               className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-base"
               autoFocus
             />
@@ -1020,24 +1054,29 @@ export default function Gallery() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {allTags.map((tag) => (
-                    <button
+                    <span
                       key={tag.id}
-                      onClick={() => setTagInput(tag.name)}
-                      className={`group flex items-center px-2 sm:px-3 py-1 sm:py-1.5 bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors min-h-[36px] ${
-                        tag.media_count === 0 ? "opacity-60 pr-1.5 sm:pr-2" : ""
+                      className={`group flex items-center bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors min-h-[36px] ${
+                        tag.media_count === 0 ? "opacity-60" : ""
                       }`}
                     >
-                      <span>{tag.name}</span>
+                      <button
+                        onClick={() => setTagInput(tag.name)}
+                        className="px-2 sm:px-3 py-1 sm:py-1.5 min-h-[36px]"
+                      >
+                        {tag.name}
+                      </button>
                       {tag.media_count === 0 && (
-                        <span
+                        <button
                           onClick={(e) => handleDeleteTag(tag.id, e)}
-                          className="ml-1.5 p-0.5 rounded hover:bg-red-500/40 text-white/40 hover:text-red-400 transition-colors"
+                          className="mr-1.5 p-1 rounded hover:bg-red-500/40 text-white/40 hover:text-red-400 transition-colors"
                           title="Delete unused tag"
+                          aria-label={`Delete unused tag ${tag.name}`}
                         >
                           <X className="w-3 h-3" />
-                        </span>
+                        </button>
                       )}
-                    </button>
+                    </span>
                   ))}
                 </div>
               </div>

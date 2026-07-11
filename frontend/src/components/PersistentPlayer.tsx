@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { usePlayer } from "../contexts/PlayerContext";
 import DualVideoPlayer from "./DualVideoPlayer";
 import QueuePanel from "./QueuePanel";
+import SeekBar from "./SeekBar";
 import { mediaApi } from "../lib/api";
 import { formatDuration } from "../lib/utils";
 import { useHaptics } from "../hooks/useHaptics";
@@ -207,29 +208,34 @@ export default function PersistentPlayer() {
     [currentMedia, sessionId],
   );
 
-  const handleProgressClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!duration) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const percent = (e.clientX - rect.left) / rect.width;
-      const newTime = percent * duration;
+  const handleSeek = useCallback(
+    (time: number) => {
       haptics.buttonPress();
-      seek(newTime);
+      seek(time);
     },
-    [duration, seek, haptics],
+    [seek, haptics],
   );
 
-  const handleExpandedProgressClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!duration) return;
-      const rect = e.currentTarget.getBoundingClientRect();
-      const percent = (e.clientX - rect.left) / rect.width;
-      const newTime = percent * duration;
-      haptics.buttonPress();
-      seek(newTime);
-    },
-    [duration, seek, haptics],
-  );
+  const handleScrubStart = useCallback(() => setIsDragging(true), []);
+  const handleScrubEnd = useCallback(() => setIsDragging(false), []);
+
+  // Poll the buffered-ahead position for the seek bars
+  const [bufferedEnd, setBufferedEnd] = useState(0);
+  useEffect(() => {
+    setBufferedEnd(0);
+    if (!currentMedia) return;
+    const id = setInterval(() => {
+      try {
+        const end = playerRef.current?.getPlayer()?.bufferedEnd();
+        if (typeof end === "number" && !Number.isNaN(end)) {
+          setBufferedEnd(end);
+        }
+      } catch {
+        // buffered ranges unavailable until media attaches
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [currentMedia, playerRef]);
 
   const handleVolumeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,7 +336,6 @@ export default function PersistentPlayer() {
 
   // Use master playlist for adaptive bitrate streaming
   const playerSrc = `/media/hls/${currentMedia.id}/master.m3u8`;
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const isAudio = currentMedia.media_type === "audio";
 
   return (
@@ -473,27 +478,16 @@ export default function PersistentPlayer() {
 
           {/* Progress Bar */}
           <div className="w-full max-w-[300px] mt-5 flex-shrink-0">
-            <div
-              className="w-full h-4 rounded-full cursor-pointer group"
-              style={{ background: "var(--player-progress-bg)" }}
-              onClick={handleExpandedProgressClick}
-            >
-              <div
-                className="h-full rounded-full transition-all relative"
-                style={{
-                  width: `${progress}%`,
-                  background: "var(--btn-primary-bg)",
-                }}
-              >
-                <div
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full opacity-100 transition-opacity shadow-lg"
-                  style={{
-                    background: "var(--btn-primary-bg)",
-                    transform: "translate(50%, -50%)",
-                  }}
-                />
-              </div>
-            </div>
+            <SeekBar
+              currentTime={currentTime}
+              duration={duration}
+              bufferedEnd={bufferedEnd}
+              onSeek={handleSeek}
+              onScrubStart={handleScrubStart}
+              onScrubEnd={handleScrubEnd}
+              showThumb
+              className="w-full h-4 rounded-full"
+            />
             <div className="flex justify-between mt-1.5 text-xs theme-text-muted">
               <span>{formatDuration(currentTime)}</span>
               <span>{formatDuration(duration)}</span>
@@ -649,6 +643,7 @@ export default function PersistentPlayer() {
                 step="0.01"
                 value={volume}
                 onChange={handleVolumeChange}
+                aria-label="Volume"
                 className="w-20 h-1 rounded-lg appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, var(--player-progress-bg) ${volume * 100}%, var(--player-progress-bg) 100%)`,
@@ -1152,6 +1147,7 @@ export default function PersistentPlayer() {
               step="0.01"
               value={volume}
               onChange={handleVolumeChange}
+              aria-label="Volume"
               className="w-20 h-1 rounded-lg appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, var(--player-progress-bg) ${volume * 100}%, var(--player-progress-bg) 100%)`,
@@ -1161,27 +1157,16 @@ export default function PersistentPlayer() {
         </div>
 
         {/* Progress Bar - Full width at very bottom of mini player */}
-        <div
-          className="w-full h-4 mt-3 cursor-pointer"
-          onClick={handleProgressClick}
-          onMouseDown={() => setIsDragging(true)}
-          onMouseUp={() => setIsDragging(false)}
-          onMouseLeave={() => setIsDragging(false)}
-          role="slider"
-          aria-label="Seek position"
-          aria-valuemin={0}
-          aria-valuemax={duration}
-          aria-valuenow={currentTime}
-          style={{ background: "rgba(255,255,255,0.2)" }}
-        >
-          <div
-            className="h-full transition-all duration-100"
-            style={{
-              width: `${progress}%`,
-              background: "var(--btn-primary-bg)",
-            }}
-          />
-        </div>
+        <SeekBar
+          currentTime={currentTime}
+          duration={duration}
+          bufferedEnd={bufferedEnd}
+          onSeek={handleSeek}
+          onScrubStart={handleScrubStart}
+          onScrubEnd={handleScrubEnd}
+          className="w-full h-4 mt-3"
+          trackBackground="var(--player-progress-bg)"
+        />
       </div>
 
       {/* Wake Lock Info Modal */}
