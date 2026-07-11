@@ -5,7 +5,7 @@
  * Only visible on mobile (hidden on md+ breakpoints).
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Music,
   Play,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useGallery } from "../contexts/GalleryContext";
 import { useLocation, useSearchParams } from "react-router-dom";
+import { useHeightVar } from "../hooks/useHeightVar";
 
 type FilterType = "all" | "video" | "audio";
 type SortType = "new" | "name" | "popular" | "duration";
@@ -36,6 +37,9 @@ export default function MobileBottomNav() {
     setSelectedTags,
     allTags,
   } = useGallery();
+
+  const navRef = useRef<HTMLElement>(null);
+  useHeightVar(navRef, "--bottom-nav-height", location.pathname === "/");
 
   const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
@@ -78,8 +82,8 @@ export default function MobileBottomNav() {
     return null;
   }
 
-  // Position dropdowns just above the (taller) bottom nav bar
-  const dropdownBottom = "74px";
+  // Position dropdowns just above the measured bottom nav bar
+  const dropdownBottom = "calc(var(--bottom-nav-height, 80px) - 6px)";
 
   const toggleTagFilter = (tagId: number) => {
     setSelectedTags(
@@ -106,6 +110,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav
+      ref={navRef}
       className="md:hidden fixed left-0 right-0 bottom-0 z-[95]"
       style={{
         background: "rgba(0, 0, 0, 0.8)",
@@ -115,7 +120,7 @@ export default function MobileBottomNav() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      <div className="flex items-center gap-1.5 xs:gap-2 px-2 xs:px-3 py-3 xs:py-3.5">
+      <div className="flex items-center gap-1 xs:gap-2 px-2 xs:px-3 py-3 xs:py-3.5">
         {/* Search Button — opens the top-bar search input via custom event */}
         <button
           onClick={() => {
@@ -133,7 +138,7 @@ export default function MobileBottomNav() {
         </button>
 
         {/* Media Type Dropdown */}
-        <div className="relative mobile-media-type-menu w-[72px] xs:w-[80px]">
+        <div className="relative mobile-media-type-menu flex-1 min-w-[56px] max-w-[80px]">
           <button
             onClick={() => {
               setMediaTypeMenuOpen(!mediaTypeMenuOpen);
@@ -221,14 +226,14 @@ export default function MobileBottomNav() {
         </div>
 
         {/* Tag Filter Dropdown */}
-        <div className="relative mobile-tag-filter">
+        <div className="relative mobile-tag-filter flex-1 min-w-[56px] max-w-[80px]">
           <button
             onClick={() => {
               setTagFilterOpen(!tagFilterOpen);
               setMediaTypeMenuOpen(false);
               setSortMenuOpen(false);
             }}
-            className={`w-[72px] xs:w-[80px] ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
+            className={`w-full ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
           >
             <div className="relative">
               <TagIcon
@@ -303,16 +308,16 @@ export default function MobileBottomNav() {
         </div>
 
         {/* Sort Dropdown */}
-        <div className="relative mobile-sort-menu">
+        <div className="relative mobile-sort-menu flex-1 min-w-0">
           <button
             onClick={() => {
               setSortMenuOpen(!sortMenuOpen);
               setMediaTypeMenuOpen(false);
               setTagFilterOpen(false);
             }}
-            className={`px-2.5 xs:px-4 ${buttonBase} ${buttonInactive}`}
+            className={`w-full min-w-0 px-2.5 xs:px-4 ${buttonBase} ${buttonInactive}`}
           >
-            <span className="text-sm font-medium theme-text-primary capitalize">
+            <span className="text-sm font-medium theme-text-primary capitalize truncate">
               {sortBy}
             </span>
             <span className="text-xs theme-text-muted">

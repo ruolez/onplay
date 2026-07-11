@@ -6,6 +6,7 @@ import { mediaApi } from "../lib/api";
 import { formatDuration } from "../lib/utils";
 import { useHaptics } from "../hooks/useHaptics";
 import { useSwipeGesture } from "../hooks/useSwipeGesture";
+import { useHeightVar } from "../hooks/useHeightVar";
 import {
   Play,
   Pause,
@@ -80,6 +81,9 @@ export default function PersistentPlayer() {
   const haptics = useHaptics();
   const miniPlayerRef = useRef<HTMLDivElement>(null);
   const expandedPlayerRef = useRef<HTMLDivElement>(null);
+
+  // Publish the mini bar height so App can pad page content above it
+  useHeightVar(miniPlayerRef, "--mini-player-height", !!currentMedia);
 
   // Swipe gesture for mini player (left/right for tracks, up to expand)
   const miniPlayerGestures = useSwipeGesture({
@@ -665,25 +669,28 @@ export default function PersistentPlayer() {
       {/* Mini Player Bottom Bar */}
       <div
         ref={miniPlayerRef}
-        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out bottom-[80px] xs:bottom-[84px] md:bottom-0 ${
+        className={`fixed left-0 right-0 z-[90] transition-transform duration-300 ease-out ${
           isVisible && !isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
           background: "var(--player-bar-bg)",
           backdropFilter: "blur(20px)",
           borderTop: "1px solid var(--player-bar-border)",
+          bottom: "var(--bottom-nav-height, 0px)",
+          paddingBottom:
+            "max(0px, calc(env(safe-area-inset-bottom) - var(--bottom-nav-height, 0px)))",
         }}
         {...miniPlayerGestures.handlers}
       >
         {/* Drag Handle Indicator */}
-        <div className="flex justify-center pt-2">
-          <div
-            className="w-10 h-1 rounded-full bg-white/20"
-            onClick={() => {
-              haptics.buttonPress();
-              setIsExpanded(true);
-            }}
-          />
+        <div
+          className="flex justify-center pt-2 pb-1 cursor-pointer"
+          onClick={() => {
+            haptics.buttonPress();
+            setIsExpanded(true);
+          }}
+        >
+          <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
 
         {/* Main Controls - Two rows on mobile, single row on desktop */}

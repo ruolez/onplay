@@ -24,6 +24,9 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    /* Measured at runtime by useHeightVar; 0px when the element is absent */
+    --bottom-nav-height: 0px;
+    --mini-player-height: 0px;
   }
 
   .dark {
@@ -95,7 +98,9 @@
 .video-js.vjs-fullscreen.vjs-user-inactive .vjs-control-bar {
   opacity: 0 !important;
   visibility: hidden !important;
-  transition: visibility 0.5s, opacity 0.5s !important;
+  transition:
+    visibility 0.5s,
+    opacity 0.5s !important;
 }
 
 .video-js.vjs-fullscreen.vjs-user-active .vjs-control-bar {
