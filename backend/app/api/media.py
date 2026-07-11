@@ -10,8 +10,20 @@ import shutil
 from pathlib import Path
 from PIL import Image
 import io
+from datetime import datetime, timezone
 
 router = APIRouter()
+
+
+def versioned_thumbnail(media: Media) -> Optional[str]:
+    """Append a cache-version to the thumbnail URL so browsers can cache it
+    indefinitely (nginx serves /media with immutable headers) while still
+    picking up replacements - updated_at is touched on thumbnail changes."""
+    if not media.thumbnail_path:
+        return None
+    stamp = media.updated_at or media.created_at
+    version = int(stamp.timestamp()) if stamp else 0
+    return f"{media.thumbnail_path}?v={version}"
 
 class MediaResponse(BaseModel):
     id: str
@@ -73,7 +85,7 @@ async def list_media(
                 "media_type": m.media_type,
                 "status": m.status,
                 "duration": m.duration,
-                "thumbnail_path": m.thumbnail_path,
+                "thumbnail_path": versioned_thumbnail(m),
                 "created_at": m.created_at.isoformat() if m.created_at else None,
                 "file_size": m.file_size,
                 "play_count": play_counts.get(m.id, 0),
@@ -100,7 +112,7 @@ async def get_media(media_id: str, db: Session = Depends(get_db)):
         "height": media.height,
         "codec": media.codec,
         "bitrate": media.bitrate,
-        "thumbnail_path": media.thumbnail_path,
+        "thumbnail_path": versioned_thumbnail(media),
         "error_message": media.error_message,
         "created_at": media.created_at.isoformat() if media.created_at else None,
         "variants": [
@@ -155,8 +167,14 @@ async def set_thumbnail(
         thumbnail_path = generate_thumbnail_at_timestamp(original_file, media_id, request.timestamp)
         if thumbnail_path:
             media.thumbnail_path = thumbnail_path
+            # Touch updated_at so the versioned URL changes even though the
+            # file path stays the same
+            media.updated_at = datetime.now(timezone.utc)
             db.commit()
-            return {"message": "Thumbnail updated successfully", "thumbnail_path": thumbnail_path}
+            return {
+                "message": "Thumbnail updated successfully",
+                "thumbnail_path": versioned_thumbnail(media),
+            }
         else:
             raise HTTPException(status_code=500, detail="Failed to generate thumbnail")
     except Exception as e:
@@ -219,15 +237,16 @@ async def upload_thumbnail(
         thumbnail_dir.mkdir(parents=True, exist_ok=True)
 
         thumbnail_path = thumbnail_dir / f"{media_id}.jpg"
-        img.save(thumbnail_path, "JPEG", quality=85)
+        img.save(thumbnail_path, "JPEG", quality=82, optimize=True, progressive=True)
 
-        # Update database
+        # Update database (touch updated_at so the versioned URL changes)
         media.thumbnail_path = f"/media/thumbnails/{media_id}.jpg"
+        media.updated_at = datetime.now(timezone.utc)
         db.commit()
 
         return {
             "message": "Thumbnail uploaded successfully",
-            "thumbnail_path": media.thumbnail_path
+            "thumbnail_path": versioned_thumbnail(media)
         }
 
     except Exception as e:

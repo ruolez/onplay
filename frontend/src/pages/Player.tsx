@@ -16,7 +16,6 @@ export default function Player() {
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const [thumbnailSaving, setThumbnailSaving] = useState(false);
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
-  const [thumbnailTimestamp, setThumbnailTimestamp] = useState(Date.now());
   const playerRef = useRef<VideoPlayerRef>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,8 +63,8 @@ export default function Player() {
       setThumbnailSaving(true);
       await mediaApi.setThumbnail(id, currentTime);
 
-      // Update timestamp to force thumbnail reload (cache bust)
-      setThumbnailTimestamp(Date.now());
+      // Refetch: the API returns a new versioned thumbnail URL
+      loadMedia();
 
       showToast("Thumbnail updated", "success");
     } catch (error) {
@@ -89,8 +88,8 @@ export default function Player() {
       setThumbnailUploading(true);
       await mediaApi.uploadThumbnail(id, file);
 
-      // Update timestamp to force thumbnail reload (cache bust)
-      setThumbnailTimestamp(Date.now());
+      // Refetch: the API returns a new versioned thumbnail URL
+      loadMedia();
 
       showToast("Thumbnail uploaded", "success");
     } catch (error: any) {
@@ -156,11 +155,7 @@ export default function Player() {
             <VideoPlayer
               ref={playerRef}
               src={playerSrc}
-              poster={
-                media.thumbnail_path
-                  ? `${media.thumbnail_path}?t=${thumbnailTimestamp}`
-                  : undefined
-              }
+              poster={media.thumbnail_path ? media.thumbnail_path : undefined}
               onPlay={() => trackEvent("play")}
               onPause={() => trackEvent("pause")}
               onEnded={() => trackEvent("complete")}

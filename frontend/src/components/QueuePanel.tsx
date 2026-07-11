@@ -29,9 +29,6 @@ export default function QueuePanel({
   onTrackClick,
 }: QueuePanelProps) {
   const [loadingTrack, setLoadingTrack] = useState<number | null>(null);
-  // Stable per-mount timestamp: cache-busts stale thumbnails without
-  // forcing a refetch on every render
-  const [thumbTimestamp] = useState(Date.now());
 
   useEffect(() => {
     if (!isOpen) return;
@@ -182,7 +179,7 @@ export default function QueuePanel({
                     {/* Thumbnail */}
                     {track.thumbnail_path && (
                       <img
-                        src={`${track.thumbnail_path}?t=${thumbTimestamp}`}
+                        src={track.thumbnail_path}
                         alt=""
                         loading="lazy"
                         className="w-12 h-12 rounded object-cover flex-shrink-0"

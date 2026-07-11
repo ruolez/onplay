@@ -640,6 +640,7 @@ export default function Gallery() {
                           alt={item.filename}
                           className="w-full aspect-video object-cover"
                           loading={index < 6 ? "eager" : "lazy"}
+                          decoding="async"
                         />
                       ) : (
                         <div className="flex items-center justify-center aspect-video">

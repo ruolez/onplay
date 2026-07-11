@@ -74,7 +74,6 @@ export default function PersistentPlayer() {
   } = usePlayer();
 
   const [isVisible, setIsVisible] = useState(false);
-  const [thumbnailTimestamp] = useState(Date.now());
   const [isMuted, setIsMuted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -377,7 +376,7 @@ export default function PersistentPlayer() {
           src={playerSrc}
           poster={
             currentMedia.thumbnail_path
-              ? `${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`
+              ? currentMedia.thumbnail_path
               : undefined
           }
           autoplay={true}
@@ -463,7 +462,7 @@ export default function PersistentPlayer() {
           >
             {currentMedia.thumbnail_path ? (
               <img
-                src={`${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`}
+                src={currentMedia.thumbnail_path}
                 alt={currentMedia.filename}
                 className="w-full h-full object-cover"
               />
@@ -750,7 +749,7 @@ export default function PersistentPlayer() {
           >
             {currentMedia.thumbnail_path ? (
               <img
-                src={`${currentMedia.thumbnail_path}?t=${thumbnailTimestamp}`}
+                src={currentMedia.thumbnail_path}
                 alt={currentMedia.filename}
                 className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0"
               />

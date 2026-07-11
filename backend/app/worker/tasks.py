@@ -319,10 +319,11 @@ def generate_thumbnail(input_path: str, media_id: str) -> str:
         stream = ffmpeg.output(stream, str(thumbnail_path), vframes=1, format='image2', vcodec='mjpeg')
         ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
 
-        # Resize to reasonable size
+        # Resize to reasonable size; progressive JPEG renders incrementally
+        # on slow connections and optimize shrinks the file
         img = Image.open(thumbnail_path)
         img.thumbnail((640, 360))
-        img.save(thumbnail_path, quality=85)
+        img.save(thumbnail_path, quality=82, optimize=True, progressive=True)
 
         return f"/media/thumbnails/{media_id}.jpg"
     except Exception as e:
@@ -341,10 +342,10 @@ def generate_thumbnail_at_timestamp(input_path: str, media_id: str, timestamp: f
         stream = ffmpeg.output(stream, str(thumbnail_path), vframes=1, format='image2', vcodec='mjpeg')
         ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
 
-        # Resize to reasonable size
+        # Resize to reasonable size; progressive JPEG renders incrementally
         img = Image.open(thumbnail_path)
         img.thumbnail((640, 360))
-        img.save(thumbnail_path, quality=85)
+        img.save(thumbnail_path, quality=82, optimize=True, progressive=True)
 
         return f"/media/thumbnails/{media_id}.jpg"
     except Exception as e:
