@@ -519,7 +519,9 @@ export default function PersistentPlayer() {
             />
             <div className="flex justify-between mt-1.5 text-xs theme-text-muted">
               <span>{formatDuration(currentTime)}</span>
-              <span>{formatDuration(duration)}</span>
+              <span>
+                -{formatDuration(Math.max(0, duration - currentTime))}
+              </span>
             </div>
           </div>
 
@@ -537,11 +539,15 @@ export default function PersistentPlayer() {
                   ? "theme-text-muted opacity-30 cursor-not-allowed"
                   : isShuffled
                     ? ""
-                    : "theme-text-primary"
+                    : "theme-text-muted"
               }`}
               style={
                 isShuffled && queue.length >= 2
-                  ? { color: "var(--btn-orange-bg)" }
+                  ? {
+                      color: "var(--btn-primary-bg)",
+                      background:
+                        "color-mix(in srgb, var(--btn-primary-bg) 12%, transparent)",
+                    }
                   : {}
               }
               title={isShuffled ? "Shuffle on" : "Shuffle"}
@@ -879,11 +885,15 @@ export default function PersistentPlayer() {
                       ? "theme-text-muted opacity-30 cursor-not-allowed"
                       : isShuffled
                         ? ""
-                        : "theme-text-primary"
+                        : "theme-text-muted"
                   }`}
                   style={
                     isShuffled && queue.length >= 2
-                      ? { color: "var(--btn-orange-bg)" }
+                      ? {
+                          color: "var(--btn-primary-bg)",
+                          background:
+                            "color-mix(in srgb, var(--btn-primary-bg) 12%, transparent)",
+                        }
                       : {}
                   }
                   onMouseEnter={(e) =>
@@ -1006,11 +1016,15 @@ export default function PersistentPlayer() {
                     ? "theme-text-muted opacity-30 cursor-not-allowed"
                     : isShuffled
                       ? ""
-                      : "theme-text-primary"
+                      : "theme-text-muted"
                 }`}
                 style={
                   isShuffled && queue.length >= 2
-                    ? { color: "var(--btn-orange-bg)" }
+                    ? {
+                        color: "var(--btn-primary-bg)",
+                        background:
+                          "color-mix(in srgb, var(--btn-primary-bg) 12%, transparent)",
+                      }
                     : {}
                 }
                 onMouseEnter={(e) =>
