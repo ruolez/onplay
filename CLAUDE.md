@@ -76,10 +76,11 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 
 ### User Interface
 
-- **8 Professional Themes**: Slate, Jade, Midnight, Charcoal, Graphite, Onyx, Steel, Eclipse
-  - Minimal shadows, subtle borders (0.06 opacity)
-  - True dark backgrounds with mesh gradients
-  - Border-based focus effects
+- **2 Professional Themes**: Eclipse (dark) and Linen (light)
+  - Minimal shadows, subtle borders
+  - Theme applied via ~50 CSS custom properties set by `applyTheme()` (lib/theme.ts)
+  - Meta theme-color and iOS status-bar style sync with the active theme
+  - All text/background pairs validated ≥ 4.5:1 WCAG AA contrast
 - **Theme Persistence**: LocalStorage with React Context
 - **Gallery Filter Persistence**: All filter states preserved across navigation
   - Media type filter (all/video/audio)
@@ -172,7 +173,7 @@ onplay/
 │   │   └── icons/                # PWA icons (192, 512, apple-touch)
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── Home.tsx          # Upload interface
+│   │   │   ├── Upload.tsx        # Upload interface
 │   │   │   ├── Gallery.tsx       # Media grid/list with filters and tags
 │   │   │   ├── Player.tsx        # Video player with analytics
 │   │   │   └── Stats.tsx         # Dashboard with bandwidth tracking
