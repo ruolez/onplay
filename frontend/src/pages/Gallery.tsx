@@ -4,6 +4,7 @@ import { mediaApi, Media } from "../lib/api";
 import { formatDuration, formatLongDuration } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useGallery } from "../contexts/GalleryContext";
+import { useToast } from "../contexts/ToastContext";
 import SegmentedControl from "../components/SegmentedControl";
 import {
   Play,
@@ -40,6 +41,7 @@ export default function Gallery() {
     refreshMedia,
     refreshTags,
   } = useGallery();
+  const { showToast } = useToast();
 
   // Local UI state (view mode, modals)
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
@@ -196,6 +198,7 @@ export default function Gallery() {
       setDeleteModal({ show: false, id: null });
       setDeletePassword("");
       refreshMedia();
+      showToast("Media deleted", "success");
     } catch (error: any) {
       if (error.response?.status === 403) {
         setDeleteError("Invalid password");
@@ -222,8 +225,10 @@ export default function Gallery() {
       await mediaApi.renameMedia(renameModal.id, newFilename);
       setRenameModal({ show: false, id: null, currentName: "" });
       refreshMedia();
+      showToast("Media renamed", "success");
     } catch (error) {
       console.error("Failed to rename media:", error);
+      showToast("Failed to rename media. Please try again.", "error");
     }
   };
 
@@ -236,8 +241,10 @@ export default function Gallery() {
       setTagInput("");
       refreshMedia();
       refreshTags();
+      showToast("Tag added", "success");
     } catch (error) {
       console.error("Failed to add tag:", error);
+      showToast("Failed to add tag. Please try again.", "error");
     }
   };
 
@@ -246,8 +253,10 @@ export default function Gallery() {
     try {
       await mediaApi.deleteTag(tagId);
       refreshTags();
+      showToast("Tag deleted", "success");
     } catch (error) {
       console.error("Failed to delete tag:", error);
+      showToast("Failed to delete tag. Please try again.", "error");
     }
   };
 

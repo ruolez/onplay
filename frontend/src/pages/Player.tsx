@@ -4,10 +4,12 @@ import { mediaApi, Media } from "../lib/api";
 import VideoPlayer, { VideoPlayerRef } from "../components/VideoPlayer";
 import { ArrowLeft, Eye, TrendingUp, Image, X, Upload } from "lucide-react";
 import { formatFileSize, formatDuration } from "../lib/utils";
+import { useToast } from "../contexts/ToastContext";
 
 export default function Player() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [media, setMedia] = useState<Media | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -65,10 +67,10 @@ export default function Player() {
       // Update timestamp to force thumbnail reload (cache bust)
       setThumbnailTimestamp(Date.now());
 
-      alert("Thumbnail updated successfully!");
+      showToast("Thumbnail updated", "success");
     } catch (error) {
       console.error("Failed to set thumbnail:", error);
-      alert("Failed to set thumbnail. Please try again.");
+      showToast("Failed to set thumbnail. Please try again.", "error");
     } finally {
       setThumbnailSaving(false);
     }
@@ -90,12 +92,12 @@ export default function Player() {
       // Update timestamp to force thumbnail reload (cache bust)
       setThumbnailTimestamp(Date.now());
 
-      alert("Thumbnail uploaded successfully!");
+      showToast("Thumbnail uploaded", "success");
     } catch (error: any) {
       console.error("Failed to upload thumbnail:", error);
       const message =
         error.response?.data?.detail || "Failed to upload thumbnail";
-      alert(message);
+      showToast(message, "error");
     } finally {
       setThumbnailUploading(false);
     }
@@ -108,16 +110,17 @@ export default function Player() {
       await mediaApi.removeTagFromMedia(id, tagId);
       // Reload media to get updated tags
       loadMedia();
+      showToast("Tag removed", "success");
     } catch (error) {
       console.error("Failed to remove tag:", error);
-      alert("Failed to remove tag. Please try again.");
+      showToast("Failed to remove tag. Please try again.", "error");
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
-        <div className="text-white text-xl">Loading player...</div>
+        <div className="theme-text-primary text-xl">Loading player...</div>
       </div>
     );
   }
@@ -125,7 +128,7 @@ export default function Player() {
   if (!media) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
-        <div className="text-white text-xl">Media not found</div>
+        <div className="theme-text-primary text-xl">Media not found</div>
       </div>
     );
   }
@@ -139,7 +142,7 @@ export default function Player() {
       {/* Back button */}
       <button
         onClick={() => navigate("/")}
-        className="mb-4 sm:mb-6 flex items-center space-x-2 text-white/70 hover:text-white transition-colors min-h-[44px] -ml-2 px-2"
+        className="mb-4 sm:mb-6 flex items-center space-x-2 theme-text-secondary hover:theme-text-primary transition-colors min-h-[44px] -ml-2 px-2"
         aria-label="Go back"
       >
         <ArrowLeft className="w-5 h-5" />
@@ -221,38 +224,38 @@ export default function Player() {
           </div>
 
           {/* Media info */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/10">
-            <h1 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4 break-words">
+          <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
+            <h1 className="text-xl sm:text-2xl font-bold theme-text-primary mb-3 sm:mb-4 break-words">
               {media.filename}
             </h1>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
               <div>
-                <p className="text-white/60">Type</p>
-                <p className="text-white font-medium capitalize">
+                <p className="theme-text-muted">Type</p>
+                <p className="theme-text-primary font-medium capitalize">
                   {media.media_type}
                 </p>
               </div>
               {media.duration && (
                 <div>
-                  <p className="text-white/60">Duration</p>
-                  <p className="text-white font-medium">
+                  <p className="theme-text-muted">Duration</p>
+                  <p className="theme-text-primary font-medium">
                     {formatDuration(media.duration)}
                   </p>
                 </div>
               )}
               {media.file_size && (
                 <div>
-                  <p className="text-white/60">Size</p>
-                  <p className="text-white font-medium">
+                  <p className="theme-text-muted">Size</p>
+                  <p className="theme-text-primary font-medium">
                     {formatFileSize(media.file_size)}
                   </p>
                 </div>
               )}
               {media.width && media.height && (
                 <div>
-                  <p className="text-white/60">Resolution</p>
-                  <p className="text-white font-medium">
+                  <p className="theme-text-muted">Resolution</p>
+                  <p className="theme-text-primary font-medium">
                     {media.width}x{media.height}
                   </p>
                 </div>
@@ -262,14 +265,21 @@ export default function Player() {
             {/* Available qualities */}
             {media.variants.length > 0 && (
               <div className="mt-4 sm:mt-6">
-                <p className="text-white/60 text-xs sm:text-sm mb-2">
+                <p className="theme-text-muted text-xs sm:text-sm mb-2">
                   Available Qualities:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {media.variants.map((variant) => (
                     <span
                       key={variant.quality}
-                      className="px-2 sm:px-3 py-1 bg-purple-600/30 text-purple-200 rounded-full text-xs sm:text-sm border border-purple-500/50"
+                      className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm"
+                      style={{
+                        background:
+                          "color-mix(in srgb, var(--accent-primary) 15%, transparent)",
+                        color: "var(--accent-primary)",
+                        border:
+                          "1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent)",
+                      }}
                     >
                       {variant.quality}
                     </span>
@@ -281,13 +291,13 @@ export default function Player() {
             {/* Tags */}
             {media.tags && media.tags.length > 0 && (
               <div className="mt-4 sm:mt-6">
-                <p className="text-white/60 text-xs sm:text-sm mb-2">Tags:</p>
+                <p className="theme-text-muted text-xs sm:text-sm mb-2">Tags:</p>
                 <div className="flex flex-wrap gap-2">
                   {media.tags.map((tag) => (
                     <button
                       key={tag.id}
                       onClick={() => handleRemoveTag(tag.id)}
-                      className="group px-2 sm:px-3 py-1 bg-white/10 hover:bg-red-500/20 text-white/80 hover:text-red-400 rounded-full text-xs sm:text-sm border border-white/20 hover:border-red-500/50 transition-all flex items-center gap-1 min-h-[32px]"
+                      className="group theme-button px-2 sm:px-3 py-1 hover:!bg-red-500/20 hover:!text-red-400 rounded-full text-xs sm:text-sm hover:!border-red-500/50 transition-all flex items-center gap-1 min-h-[32px]"
                       title="Click to remove tag"
                     >
                       <span>{tag.name}</span>
@@ -302,8 +312,8 @@ export default function Player() {
 
         {/* Analytics sidebar */}
         <div className="space-y-4 sm:space-y-6">
-          <div className="bg-white/5 backdrop-blur-sm rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/10">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-3 sm:mb-4 flex items-center space-x-2">
+          <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold theme-text-primary mb-3 sm:mb-4 flex items-center space-x-2">
               <TrendingUp className="w-5 h-5" />
               <span>Analytics</span>
             </h2>
@@ -311,39 +321,45 @@ export default function Player() {
             {analytics ? (
               <div className="space-y-4">
                 <div>
-                  <div className="flex items-center space-x-2 text-white/60 mb-1">
+                  <div className="flex items-center space-x-2 theme-text-muted mb-1">
                     <Eye className="w-4 h-4" />
                     <span className="text-sm">Total Views</span>
                   </div>
-                  <p className="text-3xl font-bold text-white">
+                  <p className="text-3xl font-bold theme-text-primary">
                     {analytics.total_plays}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-white/60 text-sm mb-1">Completions</p>
-                  <p className="text-3xl font-bold text-white">
+                  <p className="theme-text-muted text-sm mb-1">Completions</p>
+                  <p className="text-3xl font-bold theme-text-primary">
                     {analytics.total_completes}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-white/60 text-sm mb-1">Completion Rate</p>
+                  <p className="theme-text-muted text-sm mb-1">Completion Rate</p>
                   <div className="flex items-center space-x-2">
-                    <div className="flex-1 bg-white/10 rounded-full h-2">
+                    <div
+                      className="flex-1 rounded-full h-2"
+                      style={{ background: "var(--btn-secondary-bg)" }}
+                    >
                       <div
-                        className="bg-green-500 h-2 rounded-full transition-all"
-                        style={{ width: `${analytics.completion_rate}%` }}
+                        className="h-2 rounded-full transition-all"
+                        style={{
+                          width: `${analytics.completion_rate}%`,
+                          background: "var(--status-success)",
+                        }}
                       />
                     </div>
-                    <span className="text-white font-medium">
+                    <span className="theme-text-primary font-medium">
                       {analytics.completion_rate}%
                     </span>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-white/60">No analytics data yet</p>
+              <p className="theme-text-muted">No analytics data yet</p>
             )}
           </div>
         </div>

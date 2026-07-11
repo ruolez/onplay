@@ -4,16 +4,19 @@ import App from "./App.tsx";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { GalleryProvider } from "./contexts/GalleryContext";
 import { PlayerProvider } from "./contexts/PlayerContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <GalleryProvider>
-        <PlayerProvider>
-          <App />
-        </PlayerProvider>
-      </GalleryProvider>
+      <ToastProvider>
+        <GalleryProvider>
+          <PlayerProvider>
+            <App />
+          </PlayerProvider>
+        </GalleryProvider>
+      </ToastProvider>
     </ThemeProvider>
   </React.StrictMode>,
 );

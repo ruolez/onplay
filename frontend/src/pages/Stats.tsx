@@ -7,6 +7,7 @@ import {
   TrendingUp,
   HardDrive,
   Clock,
+  AlertCircle,
 } from "lucide-react";
 import { formatFileSize } from "../lib/utils";
 
@@ -14,6 +15,7 @@ export default function Stats() {
   const [overview, setOverview] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [days, setDays] = useState(7);
 
   useEffect(() => {
@@ -23,6 +25,7 @@ export default function Stats() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [overviewRes, analyticsRes] = await Promise.all([
         mediaApi.getStatsOverview(),
         mediaApi.getAnalyticsOverview(days),
@@ -31,6 +34,7 @@ export default function Stats() {
       setAnalytics(analyticsRes.data);
     } catch (error) {
       console.error("Failed to load stats:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -66,6 +70,24 @@ export default function Stats() {
           ))}
         </div>
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 theme-card rounded-lg p-4 mb-6"
+        >
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <p className="theme-text-secondary text-sm flex-1">
+            Failed to load statistics. Check your connection and try again.
+          </p>
+          <button
+            onClick={loadData}
+            className="theme-btn-secondary px-3 py-2 rounded-lg text-sm font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6 mb-6 sm:mb-8">
