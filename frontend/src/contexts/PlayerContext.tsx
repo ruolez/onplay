@@ -110,6 +110,28 @@ function shuffleWithCurrentFirst(
   return arr;
 }
 
+function sameOrder(a: Media[], b: Media[]): boolean {
+  return a.length === b.length && a.every((m, i) => m.id === b[i].id);
+}
+
+// Keep the existing shuffled order for surviving items; append newly
+// visible items shuffled at the end. Fresh shuffle if none exists.
+function reconcileShuffledQueue(
+  prev: Media[] | null,
+  sortedMedia: Media[],
+  currentId: string | undefined,
+): Media[] {
+  if (!prev) return shuffleWithCurrentFirst(sortedMedia, currentId);
+  const byId = new Map(sortedMedia.map((m) => [m.id, m]));
+  const kept = prev.filter((m) => byId.has(m.id)).map((m) => byId.get(m.id)!);
+  const keptIds = new Set(kept.map((m) => m.id));
+  const added = shuffleWithCurrentFirst(
+    sortedMedia.filter((m) => !keptIds.has(m.id)),
+    undefined,
+  );
+  return [...kept, ...added];
+}
+
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [state, send] = useMachine(queueMachine);
   const playerRef = useRef<DualVideoPlayerRef>(null);
@@ -477,6 +499,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     updateMediaSessionPosition(currentTime, duration);
   }, [currentTime, duration]);
 
+  // Track the machine's queue for idempotence checks (avoids stale closures)
+  const queueRef = useRef<Media[]>(queue);
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
+
   // Subscribe to Gallery state changes (live queue updates)
   useEffect(() => {
     // Only update queue if player is open
@@ -493,27 +521,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log("[PlayerContext] 🔄 Gallery state changed, updating queue");
-    console.log("[PlayerContext] Current media:", currentMedia.filename);
-    console.log("[PlayerContext] Current queue size:", queue.length);
-    console.log("[PlayerContext] New sortedMedia size:", sortedMedia.length);
-    console.log("[PlayerContext] Current index:", currentIndex);
-    console.log("[PlayerContext] Shuffle:", isShuffled);
-
-    const nextQueue = isShuffled
-      ? shuffleWithCurrentFirst(sortedMedia, currentMedia.id)
-      : sortedMedia;
-
+    let nextQueue: Media[];
     if (isShuffled) {
+      nextQueue = reconcileShuffledQueue(
+        shuffledQueueRef.current,
+        sortedMedia,
+        currentMedia.id,
+      );
       shuffledQueueRef.current = nextQueue;
     } else {
       shuffledQueueRef.current = null;
+      nextQueue = sortedMedia;
     }
 
-    // Send UPDATE_QUEUE event to state machine
-    send({ type: "UPDATE_QUEUE", queueItems: nextQueue });
+    // Skip the send if the machine already holds this exact order —
+    // preserves preloaded next track and keeps shuffled order stable
+    if (sameOrder(nextQueue, queueRef.current)) {
+      return;
+    }
 
-    console.log("[PlayerContext] ✅ UPDATE_QUEUE event sent");
+    console.log("[PlayerContext] 🔄 Gallery state changed, updating queue");
+    console.log("[PlayerContext] Current media:", currentMedia.filename);
+    console.log("[PlayerContext] New queue size:", nextQueue.length);
+    console.log("[PlayerContext] Shuffle:", isShuffled);
+
+    send({ type: "UPDATE_QUEUE", queueItems: nextQueue });
   }, [sortedMedia, currentMedia, send, isShuffled]);
 
   // Actions
@@ -530,6 +562,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [send, conditionalRequestWakeLock, isShuffled],
   );
 
+  // The gallery-subscribe effect owns all queue sends — toggling only flips
+  // the flag; the effect (re-run via its isShuffled dep) swaps the queue
   const toggleShuffle = useCallback(() => {
     const next = !isShuffled;
     setIsShuffled(next);
@@ -538,21 +572,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore localStorage errors (private mode etc.)
     }
-
-    // If no active queue, just persist the preference
-    if (sortedMedia.length === 0) return;
-
-    if (next) {
-      const shuffled = shuffleWithCurrentFirst(sortedMedia, currentMedia?.id);
-      shuffledQueueRef.current = shuffled;
-      send({ type: "UPDATE_QUEUE", queueItems: shuffled });
-      console.log("[PlayerContext] 🔀 Shuffle enabled");
-    } else {
-      shuffledQueueRef.current = null;
-      send({ type: "UPDATE_QUEUE", queueItems: sortedMedia });
-      console.log("[PlayerContext] ➡️ Shuffle disabled");
-    }
-  }, [isShuffled, sortedMedia, currentMedia, send]);
+    if (!next) shuffledQueueRef.current = null;
+    console.log(
+      next
+        ? "[PlayerContext] 🔀 Shuffle enabled"
+        : "[PlayerContext] ➡️ Shuffle disabled",
+    );
+  }, [isShuffled]);
 
   const closePlayer = useCallback(() => {
     // Clear saved state when user manually closes
