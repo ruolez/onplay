@@ -1,5 +1,5 @@
 // OnPlay Service Worker
-const CACHE_NAME = 'onplay-v1';
+const CACHE_NAME = 'onplay-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -17,8 +17,16 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  // Activate immediately
-  self.skipWaiting();
+  // NOTE: no skipWaiting() here - the app shows an update prompt and the
+  // new worker activates only after the user opts in (SKIP_WAITING below),
+  // so a running session never mixes old and new assets unexpectedly
+});
+
+// Activate the waiting worker when the user accepts the update prompt
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Activate event - clean up old caches

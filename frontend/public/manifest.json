@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "On·Play - Stream Your Media",
   "short_name": "On·Play",
   "description": "Professional media streaming platform with adaptive HLS playback",
@@ -29,7 +30,22 @@
     }
   ],
   "categories": ["entertainment", "music", "video"],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-gallery.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Media gallery with playback controls"
+    },
+    {
+      "src": "/screenshots/desktop-gallery.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Media gallery on desktop"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Upload Media",

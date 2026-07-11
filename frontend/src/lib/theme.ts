@@ -283,4 +283,22 @@ export function applyTheme(theme: ThemeConfig) {
   root.style.setProperty("--icon-video", theme.iconVideo);
   root.style.setProperty("--icon-tag", theme.iconTag);
   root.style.setProperty("--icon-all", theme.iconAll);
+
+  // Keep browser chrome (status/URL bar) in sync with the active theme
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeColorMeta) themeColorMeta.setAttribute("content", theme.bgPrimary);
+
+  const r = parseInt(theme.bgPrimary.slice(1, 3), 16);
+  const g = parseInt(theme.bgPrimary.slice(3, 5), 16);
+  const b = parseInt(theme.bgPrimary.slice(5, 7), 16);
+  const isLight = (r * 299 + g * 587 + b * 114) / 1000 > 128;
+  const statusBarMeta = document.querySelector(
+    'meta[name="apple-mobile-web-app-status-bar-style"]',
+  );
+  if (statusBarMeta) {
+    statusBarMeta.setAttribute(
+      "content",
+      isLight ? "default" : "black-translucent",
+    );
+  }
 }

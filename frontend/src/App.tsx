@@ -18,10 +18,22 @@ import PersistentPlayer from "./components/PersistentPlayer";
 import MobileBottomNav from "./components/MobileBottomNav";
 import { useTheme } from "./contexts/ThemeContext";
 import { themes, applyTheme } from "./lib/theme";
-import { Upload as UploadIcon, BarChart3, Menu, X, Search } from "lucide-react";
+import { useServiceWorkerUpdate } from "./hooks/useServiceWorkerUpdate";
+import { useInstallPrompt } from "./hooks/useInstallPrompt";
+import {
+  Upload as UploadIcon,
+  BarChart3,
+  Menu,
+  X,
+  Search,
+  Download,
+  RefreshCw,
+} from "lucide-react";
 
 function AppContent() {
   const { theme } = useTheme();
+  const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
+  const { canInstall, promptInstall } = useInstallPrompt();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -368,6 +380,18 @@ function AppContent() {
                 <BarChart3 className="w-5 h-5" />
                 <span>Stats</span>
               </Link>
+              {canInstall && (
+                <button
+                  onClick={() => {
+                    promptInstall();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] theme-nav-link hover:bg-white/5"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>Install app</span>
+                </button>
+              )}
               <div className="pt-2 border-t border-white/10">
                 <ThemeSelector />
               </div>
@@ -375,6 +399,32 @@ function AppContent() {
           </div>
         )}
       </nav>
+
+      {/* App update prompt (new service worker waiting) */}
+      {updateAvailable && (
+        <div
+          role="status"
+          className="fixed left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl w-[calc(100vw-2rem)] max-w-sm"
+          style={{
+            bottom:
+              "calc(var(--bottom-nav-height, 0px) + var(--mini-player-height, 0px) + max(1rem, env(safe-area-inset-bottom)))",
+            background: "var(--dropdown-bg, rgba(20, 20, 20, 0.95))",
+            border: "1px solid var(--card-border)",
+            backdropFilter: "blur(16px)",
+          }}
+        >
+          <RefreshCw className="w-5 h-5 theme-icon-accent flex-shrink-0" />
+          <p className="theme-text-primary text-sm flex-1">
+            A new version of On·Play is available.
+          </p>
+          <button
+            onClick={applyUpdate}
+            className="theme-btn-primary px-3 py-2 rounded-lg text-sm font-medium flex-shrink-0"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
 
       {/* Main Content */}
       <Routes>
