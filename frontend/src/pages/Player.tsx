@@ -116,7 +116,7 @@ export default function Player() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
         <div className="text-white text-xl">Loading player...</div>
       </div>
     );
@@ -124,7 +124,7 @@ export default function Player() {
 
   if (!media) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
         <div className="text-white text-xl">Media not found</div>
       </div>
     );

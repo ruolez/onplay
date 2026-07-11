@@ -38,7 +38,7 @@ export default function Stats() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
         <div className="theme-text-primary text-xl">Loading statistics...</div>
       </div>
     );

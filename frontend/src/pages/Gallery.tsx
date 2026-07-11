@@ -298,7 +298,7 @@ export default function Gallery() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-center min-h-[calc(100dvh-4rem)]">
         <div className="theme-text-primary text-xl">Loading media...</div>
       </div>
     );
@@ -579,7 +579,7 @@ export default function Gallery() {
                         <img
                           src={item.thumbnail_path}
                           alt={item.filename}
-                          className="w-full h-auto"
+                          className="w-full aspect-video object-cover"
                           loading="lazy"
                         />
                       ) : (
@@ -623,7 +623,7 @@ export default function Gallery() {
                     {/* Info */}
                     <div className="p-2 xs:p-3 sm:p-4">
                       {/* Filename - First Line */}
-                      <h3 className="theme-text-primary font-medium truncate text-base xs:text-sm sm:text-base mb-1 sm:mb-2">
+                      <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
                         {item.filename}
                       </h3>
 
@@ -903,7 +903,7 @@ export default function Gallery() {
               }}
               onKeyDown={(e) => e.key === "Enter" && handleDelete()}
               placeholder="Password"
-              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-2 text-sm sm:text-base"
+              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-2 text-base"
               autoFocus
             />
             {deleteError && (
