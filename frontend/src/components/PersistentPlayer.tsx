@@ -773,7 +773,8 @@ export default function PersistentPlayer() {
                 {currentMedia.filename.replace(/\.[^/.]+$/, "")}
               </h3>
               <p className="theme-text-muted text-xs">
-                {formatDuration(currentTime)} / {formatDuration(duration)}
+                {formatDuration(currentTime)} / -
+                {formatDuration(Math.max(0, duration - currentTime))}
               </p>
             </div>
 
