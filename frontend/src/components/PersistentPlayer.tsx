@@ -538,14 +538,13 @@ export default function PersistentPlayer() {
                   ? "theme-text-muted opacity-30 cursor-not-allowed"
                   : isShuffled
                     ? ""
-                    : "theme-text-muted"
+                    : "theme-text-primary"
               }`}
               style={
                 isShuffled && queue.length >= 2
                   ? {
-                      color: "var(--btn-primary-bg)",
-                      background:
-                        "color-mix(in srgb, var(--btn-primary-bg) 12%, transparent)",
+                      background: "var(--btn-primary-bg)",
+                      color: "var(--btn-primary-text)",
                     }
                   : {}
               }
@@ -885,14 +884,13 @@ export default function PersistentPlayer() {
                       ? "theme-text-muted opacity-30 cursor-not-allowed"
                       : isShuffled
                         ? ""
-                        : "theme-text-muted"
+                        : "theme-text-primary"
                   }`}
                   style={
                     isShuffled && queue.length >= 2
                       ? {
-                          color: "var(--btn-primary-bg)",
-                          background:
-                            "color-mix(in srgb, var(--btn-primary-bg) 12%, transparent)",
+                          background: "var(--btn-primary-bg)",
+                          color: "var(--btn-primary-text)",
                         }
                       : {}
                   }
@@ -1016,14 +1014,13 @@ export default function PersistentPlayer() {
                     ? "theme-text-muted opacity-30 cursor-not-allowed"
                     : isShuffled
                       ? ""
-                      : "theme-text-muted"
+                      : "theme-text-primary"
                 }`}
                 style={
                   isShuffled && queue.length >= 2
                     ? {
-                        color: "var(--btn-primary-bg)",
-                        background:
-                          "color-mix(in srgb, var(--btn-primary-bg) 12%, transparent)",
+                        background: "var(--btn-primary-bg)",
+                        color: "var(--btn-primary-text)",
                       }
                     : {}
                 }
