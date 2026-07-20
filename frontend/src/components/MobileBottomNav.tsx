@@ -106,7 +106,13 @@ export default function MobileBottomNav() {
   const buttonBase =
     "rounded-xl transition-all min-h-[56px] flex items-center justify-center gap-2 active:scale-95";
   const buttonInactive = "bg-white/5 hover:bg-white/10";
-  const buttonActive = "bg-white/15";
+  const buttonActive = "";
+  // Accent tint makes an applied filter obvious at a glance
+  const activeStyle: React.CSSProperties = {
+    background: "color-mix(in srgb, var(--btn-primary-bg) 22%, transparent)",
+    boxShadow:
+      "inset 0 0 0 1px color-mix(in srgb, var(--btn-primary-bg) 45%, transparent)",
+  };
 
   return (
     <nav
@@ -131,6 +137,7 @@ export default function MobileBottomNav() {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
           className={`w-[44px] xs:w-[48px] ${buttonBase} ${hasActiveSearch ? buttonActive : buttonInactive}`}
+          style={hasActiveSearch ? activeStyle : undefined}
           aria-label="Search"
           title="Search"
         >
@@ -146,6 +153,7 @@ export default function MobileBottomNav() {
               setTagFilterOpen(false);
             }}
             className={`w-full px-2 ${buttonBase} ${filter !== "all" ? buttonActive : buttonInactive}`}
+            style={filter !== "all" ? activeStyle : undefined}
           >
             {filter === "all" ? (
               <span className="text-sm font-medium theme-text-primary">
@@ -234,6 +242,7 @@ export default function MobileBottomNav() {
               setSortMenuOpen(false);
             }}
             className={`w-full ${buttonBase} ${selectedTags.length > 0 ? buttonActive : buttonInactive}`}
+            style={selectedTags.length > 0 ? activeStyle : undefined}
           >
             <div className="relative">
               <TagIcon

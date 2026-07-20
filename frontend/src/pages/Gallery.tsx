@@ -7,10 +7,10 @@ import { useGallery } from "../contexts/GalleryContext";
 import { useToast } from "../contexts/ToastContext";
 import SegmentedControl from "../components/SegmentedControl";
 import GallerySkeleton from "../components/GallerySkeleton";
+import EqualizerBars from "../components/EqualizerBars";
 import {
   Play,
   Music,
-  Clock,
   Trash2,
   Edit2,
   X,
@@ -75,7 +75,8 @@ export default function Gallery() {
   const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { openPlayer, requestFullscreen, currentMedia } = usePlayer();
+  const { openPlayer, requestFullscreen, currentMedia, isPlaying } =
+    usePlayer();
   const [searchParams] = useSearchParams();
 
   // Refs for auto-scrolling to current track
@@ -678,6 +679,13 @@ export default function Gallery() {
                           </div>
                         </div>
                       )}
+
+                      {/* Duration chip overlay */}
+                      {item.duration && (
+                        <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium leading-tight">
+                          {formatDuration(item.duration)}
+                        </div>
+                      )}
                     </div>
 
                     {/* Info */}
@@ -687,16 +695,10 @@ export default function Gallery() {
                         {item.filename}
                       </h3>
 
-                      {/* Duration, Play Count, and Three-Dots Menu - Second Line */}
+                      {/* Play Count and Three-Dots Menu - Second Line */}
                       <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
-                        {/* Duration and Play Count - Left aligned */}
+                        {/* Play Count - Left aligned */}
                         <div className="flex items-center gap-2 text-xs sm:text-sm theme-text-muted flex-1 min-w-0">
-                          {item.duration && (
-                            <div className="flex items-center space-x-1">
-                              <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span>{formatDuration(item.duration)}</span>
-                            </div>
-                          )}
                           {(item.play_count ?? 0) > 0 && (
                             <div className="hidden md:flex items-center space-x-1">
                               <Play className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -754,17 +756,22 @@ export default function Gallery() {
                         </div>
                       </div>
 
-                      {/* Tags */}
+                      {/* Tags - capped to one line */}
                       {item.tags.length > 0 && (
-                        <div className="mt-2 sm:mt-3 flex flex-wrap gap-1">
-                          {item.tags.map((tag) => (
+                        <div className="mt-1.5 sm:mt-2 flex items-center gap-1 overflow-hidden">
+                          {item.tags.slice(0, 2).map((tag) => (
                             <span
                               key={tag.id}
-                              className="px-1.5 sm:px-2 py-0.5 bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
+                              className="px-1.5 py-0.5 bg-white/10 rounded text-xs theme-text-muted whitespace-nowrap"
                             >
                               {tag.name}
                             </span>
                           ))}
+                          {item.tags.length > 2 && (
+                            <span className="text-xs theme-text-muted whitespace-nowrap">
+                              +{item.tags.length - 2}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -773,7 +780,7 @@ export default function Gallery() {
               })}
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="divide-y divide-[color:var(--card-border)]">
               {sortedMedia.map((item, index) => {
                 const isCurrentTrack = currentMedia?.id === item.id;
                 return (
@@ -785,48 +792,90 @@ export default function Gallery() {
                     role="button"
                     tabIndex={item.status === "ready" ? 0 : -1}
                     aria-label={`Play ${item.filename}`}
-                    className={`relative theme-card rounded-lg p-2.5 sm:p-2 transition-all ${
+                    className={`relative transition-colors ${
                       item.status === "ready"
-                        ? "cursor-pointer active:scale-[0.98] sm:hover:scale-[1.02]"
+                        ? "cursor-pointer active:bg-white/5 sm:hover:bg-white/5"
                         : "cursor-default"
                     } ${menuOpen === item.id ? "z-[110]" : ""}`}
                     style={{
                       WebkitTapHighlightColor: "transparent",
                       ...(isCurrentTrack
                         ? {
-                            borderLeft: "3px solid var(--btn-primary-bg)",
-                            backgroundColor: "rgba(255, 255, 255, 0.03)",
+                            background:
+                              "color-mix(in srgb, var(--btn-primary-bg) 10%, transparent)",
                           }
                         : {}),
                     }}
                   >
-                    <div className="flex items-center gap-2">
-                      {/* Number */}
-                      <div className="flex-shrink-0 w-6 text-right">
-                        <span className="text-xs theme-text-muted font-mono">
-                          {index + 1}
-                        </span>
-                      </div>
-
-                      {/* Media Type Icon */}
-                      <div className="flex-shrink-0">
-                        {item.media_type === "video" ? (
-                          <Play
-                            className="w-[18px] h-[18px] sm:w-4 sm:h-4"
-                            style={{ color: "var(--icon-video)" }}
+                    <div className="flex items-center gap-3 px-1 xs:px-1.5 py-2">
+                      {/* Artwork */}
+                      <div className="relative flex-shrink-0 w-12 h-12 rounded-md overflow-hidden">
+                        {item.thumbnail_path ? (
+                          <img
+                            src={item.thumbnail_path}
+                            alt=""
+                            loading={index < 12 ? "eager" : "lazy"}
+                            decoding="async"
+                            className="w-full h-full object-cover"
                           />
                         ) : (
-                          <Music
-                            className="w-[18px] h-[18px] sm:w-4 sm:h-4"
-                            style={{ color: "var(--icon-audio)" }}
-                          />
+                          <div
+                            className="w-full h-full flex items-center justify-center"
+                            style={{ background: "var(--card-bg)" }}
+                          >
+                            {item.media_type === "video" ? (
+                              <Play
+                                className="w-5 h-5"
+                                style={{ color: "var(--icon-video)" }}
+                              />
+                            ) : (
+                              <Music
+                                className="w-5 h-5"
+                                style={{ color: "var(--icon-audio)" }}
+                              />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Video type badge */}
+                        {item.media_type === "video" &&
+                          item.thumbnail_path &&
+                          !isCurrentTrack && (
+                            <div className="absolute bottom-0.5 right-0.5 p-0.5 rounded bg-black/70">
+                              <Play
+                                className="w-2.5 h-2.5 text-white"
+                                fill="currentColor"
+                              />
+                            </div>
+                          )}
+
+                        {/* Now-playing overlay */}
+                        {isCurrentTrack && (
+                          <div
+                            className="absolute inset-0 flex items-center justify-center bg-black/55"
+                            style={{ color: "var(--btn-primary-bg)" }}
+                          >
+                            <EqualizerBars
+                              playing={isPlaying}
+                              className="!w-4 !h-4"
+                            />
+                          </div>
                         )}
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="theme-text-primary font-medium text-base truncate flex-1">
+                          <h3
+                            className={`font-medium text-[15px] truncate flex-1 ${
+                              isCurrentTrack ? "" : "theme-text-primary"
+                            }`}
+                            style={
+                              isCurrentTrack
+                                ? { color: "var(--btn-primary-bg)" }
+                                : undefined
+                            }
+                          >
                             {item.filename}
                           </h3>
 
@@ -840,17 +889,22 @@ export default function Gallery() {
                           )}
                         </div>
 
-                        {/* Tags on second line */}
+                        {/* Tags on second line - capped to one line */}
                         {item.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {item.tags.map((tag) => (
+                          <div className="flex items-center gap-1 mt-1 overflow-hidden">
+                            {item.tags.slice(0, 2).map((tag) => (
                               <span
                                 key={tag.id}
-                                className="px-1 py-[1px] bg-white/10 rounded text-xs sm:text-sm theme-text-secondary"
+                                className="px-1.5 py-[1px] bg-white/10 rounded text-[11px] theme-text-muted whitespace-nowrap"
                               >
                                 {tag.name}
                               </span>
                             ))}
+                            {item.tags.length > 2 && (
+                              <span className="text-[11px] theme-text-muted whitespace-nowrap">
+                                +{item.tags.length - 2}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -858,16 +912,12 @@ export default function Gallery() {
                       {/* Duration and Play Count - Right aligned */}
                       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-xs sm:text-sm theme-text-muted">
                         {item.duration && (
-                          <div className="flex items-center space-x-0.5">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatDuration(item.duration)}</span>
-                          </div>
+                          <span>{formatDuration(item.duration)}</span>
                         )}
                         {(item.play_count ?? 0) > 0 && (
-                          <div className="hidden sm:flex items-center space-x-0.5">
-                            <Play className="w-3 h-3" />
-                            <span>{item.play_count} plays</span>
-                          </div>
+                          <span className="hidden sm:inline">
+                            {item.play_count} plays
+                          </span>
                         )}
                       </div>
 

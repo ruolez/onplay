@@ -3,16 +3,18 @@
 export default function GallerySkeleton({ view }: { view: "grid" | "list" }) {
   if (view === "list") {
     return (
-      <div className="space-y-1" aria-hidden="true">
+      <div
+        className="divide-y divide-[color:var(--card-border)]"
+        aria-hidden="true"
+      >
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="theme-card rounded-lg p-2.5 sm:p-2 flex items-center gap-2 animate-pulse"
+            className="flex items-center gap-3 px-1 xs:px-1.5 py-2 animate-pulse"
           >
-            <div className="w-6 h-4 skeleton-block flex-shrink-0" />
-            <div className="w-[18px] h-[18px] skeleton-block rounded-full flex-shrink-0" />
+            <div className="w-12 h-12 skeleton-block rounded-md flex-shrink-0" />
             <div className="flex-1 h-4 skeleton-block" />
-            <div className="w-12 h-3 skeleton-block flex-shrink-0" />
+            <div className="w-10 h-3 skeleton-block flex-shrink-0" />
           </div>
         ))}
       </div>

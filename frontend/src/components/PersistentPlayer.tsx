@@ -19,11 +19,11 @@ import {
   Maximize,
   Minimize,
   List,
+  ListMusic,
   Monitor,
   MonitorOff,
   Loader2,
   ChevronDown,
-  X,
   Music,
   Video,
   Info,
@@ -79,6 +79,18 @@ export default function PersistentPlayer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showSwipeHint, setShowSwipeHint] = useState(
+    () => !localStorage.getItem("player-swipe-hint-seen"),
+  );
+
+  // Show the swipe hint only on the first-ever expand, then never again
+  useEffect(() => {
+    if (isExpanded && showSwipeHint) {
+      localStorage.setItem("player-swipe-hint-seen", "true");
+      const timer = setTimeout(() => setShowSwipeHint(false), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [isExpanded, showSwipeHint]);
 
   const haptics = useHaptics();
   const miniPlayerRef = useRef<HTMLDivElement>(null);
@@ -399,12 +411,16 @@ export default function PersistentPlayer() {
         currentIndex={currentIndex}
         isPlaying={isPlaying}
         onTrackClick={jumpToTrack}
+        onClosePlayer={() => {
+          setIsQueueOpen(false);
+          handleClose();
+        }}
       />
 
       {/* Expanded Full-Screen Player */}
       <div
         ref={expandedPlayerRef}
-        className={`fixed inset-0 z-[100] flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed inset-0 z-[100] flex flex-col overflow-hidden transition-transform duration-300 ease-out ${
           isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
@@ -418,9 +434,28 @@ export default function PersistentPlayer() {
         }}
         {...expandedPlayerGestures.handlers}
       >
+        {/* Ambient blurred artwork backdrop */}
+        {currentMedia.thumbnail_path && (
+          <div className="absolute inset-0 pointer-events-none" aria-hidden>
+            <img
+              src={currentMedia.thumbnail_path}
+              alt=""
+              className="w-full h-full object-cover scale-125"
+              style={{ filter: "blur(60px) brightness(0.5) saturate(1.3)" }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.65) 100%)",
+              }}
+            />
+          </div>
+        )}
+
         {/* Header - Fixed */}
         <div
-          className="flex-shrink-0 flex items-center justify-between px-4 py-2"
+          className="relative flex-shrink-0 flex items-center justify-between px-4 py-2"
           style={{ paddingTop: "max(8px, env(safe-area-inset-top))" }}
         >
           <button
@@ -439,23 +474,86 @@ export default function PersistentPlayer() {
             Now Playing
           </span>
 
-          <button
-            onClick={handleClose}
-            className="p-2 -mr-2 rounded-full transition-colors hover:bg-white/10"
-            aria-label="Close player"
-          >
-            <X className="w-6 h-6 theme-text-muted" />
-          </button>
+          {/* Wake Lock - screen sleep toggle */}
+          <div className="flex items-center -mr-2">
+            <button
+              onClick={() => {
+                haptics.buttonPress();
+                // If broken iOS PWA, show info modal instead of toggling
+                if (isBrokenIOSPWA && !isWakeLockEnabled) {
+                  setShowWakeLockInfoModal(true);
+                } else {
+                  setWakeLockEnabled(!isWakeLockEnabled);
+                }
+              }}
+              className={`p-2 rounded-full transition-colors ${
+                isWakeLockEnabled && isWakeLockActive
+                  ? "theme-text-primary"
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? "text-orange-400"
+                    : wakeLockFailureReason
+                      ? "text-orange-400"
+                      : "theme-text-muted hover:theme-text-primary"
+              }`}
+              style={
+                isWakeLockEnabled && isWakeLockActive
+                  ? { background: "var(--player-bar-button-hover)" }
+                  : isWakeLockEnabled && !isWakeLockActive
+                    ? { background: "rgba(251, 146, 60, 0.1)" }
+                    : wakeLockFailureReason
+                      ? { background: "rgba(251, 146, 60, 0.1)" }
+                      : {}
+              }
+              title={
+                isWakeLockEnabled && isWakeLockActive
+                  ? "Screen staying awake"
+                  : wakeLockFailureReason
+                    ? "Wake lock unavailable - tap for info"
+                    : isWakeLockEnabled && !isWakeLockActive
+                      ? "Wake lock failed - tap to retry"
+                      : "Allow screen to sleep"
+              }
+              aria-label={
+                isWakeLockEnabled && isWakeLockActive
+                  ? "Screen wake active"
+                  : wakeLockFailureReason
+                    ? "Screen wake unavailable"
+                    : isWakeLockEnabled && !isWakeLockActive
+                      ? "Screen wake failed"
+                      : "Screen wake disabled"
+              }
+            >
+              {isWakeLockEnabled ? (
+                <Monitor className="w-5 h-5" />
+              ) : (
+                <MonitorOff className="w-5 h-5" />
+              )}
+            </button>
+            {/* Info button when wake lock has failure reason */}
+            {wakeLockFailureReason && (
+              <button
+                onClick={() => {
+                  haptics.buttonPress();
+                  setShowWakeLockInfoModal(true);
+                }}
+                className="p-2 rounded-full text-orange-400 hover:bg-orange-400/10 transition-colors"
+                title="Learn why wake lock is unavailable"
+                aria-label="Wake lock info"
+              >
+                <Info className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Scrollable Content */}
         <div
-          className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center px-6"
+          className="relative flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center px-6"
           style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
         >
           {/* Album Art / Video Thumbnail */}
           <div
-            className="relative w-full max-w-[240px] aspect-square rounded-2xl overflow-hidden shadow-2xl mt-2 flex-shrink-0"
+            className="relative w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden shadow-2xl mt-2 flex-shrink-0"
             style={{
               boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
             }}
@@ -484,7 +582,7 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Track Info */}
-          <div className="w-full max-w-[300px] mt-4 text-center flex-shrink-0">
+          <div className="w-full max-w-[340px] mt-4 text-center flex-shrink-0">
             <h2 className="text-lg font-bold theme-text-primary truncate">
               {currentMedia.filename.replace(/\.[^/.]+$/, "")}
             </h2>
@@ -505,7 +603,7 @@ export default function PersistentPlayer() {
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full max-w-[300px] mt-5 flex-shrink-0">
+          <div className="w-full max-w-[340px] mt-5 flex-shrink-0">
             <SeekBar
               currentTime={currentTime}
               duration={duration}
@@ -606,41 +704,6 @@ export default function PersistentPlayer() {
 
           {/* Secondary Controls */}
           <div className="flex items-center justify-center gap-4 mt-4 flex-shrink-0">
-            {/* Wake Lock */}
-            <button
-              onClick={() => {
-                haptics.buttonPress();
-                setWakeLockEnabled(!isWakeLockEnabled);
-              }}
-              className={`p-3 rounded-full transition-colors ${
-                isWakeLockEnabled && isWakeLockActive
-                  ? "theme-text-primary bg-white/10"
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? "text-orange-400 bg-orange-400/10"
-                    : "theme-text-muted"
-              }`}
-              aria-label={
-                isWakeLockEnabled && isWakeLockActive
-                  ? "Screen wake active"
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? "Screen wake failed"
-                    : "Screen wake disabled"
-              }
-              title={
-                isWakeLockEnabled && isWakeLockActive
-                  ? "Screen staying awake"
-                  : isWakeLockEnabled && !isWakeLockActive
-                    ? "Wake lock failed - tap to retry"
-                    : "Allow screen to sleep"
-              }
-            >
-              {isWakeLockEnabled ? (
-                <Monitor className="w-5 h-5" />
-              ) : (
-                <MonitorOff className="w-5 h-5" />
-              )}
-            </button>
-
             {/* Queue */}
             <button
               onClick={() => {
@@ -651,7 +714,7 @@ export default function PersistentPlayer() {
               aria-label="View play queue"
               title="Play queue"
             >
-              <List className="w-5 h-5" />
+              <ListMusic className="w-5 h-5" />
             </button>
 
             {/* Fullscreen (Video only) */}
@@ -698,12 +761,14 @@ export default function PersistentPlayer() {
             </div>
           </div>
 
-          {/* Swipe Hint */}
-          <div className="text-center mt-4 pb-4 flex-shrink-0">
-            <p className="text-xs theme-text-muted">
-              Swipe down to minimize • Swipe left/right to change tracks
-            </p>
-          </div>
+          {/* Swipe Hint - shown once on first expand, then never again */}
+          {showSwipeHint && (
+            <div className="text-center mt-4 pb-4 flex-shrink-0">
+              <p className="text-xs theme-text-muted">
+                Swipe down to minimize • Swipe left/right to change tracks
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -717,28 +782,31 @@ export default function PersistentPlayer() {
           background: "var(--player-bar-bg)",
           backdropFilter: "blur(20px)",
           borderTop: "1px solid var(--player-bar-border)",
+          borderBottom:
+            "1px solid color-mix(in srgb, var(--btn-primary-bg) 30%, transparent)",
           bottom: "var(--bottom-nav-height, 0px)",
           paddingBottom:
             "max(0px, calc(env(safe-area-inset-bottom) - var(--bottom-nav-height, 0px)))",
         }}
         {...miniPlayerGestures.handlers}
       >
-        {/* Drag Handle Indicator */}
-        <div
-          className="flex justify-center pt-2.5 pb-2 cursor-pointer"
-          onClick={() => {
-            haptics.buttonPress();
-            setIsExpanded(true);
-          }}
-        >
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
+        {/* Progress hairline - top edge (mobile only) */}
+        <SeekBar
+          currentTime={currentTime}
+          duration={duration}
+          bufferedEnd={bufferedEnd}
+          onSeek={handleSeek}
+          onScrubStart={handleScrubStart}
+          onScrubEnd={handleScrubEnd}
+          className="md:hidden w-full h-1"
+          trackBackground="var(--player-progress-bg)"
+        />
 
         {errorBanner}
 
-        {/* Main Controls - Two rows on mobile, single row on desktop */}
-        <div className="px-2 xs:px-3 sm:px-4 py-2 sm:py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-          {/* Row 1 (Mobile) / Left Section (Desktop): Thumbnail + Title + Wake Lock */}
+        {/* Main Controls - Single row */}
+        <div className="px-2 xs:px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 md:gap-4">
+          {/* Left Section: Thumbnail + Title */}
           <div
             className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 cursor-pointer"
             onClick={() => {
@@ -776,230 +844,51 @@ export default function PersistentPlayer() {
                 {formatDuration(Math.max(0, duration - currentTime))}
               </p>
             </div>
-
-            {/* Wake Lock Toggle - 48px touch target */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  haptics.buttonPress();
-                  // If broken iOS PWA, show info modal instead of toggling
-                  if (isBrokenIOSPWA && !isWakeLockEnabled) {
-                    setShowWakeLockInfoModal(true);
-                  } else {
-                    setWakeLockEnabled(!isWakeLockEnabled);
-                  }
-                }}
-                className={`p-3 rounded-full transition-colors ${
-                  isWakeLockEnabled && isWakeLockActive
-                    ? "theme-text-primary"
-                    : isWakeLockEnabled && !isWakeLockActive
-                      ? "text-orange-400"
-                      : wakeLockFailureReason
-                        ? "text-orange-400"
-                        : "theme-text-muted hover:theme-text-primary"
-                }`}
-                style={
-                  isWakeLockEnabled && isWakeLockActive
-                    ? { background: "var(--player-bar-button-hover)" }
-                    : isWakeLockEnabled && !isWakeLockActive
-                      ? { background: "rgba(251, 146, 60, 0.1)" }
-                      : wakeLockFailureReason
-                        ? { background: "rgba(251, 146, 60, 0.1)" }
-                        : {}
-                }
-                onMouseEnter={(e) =>
-                  !isWakeLockEnabled &&
-                  !wakeLockFailureReason &&
-                  (e.currentTarget.style.background =
-                    "var(--player-bar-button-hover)")
-                }
-                onMouseLeave={(e) =>
-                  !isWakeLockEnabled &&
-                  !wakeLockFailureReason &&
-                  (e.currentTarget.style.background = "")
-                }
-                title={
-                  isWakeLockEnabled && isWakeLockActive
-                    ? "Screen staying awake"
-                    : wakeLockFailureReason
-                      ? "Wake lock unavailable - tap for info"
-                      : isWakeLockEnabled && !isWakeLockActive
-                        ? "Wake lock failed - tap to retry"
-                        : "Allow screen to sleep"
-                }
-                aria-label={
-                  isWakeLockEnabled && isWakeLockActive
-                    ? "Screen wake active"
-                    : wakeLockFailureReason
-                      ? "Screen wake unavailable"
-                      : isWakeLockEnabled && !isWakeLockActive
-                        ? "Screen wake failed"
-                        : "Screen wake disabled"
-                }
-              >
-                {isWakeLockEnabled ? (
-                  <Monitor className="w-6 h-6" />
-                ) : (
-                  <MonitorOff className="w-6 h-6" />
-                )}
-              </button>
-              {/* Info button when wake lock has failure reason */}
-              {wakeLockFailureReason && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    haptics.buttonPress();
-                    setShowWakeLockInfoModal(true);
-                  }}
-                  className="p-2.5 rounded-full text-orange-400 hover:bg-orange-400/10 transition-colors"
-                  title="Learn why wake lock is unavailable"
-                  aria-label="Wake lock info"
-                >
-                  <Info className="w-5 h-5" />
-                </button>
-              )}
-            </div>
           </div>
 
-          {/* Row 2 (Mobile) / Center Section (Desktop): Playback Controls */}
-          <div className="flex items-center md:justify-start w-full md:w-auto gap-2 sm:gap-3">
-            {/* Mobile layout: 48px spacer + flex-1 buttons + 48px queue (mirrors Row 1 exactly) */}
-            {/* Invisible spacer (Mobile only) - Mirrors Row 1's thumbnail */}
-            <div className="md:hidden w-10 h-10 xs:w-12 xs:h-12 flex-shrink-0" />
-
-            {/* Centered play buttons within flex-1 (Mobile only) - Mirrors Row 1's title section */}
-            <div className="md:hidden flex-1 min-w-0 flex items-center justify-center">
-              {/* Primary Controls - Centered within flex-1 section */}
-              <div className="flex items-center gap-3 xs:gap-4">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    haptics.buttonPress();
-                    toggleShuffle();
-                  }}
-                  disabled={queue.length < 2}
-                  className={`p-3 rounded-full transition-colors ${
-                    queue.length < 2
-                      ? "theme-text-muted opacity-30 cursor-not-allowed"
-                      : isShuffled
-                        ? ""
-                        : "theme-text-primary"
-                  }`}
-                  style={
-                    isShuffled && queue.length >= 2
-                      ? {
-                          background: "var(--btn-primary-bg)",
-                          color: "var(--btn-primary-text)",
-                        }
-                      : {}
-                  }
-                  onMouseEnter={(e) =>
-                    queue.length >= 2 &&
-                    !isShuffled &&
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) =>
-                    !isShuffled && (e.currentTarget.style.background = "")
-                  }
-                  title={isShuffled ? "Shuffle on" : "Shuffle"}
-                  aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
-                  aria-pressed={isShuffled}
-                >
-                  <Shuffle className="w-5 h-5 xs:w-6 xs:h-6" />
-                </button>
-
-                <button
-                  onClick={handlePlayPrevious}
-                  disabled={!hasPrevious}
-                  className={`p-3 rounded-full transition-colors theme-text-primary ${
-                    !hasPrevious && "opacity-30 cursor-not-allowed"
-                  }`}
-                  onMouseEnter={(e) =>
-                    hasPrevious &&
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) =>
-                    hasPrevious && (e.currentTarget.style.background = "")
-                  }
-                  title="Previous"
-                  aria-label="Previous track"
-                >
-                  <SkipBack className="w-6 h-6 xs:w-7 xs:h-7" />
-                </button>
-
-                <button
-                  onClick={handleTogglePlayPause}
-                  className="p-3.5 xs:p-4 rounded-full transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: "var(--btn-primary-bg)",
-                    color: "var(--btn-primary-text)",
-                  }}
-                  title={
-                    isBuffering ? "Buffering..." : isPlaying ? "Pause" : "Play"
-                  }
-                  aria-label={
-                    isBuffering
-                      ? "Buffering media"
-                      : isPlaying
-                        ? "Pause playback"
-                        : "Play media"
-                  }
-                >
-                  {isBuffering ? (
-                    <Loader2 className="w-7 h-7 xs:w-8 xs:h-8 animate-spin" />
-                  ) : isPlaying ? (
-                    <Pause
-                      className="w-7 h-7 xs:w-8 xs:h-8"
-                      fill="currentColor"
-                    />
-                  ) : (
-                    <Play
-                      className="w-7 h-7 xs:w-8 xs:h-8 translate-x-[2px]"
-                      fill="currentColor"
-                    />
-                  )}
-                </button>
-
-                <button
-                  onClick={handlePlayNext}
-                  disabled={!hasNext}
-                  className={`p-3 rounded-full transition-colors theme-text-primary ${
-                    !hasNext && "opacity-30 cursor-not-allowed"
-                  }`}
-                  onMouseEnter={(e) =>
-                    hasNext &&
-                    (e.currentTarget.style.background =
-                      "var(--player-bar-button-hover)")
-                  }
-                  onMouseLeave={(e) =>
-                    hasNext && (e.currentTarget.style.background = "")
-                  }
-                  title="Next"
-                  aria-label="Next track"
-                >
-                  <SkipForward className="w-6 h-6 xs:w-7 xs:h-7" />
-                </button>
-
-                {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
-                <div
-                  className="w-11 h-11 xs:w-12 xs:h-12 flex-shrink-0"
-                  aria-hidden="true"
+          {/* Mobile controls: play/pause + next only */}
+          <div className="md:hidden flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={handleTogglePlayPause}
+              className="p-3 rounded-full transition-all active:scale-95"
+              style={{
+                background: "var(--btn-primary-bg)",
+                color: "var(--btn-primary-text)",
+              }}
+              aria-label={
+                isBuffering
+                  ? "Buffering media"
+                  : isPlaying
+                    ? "Pause playback"
+                    : "Play media"
+              }
+            >
+              {isBuffering ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-6 h-6" fill="currentColor" />
+              ) : (
+                <Play
+                  className="w-6 h-6 translate-x-[1px]"
+                  fill="currentColor"
                 />
-              </div>
-            </div>
+              )}
+            </button>
 
-            {/* Queue Position (Mobile only) - 48px width, aligned with wake lock */}
-            {queuePosition && (
-              <div className="md:hidden flex items-center justify-center h-12 w-12 flex-shrink-0">
-                <span className="text-xs sm:text-sm theme-text-muted whitespace-nowrap">
-                  {queuePosition.current} / {queuePosition.total}
-                </span>
-              </div>
-            )}
+            <button
+              onClick={handlePlayNext}
+              disabled={!hasNext}
+              className={`p-3 rounded-full transition-colors theme-text-primary ${
+                !hasNext && "opacity-30 cursor-not-allowed"
+              }`}
+              aria-label="Next track"
+            >
+              <SkipForward className="w-6 h-6" fill="currentColor" />
+            </button>
+          </div>
 
+          {/* Center Section (Desktop): Playback Controls */}
+          <div className="hidden md:flex items-center gap-2 sm:gap-3">
             {/* Desktop play buttons */}
             <div className="hidden md:flex items-center gap-2 sm:gap-3">
               <button
@@ -1211,7 +1100,7 @@ export default function PersistentPlayer() {
           </div>
         </div>
 
-        {/* Progress Bar - Full width at very bottom of mini player */}
+        {/* Progress Bar - Full width at very bottom of mini player (desktop only) */}
         <SeekBar
           currentTime={currentTime}
           duration={duration}
@@ -1219,7 +1108,7 @@ export default function PersistentPlayer() {
           onSeek={handleSeek}
           onScrubStart={handleScrubStart}
           onScrubEnd={handleScrubEnd}
-          className="w-full h-4 mt-3"
+          className="hidden md:block w-full h-4 mt-3"
           trackBackground="var(--player-progress-bg)"
         />
       </div>
