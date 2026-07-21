@@ -551,10 +551,12 @@ export default function PersistentPlayer() {
           className="relative flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center px-6"
           style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
         >
-          {/* Album Art / Video Thumbnail */}
+          {/* Album Art / Video Thumbnail — height-capped so the controls
+              below always fit on short screens (e.g. iPhone SE) */}
           <div
-            className="relative w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden shadow-2xl mt-2 flex-shrink-0"
+            className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl mt-2 flex-shrink-0"
             style={{
+              maxWidth: "clamp(140px, calc(100svh - 380px), 340px)",
               boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
             }}
           >
