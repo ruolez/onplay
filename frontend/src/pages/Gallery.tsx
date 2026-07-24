@@ -1,23 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { mediaApi, Media } from "../lib/api";
+import { Media } from "../lib/api";
 import { formatDuration, formatLongDuration } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useGallery } from "../contexts/GalleryContext";
-import { useToast } from "../contexts/ToastContext";
 import SegmentedControl from "../components/SegmentedControl";
 import GallerySkeleton from "../components/GallerySkeleton";
 import EqualizerBars from "../components/EqualizerBars";
 import {
   Play,
   Music,
-  Trash2,
-  Edit2,
-  X,
   Grid3x3,
+  Info,
   List,
   Tag as TagIcon,
-  MoreVertical,
   ChevronDown,
   Check,
   SearchX,
@@ -41,36 +37,15 @@ export default function Gallery() {
     filteredMedia,
     sortedMedia,
     allTags,
-    refreshMedia,
-    refreshTags,
   } = useGallery();
-  const { showToast } = useToast();
 
-  // Local UI state (view mode, modals)
+  // Local UI state (view mode)
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     const saved = localStorage.getItem("gallery-view") as "grid" | "list";
     if (saved) return saved;
     // Default to list on mobile (<=768px), grid on desktop
     return window.innerWidth <= 768 ? "list" : "grid";
   });
-  const [deleteModal, setDeleteModal] = useState<{
-    show: boolean;
-    id: string | null;
-  }>({ show: false, id: null });
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteError, setDeleteError] = useState("");
-  const [renameModal, setRenameModal] = useState<{
-    show: boolean;
-    id: string | null;
-    currentName: string;
-  }>({ show: false, id: null, currentName: "" });
-  const [newFilename, setNewFilename] = useState("");
-  const [tagModal, setTagModal] = useState<{
-    show: boolean;
-    mediaId: string | null;
-  }>({ show: false, mediaId: null });
-  const [tagInput, setTagInput] = useState("");
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
@@ -137,17 +112,6 @@ export default function Gallery() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mediaTypeMenuOpen]);
 
-  // Close three-dots menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuOpen && !(e.target as Element).closest(".media-menu-container")) {
-        setMenuOpen(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
   // Auto-scroll to current track when it changes
   useEffect(() => {
     if (currentMedia) {
@@ -187,83 +151,6 @@ export default function Gallery() {
     }
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setDeleteModal({ show: true, id });
-    setDeletePassword("");
-    setDeleteError("");
-  };
-
-  const handleDelete = async () => {
-    if (!deleteModal.id) return;
-
-    try {
-      await mediaApi.deleteMedia(deleteModal.id, deletePassword);
-      setDeleteModal({ show: false, id: null });
-      setDeletePassword("");
-      refreshMedia();
-      showToast("Media deleted", "success");
-    } catch (error: any) {
-      if (error.response?.status === 403) {
-        setDeleteError("Invalid password");
-      } else {
-        setDeleteError("Failed to delete media");
-      }
-    }
-  };
-
-  const handleRenameClick = (
-    e: React.MouseEvent,
-    id: string,
-    currentName: string,
-  ) => {
-    e.stopPropagation();
-    setRenameModal({ show: true, id, currentName });
-    setNewFilename(currentName);
-  };
-
-  const handleRename = async () => {
-    if (!renameModal.id || !newFilename.trim()) return;
-
-    try {
-      await mediaApi.renameMedia(renameModal.id, newFilename);
-      setRenameModal({ show: false, id: null, currentName: "" });
-      refreshMedia();
-      showToast("Media renamed", "success");
-    } catch (error) {
-      console.error("Failed to rename media:", error);
-      showToast("Failed to rename media. Please try again.", "error");
-    }
-  };
-
-  const handleAddTag = async () => {
-    if (!tagModal.mediaId || !tagInput.trim()) return;
-
-    try {
-      await mediaApi.addTagToMedia(tagModal.mediaId, tagInput.trim());
-      setTagModal({ show: false, mediaId: null });
-      setTagInput("");
-      refreshMedia();
-      refreshTags();
-      showToast("Tag added", "success");
-    } catch (error) {
-      console.error("Failed to add tag:", error);
-      showToast("Failed to add tag. Please try again.", "error");
-    }
-  };
-
-  const handleDeleteTag = async (tagId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await mediaApi.deleteTag(tagId);
-      refreshTags();
-      showToast("Tag deleted", "success");
-    } catch (error) {
-      console.error("Failed to delete tag:", error);
-      showToast("Failed to delete tag. Please try again.", "error");
-    }
-  };
-
   const toggleTagFilter = (tagId: number) => {
     setSelectedTags((prev) =>
       prev.includes(tagId)
@@ -272,20 +159,8 @@ export default function Gallery() {
     );
   };
 
-  const handleTagClick = (e: React.MouseEvent, mediaId: string) => {
-    e.stopPropagation();
-    setTagModal({ show: true, mediaId });
-    setTagInput("");
-  };
-
-  const handleMenuClick = (e: React.MouseEvent, mediaId: string) => {
-    e.stopPropagation();
-    setMenuOpen(menuOpen === mediaId ? null : mediaId);
-  };
-
   const handleViewDetails = (e: React.MouseEvent, mediaId: string) => {
     e.stopPropagation();
-    setMenuOpen(null);
     navigate(`/player/${mediaId}`);
   };
 
@@ -589,15 +464,9 @@ export default function Gallery() {
             <p className="theme-text-primary text-base sm:text-lg font-medium mb-1">
               No media yet
             </p>
-            <p className="theme-text-muted text-sm mb-6">
-              Upload video or audio files to build your library.
+            <p className="theme-text-muted text-sm">
+              Nothing has been published yet. Check back soon.
             </p>
-            <button
-              onClick={() => navigate("/upload")}
-              className="theme-btn-primary px-5 py-3 rounded-lg font-medium min-h-[44px]"
-            >
-              Upload media
-            </button>
           </div>
         )
       ) : (
@@ -619,7 +488,7 @@ export default function Gallery() {
                       item.status === "ready"
                         ? "cursor-pointer"
                         : "cursor-default"
-                    } ${menuOpen === item.id ? "z-[110]" : ""}`}
+                    }`}
                     style={{
                       WebkitTapHighlightColor: "transparent",
                       ...(isCurrentTrack
@@ -695,7 +564,7 @@ export default function Gallery() {
                         {item.filename}
                       </h3>
 
-                      {/* Play Count and Three-Dots Menu - Second Line */}
+                      {/* Play Count and Details - Second Line */}
                       <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
                         {/* Play Count - Left aligned */}
                         <div className="flex items-center gap-2 text-xs sm:text-sm theme-text-muted flex-1 min-w-0">
@@ -707,53 +576,15 @@ export default function Gallery() {
                           )}
                         </div>
 
-                        {/* Three-Dots Menu - Right aligned */}
-                        <div className="relative media-menu-container flex-shrink-0">
-                          <button
-                            onClick={(e) => handleMenuClick(e, item.id)}
-                            className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                            title="More options"
-                            aria-label="More options"
-                            aria-haspopup="menu"
-                            aria-expanded={menuOpen === item.id}
-                          >
-                            <MoreVertical className="w-4 h-4 theme-text-muted" />
-                          </button>
-                          {menuOpen === item.id && (
-                            <div className="absolute right-0 xs:right-auto xs:left-0 mt-1 w-36 xs:w-40 sm:w-44 rounded-lg shadow-xl theme-dropdown z-[100]">
-                              <button
-                                onClick={(e) => handleViewDetails(e, item.id)}
-                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
-                              >
-                                <Play className="w-3.5 h-3.5" />
-                                View Details
-                              </button>
-                              <button
-                                onClick={(e) => handleTagClick(e, item.id)}
-                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
-                              >
-                                <TagIcon className="w-3.5 h-3.5" />
-                                Add Tag
-                              </button>
-                              <button
-                                onClick={(e) =>
-                                  handleRenameClick(e, item.id, item.filename)
-                                }
-                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                                Rename
-                              </button>
-                              <button
-                                onClick={(e) => handleDeleteClick(e, item.id)}
-                                className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        {/* Details button - Right aligned */}
+                        <button
+                          onClick={(e) => handleViewDetails(e, item.id)}
+                          className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                          title="View details"
+                          aria-label={`View details for ${item.filename}`}
+                        >
+                          <Info className="w-4 h-4 theme-text-muted" />
+                        </button>
                       </div>
 
                       {/* Tags - capped to one line */}
@@ -796,7 +627,7 @@ export default function Gallery() {
                       item.status === "ready"
                         ? "cursor-pointer active:bg-white/5 sm:hover:bg-white/5"
                         : "cursor-default"
-                    } ${menuOpen === item.id ? "z-[110]" : ""}`}
+                    }`}
                     style={{
                       WebkitTapHighlightColor: "transparent",
                       ...(isCurrentTrack
@@ -922,50 +753,14 @@ export default function Gallery() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex-shrink-0 relative media-menu-container">
-                        <button
-                          onClick={(e) => handleMenuClick(e, item.id)}
-                          className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                          title="More options"
-                          aria-label="More options"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5 theme-text-muted" />
-                        </button>
-                        {menuOpen === item.id && (
-                          <div className="absolute right-0 mt-1 w-36 xs:w-40 sm:w-44 rounded-lg shadow-xl theme-dropdown z-[100]">
-                            <button
-                              onClick={(e) => handleViewDetails(e, item.id)}
-                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 first:rounded-t-lg"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                              View Details
-                            </button>
-                            <button
-                              onClick={(e) => handleTagClick(e, item.id)}
-                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
-                            >
-                              <TagIcon className="w-3.5 h-3.5" />
-                              Add Tag
-                            </button>
-                            <button
-                              onClick={(e) =>
-                                handleRenameClick(e, item.id, item.filename)
-                              }
-                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                              Rename
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteClick(e, item.id)}
-                              className="w-full text-left px-3 py-2.5 transition-colors theme-dropdown-item text-xs flex items-center gap-2 last:rounded-b-lg text-red-500 hover:bg-red-500/10"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={(e) => handleViewDetails(e, item.id)}
+                        className="flex-shrink-0 p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        title="View details"
+                        aria-label={`View details for ${item.filename}`}
+                      >
+                        <Info className="w-3.5 h-3.5 theme-text-muted" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -983,218 +778,6 @@ export default function Gallery() {
             <span>{formatLongDuration(totalDuration)}</span>
           </div>
         </>
-      )}
-
-      {/* Delete Modal */}
-      {deleteModal.show && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm px-4"
-          onClick={() => setDeleteModal({ show: false, id: null })}
-        >
-          <div
-            className="theme-card rounded-lg sm:rounded-xl p-4 xs:p-5 sm:p-6 w-full max-w-[92vw] xs:max-w-[88vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-lg xs:text-xl font-bold theme-text-primary">
-                Delete Media
-              </h2>
-              <button
-                onClick={() => setDeleteModal({ show: false, id: null })}
-                className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="theme-text-secondary mb-3 sm:mb-4 text-sm sm:text-base">
-              Enter password to delete this media file. This action cannot be
-              undone.
-            </p>
-            <input
-              type="password"
-              value={deletePassword}
-              onChange={(e) => {
-                setDeletePassword(e.target.value);
-                setDeleteError("");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleDelete();
-                if (e.key === "Escape")
-                  setDeleteModal({ show: false, id: null });
-              }}
-              placeholder="Password"
-              aria-label="Password"
-              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-2 text-base"
-              autoFocus
-            />
-            {deleteError && (
-              <p className="text-red-500 text-sm mb-3 sm:mb-4">{deleteError}</p>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button
-                onClick={() => setDeleteModal({ show: false, id: null })}
-                className="flex-1 theme-btn-secondary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 px-4 py-3 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors min-h-[48px] text-sm sm:text-base"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rename Modal */}
-      {renameModal.show && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm px-4"
-          onClick={() =>
-            setRenameModal({ show: false, id: null, currentName: "" })
-          }
-        >
-          <div
-            className="theme-card rounded-lg sm:rounded-xl p-4 xs:p-5 sm:p-6 w-full max-w-[92vw] xs:max-w-[88vw] sm:max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-lg xs:text-xl font-bold theme-text-primary">
-                Rename Media
-              </h2>
-              <button
-                onClick={() =>
-                  setRenameModal({ show: false, id: null, currentName: "" })
-                }
-                className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <input
-              type="text"
-              value={newFilename}
-              onChange={(e) => setNewFilename(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleRename();
-                if (e.key === "Escape")
-                  setRenameModal({ show: false, id: null, currentName: "" });
-              }}
-              placeholder="New filename"
-              aria-label="New filename"
-              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-base"
-              autoFocus
-            />
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button
-                onClick={() =>
-                  setRenameModal({ show: false, id: null, currentName: "" })
-                }
-                className="flex-1 theme-btn-secondary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRename}
-                className="flex-1 theme-btn-primary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
-              >
-                Rename
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tag Modal */}
-      {tagModal.show && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] backdrop-blur-sm px-4"
-          onClick={() => setTagModal({ show: false, mediaId: null })}
-        >
-          <div
-            className="theme-card rounded-lg sm:rounded-xl p-4 xs:p-5 sm:p-6 w-full max-w-[92vw] xs:max-w-[88vw] sm:max-w-md max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h2 className="text-lg xs:text-xl font-bold theme-text-primary">
-                Add Tag
-              </h2>
-              <button
-                onClick={() => setTagModal({ show: false, mediaId: null })}
-                className="theme-text-muted hover:theme-text-primary min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2"
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddTag();
-                if (e.key === "Escape")
-                  setTagModal({ show: false, mediaId: null });
-              }}
-              placeholder="Tag name"
-              aria-label="Tag name"
-              className="theme-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg mb-3 sm:mb-4 text-base"
-              autoFocus
-            />
-            {allTags.length > 0 && (
-              <div className="mb-3 sm:mb-4">
-                <p className="text-xs sm:text-sm theme-text-muted mb-2">
-                  Existing tags (click to use):
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {allTags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className={`group flex items-center bg-white/10 hover:bg-white/20 rounded text-xs theme-text-secondary transition-colors min-h-[36px] ${
-                        tag.media_count === 0 ? "opacity-60" : ""
-                      }`}
-                    >
-                      <button
-                        onClick={() => setTagInput(tag.name)}
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 min-h-[36px]"
-                      >
-                        {tag.name}
-                      </button>
-                      {tag.media_count === 0 && (
-                        <button
-                          onClick={(e) => handleDeleteTag(tag.id, e)}
-                          className="mr-1.5 p-1 rounded hover:bg-red-500/40 text-white/40 hover:text-red-400 transition-colors"
-                          title="Delete unused tag"
-                          aria-label={`Delete unused tag ${tag.name}`}
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button
-                onClick={() => setTagModal({ show: false, mediaId: null })}
-                className="flex-1 theme-btn-secondary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddTag}
-                className="flex-1 theme-btn-primary px-4 py-3 rounded-lg font-medium min-h-[48px] text-sm sm:text-base"
-              >
-                Add Tag
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

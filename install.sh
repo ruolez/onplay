@@ -335,6 +335,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - MEDIA_ROOT=/media
       - CORS_ORIGINS=https://${DOMAIN}
+      - JWT_SECRET=${JWT_SECRET}
+      - COOKIE_SECURE=true
     volumes:
       - ./backend:/app
       - ./media:/media
@@ -722,10 +724,14 @@ create_env_file() {
     # Generate random database password
     DB_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
 
+    # Secret for signing admin session tokens (JWT)
+    JWT_SECRET=$(openssl rand -hex 32)
+
     cat > "$INSTALL_DIR/.env" << EOF
 # OnPlay Production Environment Configuration
 DOMAIN=${DOMAIN}
 DB_PASSWORD=${DB_PASSWORD}
+JWT_SECRET=${JWT_SECRET}
 EOF
 
     chmod 600 "$INSTALL_DIR/.env"
@@ -876,7 +882,13 @@ update_installation() {
     # so improvements to docker-compose.prod.yml / nginx.prod.conf / logrotate
     # land on existing installs too. All three are idempotent overwrites.
     print_info "Refreshing production configuration files..."
-    # Load DOMAIN/DB_PASSWORD from .env so the heredocs interpolate correctly.
+    # Installs created before the admin section lack JWT_SECRET - generate one
+    # so the API never runs with the known dev fallback secret.
+    if [ -f .env ] && ! grep -q '^JWT_SECRET=' .env; then
+        print_info "Adding JWT_SECRET to existing .env..."
+        echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+    fi
+    # Load DOMAIN/DB_PASSWORD/JWT_SECRET from .env so the heredocs interpolate correctly.
     if [ -f .env ]; then
         set -a
         # shellcheck disable=SC1091

@@ -1,15 +1,19 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from .database import engine, Base
-from .api import upload, media, analytics, tags
+from .database import engine, Base, SessionLocal
+from .auth import require_admin, seed_admin
+from .migrations import run_startup_migrations
+from .api import auth, upload, media, analytics, tags
 import os
 import json
 from typing import Dict, Set
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+run_startup_migrations(engine)
+seed_admin(SessionLocal)
 
 app = FastAPI(
     title="OnPlay API",
@@ -29,7 +33,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(upload.router, prefix="/api", tags=["upload"])
+app.include_router(auth.router, prefix="/api", tags=["auth"])
+app.include_router(upload.router, prefix="/api", tags=["upload"], dependencies=[Depends(require_admin)])
 app.include_router(media.router, prefix="/api", tags=["media"])
 app.include_router(analytics.router, prefix="/api", tags=["analytics"])
 app.include_router(tags.router, prefix="/api", tags=["tags"])

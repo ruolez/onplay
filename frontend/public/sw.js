@@ -1,5 +1,5 @@
 // OnPlay Service Worker
-const CACHE_NAME = 'onplay-v3';
+const CACHE_NAME = 'onplay-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

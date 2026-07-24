@@ -3,15 +3,14 @@ import {
   Routes,
   Route,
   Link,
+  Outlet,
   useLocation,
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { useEffect, useState, useRef } from "react";
+import { lazy, Suspense, useEffect, useState, useRef } from "react";
 import Gallery from "./pages/Gallery";
 import Player from "./pages/Player";
-import Upload from "./pages/Upload";
-import Stats from "./pages/Stats";
 import LogoPreview from "./pages/LogoPreview";
 import ThemeSelector from "./components/ThemeSelector";
 import PersistentPlayer from "./components/PersistentPlayer";
@@ -20,18 +19,24 @@ import { useTheme } from "./contexts/ThemeContext";
 import { themes, applyTheme } from "./lib/theme";
 import { useServiceWorkerUpdate } from "./hooks/useServiceWorkerUpdate";
 import { useInstallPrompt } from "./hooks/useInstallPrompt";
-import {
-  Upload as UploadIcon,
-  BarChart3,
-  Menu,
-  X,
-  Search,
-  Download,
-  RefreshCw,
-} from "lucide-react";
+import { Menu, X, Search, Download, RefreshCw } from "lucide-react";
 
-function AppContent() {
+const AdminRoutes = lazy(() => import("./admin/AdminRoutes"));
+
+function ThemeApplier() {
   const { theme } = useTheme();
+
+  useEffect(() => {
+    const themeConfig = themes[theme];
+    if (themeConfig) {
+      applyTheme(themeConfig);
+    }
+  }, [theme]);
+
+  return null;
+}
+
+function PublicLayout() {
   const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
   const { canInstall, promptInstall } = useInstallPrompt();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -44,16 +49,13 @@ function AppContent() {
   const desktopSearchRef = useRef<HTMLInputElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const themeConfig = themes[theme];
-    if (themeConfig) {
-      applyTheme(themeConfig);
-    }
-  }, [theme]);
-
-  // Close mobile menu on route change
+  // Close mobile menu and search inputs on route change (the desktop search
+  // click-outside handler swallows clicks while open, so it must not leak
+  // onto other routes)
   useEffect(() => {
     setMobileMenuOpen(false);
+    setIsDesktopSearchOpen(false);
+    setIsMobileSearchOpen(false);
   }, [location.pathname]);
 
   // Sync search with URL params
@@ -262,31 +264,6 @@ function AppContent() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
-              <Link
-                to="/upload"
-                className={`transition-colors p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  location.pathname === "/upload"
-                    ? "bg-white/10 theme-text-primary"
-                    : "theme-nav-link"
-                }`}
-                title="Upload"
-                aria-label="Upload"
-              >
-                <UploadIcon className="w-5 h-5" />
-              </Link>
-              <Link
-                to="/stats"
-                className={`transition-colors p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  location.pathname === "/stats"
-                    ? "bg-white/10 theme-text-primary"
-                    : "theme-nav-link"
-                }`}
-                title="Stats"
-                aria-label="Stats"
-              >
-                <BarChart3 className="w-5 h-5" />
-              </Link>
-
               {/* Desktop Search (Gallery only) */}
               {location.pathname === "/" && (
                 <>
@@ -356,30 +333,6 @@ function AppContent() {
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 theme-dropdown border-t border-white/10">
             <div className="container mx-auto px-4 py-4 space-y-2">
-              <Link
-                to="/upload"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] ${
-                  location.pathname === "/upload"
-                    ? "bg-white/10 border-l-2 border-blue-500 theme-text-primary"
-                    : "theme-nav-link hover:bg-white/5"
-                }`}
-              >
-                <UploadIcon className="w-5 h-5" />
-                <span>Upload</span>
-              </Link>
-              <Link
-                to="/stats"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] ${
-                  location.pathname === "/stats"
-                    ? "bg-white/10 border-l-2 border-blue-500 theme-text-primary"
-                    : "theme-nav-link hover:bg-white/5"
-                }`}
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span>Stats</span>
-              </Link>
               {canInstall && (
                 <button
                   onClick={() => {
@@ -392,7 +345,9 @@ function AppContent() {
                   <span>Install app</span>
                 </button>
               )}
-              <div className="pt-2 border-t border-white/10">
+              <div
+                className={canInstall ? "pt-2 border-t border-white/10" : ""}
+              >
                 <ThemeSelector />
               </div>
             </div>
@@ -427,16 +382,7 @@ function AppContent() {
       )}
 
       {/* Main Content */}
-      <Routes>
-        <Route path="/" element={<Gallery />} />
-        <Route path="/player/:id" element={<Player />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="/stats" element={<Stats />} />
-        <Route path="/logo-preview" element={<LogoPreview />} />
-      </Routes>
-
-      {/* Persistent Player */}
-      <PersistentPlayer />
+      <Outlet />
 
       {/* Mobile Bottom Filter Controls */}
       <MobileBottomNav />
@@ -461,7 +407,31 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <ThemeApplier />
+      <Routes>
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Gallery />} />
+          <Route path="/player/:id" element={<Player />} />
+          <Route path="/logo-preview" element={<LogoPreview />} />
+        </Route>
+        <Route
+          path="/admin/*"
+          element={
+            <Suspense
+              fallback={
+                <div className="min-h-dvh theme-bg flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-transparent animate-spin" />
+                </div>
+              }
+            >
+              <AdminRoutes />
+            </Suspense>
+          }
+        />
+      </Routes>
+
+      {/* Persistent Player */}
+      <PersistentPlayer />
     </Router>
   );
 }

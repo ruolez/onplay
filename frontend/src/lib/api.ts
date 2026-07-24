@@ -1,10 +1,12 @@
 import axios from "axios";
+import { getListenerId } from "./listenerId";
 
 // Use relative URL for production, absolute URL for local dev
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -84,10 +86,8 @@ export const mediaApi = {
     return api.get<Media>(`/media/${id}`);
   },
 
-  async deleteMedia(id: string, password: string) {
-    return api.delete(`/media/${id}`, {
-      data: { password },
-    });
+  async deleteMedia(id: string) {
+    return api.delete(`/media/${id}`);
   },
 
   async renameMedia(id: string, filename: string) {
@@ -126,6 +126,7 @@ export const mediaApi = {
       media_id: mediaId,
       event_type: eventType,
       session_id: sessionId,
+      listener_id: getListenerId(),
       data,
     });
   },
@@ -152,5 +153,84 @@ export const mediaApi = {
 
   async deleteTag(tagId: number) {
     return api.delete(`/tags/${tagId}`);
+  },
+};
+
+export const authApi = {
+  async login(username: string, password: string) {
+    return api.post<{ username: string }>("/auth/login", {
+      username,
+      password,
+    });
+  },
+
+  async logout() {
+    return api.post("/auth/logout");
+  },
+
+  async me() {
+    return api.get<{ username: string }>("/auth/me");
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return api.post("/auth/change-password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  },
+};
+
+export interface ListenerSummary {
+  listener_id: string;
+  ip_address: string | null;
+  hostname: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  first_seen: string | null;
+  last_seen: string | null;
+  total_events: number;
+  total_plays: number;
+  unique_media_count: number;
+}
+
+export interface ListenerMediaStat {
+  media_id: string;
+  filename: string;
+  media_type: string | null;
+  plays: number;
+  completes: number;
+  last_played: string | null;
+}
+
+export interface ListenerEvent {
+  event_type: string;
+  media_id: string;
+  filename: string;
+  timestamp: string | null;
+  session_id: string | null;
+}
+
+export interface ListenerDetail extends Omit<
+  ListenerSummary,
+  "unique_media_count"
+> {
+  user_agent: string | null;
+  media: ListenerMediaStat[];
+  recent_events: ListenerEvent[];
+}
+
+export const analyticsApi = {
+  async getListeners(skip = 0, limit = 50, days?: number) {
+    return api.get<{
+      total: number;
+      skip: number;
+      limit: number;
+      items: ListenerSummary[];
+    }>("/analytics/listeners", { params: { skip, limit, days } });
+  },
+
+  async getListenerDetail(listenerId: string) {
+    return api.get<ListenerDetail>(`/analytics/listeners/${listenerId}`);
   },
 };

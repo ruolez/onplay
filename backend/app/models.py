@@ -77,6 +77,7 @@ class Analytics(Base):
     os = Column(String, nullable=True)
     ip_address = Column(String, nullable=True)
     session_id = Column(String, nullable=True)
+    listener_id = Column(String, nullable=True, index=True)
     data = Column(JSON, nullable=True)  # Additional event data
 
     media = relationship("Media", back_populates="analytics")
@@ -89,6 +90,29 @@ class Tag(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     media = relationship("Media", secondary=media_tags, back_populates="tags")
+
+class AdminUser(Base):
+    __tablename__ = "admin_users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    password_changed_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Listener(Base):
+    __tablename__ = "listeners"
+
+    id = Column(String, primary_key=True)  # client-generated UUID from localStorage
+    first_seen = Column(DateTime(timezone=True), server_default=func.now())
+    last_seen = Column(DateTime(timezone=True), server_default=func.now())
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    device = Column(String, nullable=True)
+    browser = Column(String, nullable=True)
+    os = Column(String, nullable=True)
+    total_events = Column(Integer, nullable=False, default=0)
+    total_plays = Column(Integer, nullable=False, default=0)
 
 class BandwidthLog(Base):
     __tablename__ = "bandwidth_logs"

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from ..auth import require_admin
 from ..database import get_db
 from ..models import Tag, Media, media_tags
 from pydantic import BaseModel
@@ -33,7 +34,7 @@ async def get_all_tags(db: Session = Depends(get_db)):
     return [{"id": r.id, "name": r.name, "media_count": r.media_count} for r in results]
 
 
-@router.delete("/tags/{tag_id}")
+@router.delete("/tags/{tag_id}", dependencies=[Depends(require_admin)])
 async def delete_tag(
     tag_id: int,
     db: Session = Depends(get_db)
@@ -59,7 +60,7 @@ async def delete_tag(
 
     return {"message": "Tag deleted successfully"}
 
-@router.post("/media/{media_id}/tags")
+@router.post("/media/{media_id}/tags", dependencies=[Depends(require_admin)])
 async def add_tag_to_media(
     media_id: str,
     tag_data: TagCreate,
@@ -85,7 +86,7 @@ async def add_tag_to_media(
 
     return {"message": "Tag added successfully", "tag": {"id": tag.id, "name": tag.name}}
 
-@router.delete("/media/{media_id}/tags/{tag_id}")
+@router.delete("/media/{media_id}/tags/{tag_id}", dependencies=[Depends(require_admin)])
 async def remove_tag_from_media(
     media_id: str,
     tag_id: int,

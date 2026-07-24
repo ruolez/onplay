@@ -1,28 +1,20 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { mediaApi, Media } from "../lib/api";
-import VideoPlayer, { VideoPlayerRef } from "../components/VideoPlayer";
-import { ArrowLeft, Eye, TrendingUp, Image, X, Upload } from "lucide-react";
+import VideoPlayer from "../components/VideoPlayer";
+import { ArrowLeft } from "lucide-react";
 import { formatFileSize, formatDuration } from "../lib/utils";
-import { useToast } from "../contexts/ToastContext";
 
 export default function Player() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { showToast } = useToast();
   const [media, setMedia] = useState<Media | null>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
-  const [thumbnailSaving, setThumbnailSaving] = useState(false);
-  const [thumbnailUploading, setThumbnailUploading] = useState(false);
-  const playerRef = useRef<VideoPlayerRef>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (id) {
       loadMedia();
-      loadAnalytics();
     }
   }, [id]);
 
@@ -37,82 +29,11 @@ export default function Player() {
     }
   };
 
-  const loadAnalytics = async () => {
-    try {
-      const response = await mediaApi.getMediaAnalytics(id!);
-      setAnalytics(response.data);
-    } catch (error) {
-      console.error("Failed to load analytics:", error);
-    }
-  };
-
   const trackEvent = async (eventType: string, data?: any) => {
     try {
       await mediaApi.trackAnalytics(id!, eventType, sessionId, data);
     } catch (error) {
       console.error("Failed to track event:", error);
-    }
-  };
-
-  const handleSetThumbnail = async () => {
-    if (!playerRef.current || !id) return;
-
-    const currentTime = playerRef.current.getCurrentTime();
-
-    try {
-      setThumbnailSaving(true);
-      await mediaApi.setThumbnail(id, currentTime);
-
-      // Refetch: the API returns a new versioned thumbnail URL
-      loadMedia();
-
-      showToast("Thumbnail updated", "success");
-    } catch (error) {
-      console.error("Failed to set thumbnail:", error);
-      showToast("Failed to set thumbnail. Please try again.", "error");
-    } finally {
-      setThumbnailSaving(false);
-    }
-  };
-
-  const handleUploadThumbnail = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file || !id) return;
-
-    // Reset the input so the same file can be selected again
-    event.target.value = "";
-
-    try {
-      setThumbnailUploading(true);
-      await mediaApi.uploadThumbnail(id, file);
-
-      // Refetch: the API returns a new versioned thumbnail URL
-      loadMedia();
-
-      showToast("Thumbnail uploaded", "success");
-    } catch (error: any) {
-      console.error("Failed to upload thumbnail:", error);
-      const message =
-        error.response?.data?.detail || "Failed to upload thumbnail";
-      showToast(message, "error");
-    } finally {
-      setThumbnailUploading(false);
-    }
-  };
-
-  const handleRemoveTag = async (tagId: number) => {
-    if (!id) return;
-
-    try {
-      await mediaApi.removeTagFromMedia(id, tagId);
-      // Reload media to get updated tags
-      loadMedia();
-      showToast("Tag removed", "success");
-    } catch (error) {
-      console.error("Failed to remove tag:", error);
-      showToast("Failed to remove tag. Please try again.", "error");
     }
   };
 
@@ -137,7 +58,7 @@ export default function Player() {
   const playerSrc = `/media/hls/${media.id}/master.m3u8`;
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 max-w-7xl">
+    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8 max-w-4xl">
       {/* Back button */}
       <button
         onClick={() => navigate("/")}
@@ -148,220 +69,106 @@ export default function Player() {
         <span>Back</span>
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-        {/* Player section */}
-        <div className="lg:col-span-2">
-          <div className="mb-4 sm:mb-6">
-            <VideoPlayer
-              ref={playerRef}
-              src={playerSrc}
-              poster={media.thumbnail_path ? media.thumbnail_path : undefined}
-              onPlay={() => trackEvent("play")}
-              onPause={() => trackEvent("pause")}
-              onEnded={() => trackEvent("complete")}
-              onTimeUpdate={(time) => {
-                // Track progress milestones
-                if (media.duration) {
-                  const progress = (time / media.duration) * 100;
-                  if (progress > 25 && progress < 26) trackEvent("progress_25");
-                  if (progress > 50 && progress < 51) trackEvent("progress_50");
-                  if (progress > 75 && progress < 76) trackEvent("progress_75");
-                }
-              }}
-            />
-          </div>
+      <div className="mb-4 sm:mb-6">
+        <VideoPlayer
+          src={playerSrc}
+          poster={media.thumbnail_path ? media.thumbnail_path : undefined}
+          onPlay={() => trackEvent("play")}
+          onPause={() => trackEvent("pause")}
+          onEnded={() => trackEvent("complete")}
+          onTimeUpdate={(time) => {
+            // Track progress milestones
+            if (media.duration) {
+              const progress = (time / media.duration) * 100;
+              if (progress > 25 && progress < 26) trackEvent("progress_25");
+              if (progress > 50 && progress < 51) trackEvent("progress_50");
+              if (progress > 75 && progress < 76) trackEvent("progress_75");
+            }
+          }}
+        />
+      </div>
 
-          {/* Hidden file input for thumbnail upload */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={handleUploadThumbnail}
-            className="hidden"
-          />
+      {/* Media info */}
+      <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
+        <h1 className="text-xl sm:text-2xl font-bold theme-text-primary mb-3 sm:mb-4 break-words">
+          {media.filename}
+        </h1>
 
-          {/* Thumbnail buttons */}
-          <div className="mb-4 sm:mb-6">
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              {/* Set frame button - video only */}
-              {media.media_type === "video" && (
-                <button
-                  onClick={handleSetThumbnail}
-                  disabled={thumbnailSaving || thumbnailUploading}
-                  className="flex items-center justify-center space-x-2 px-4 py-3 theme-btn-secondary rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] w-full sm:w-auto text-sm sm:text-base"
-                >
-                  <Image className="w-4 h-4" />
-                  <span>
-                    {thumbnailSaving
-                      ? "Saving..."
-                      : "Set Current Frame as Thumbnail"}
-                  </span>
-                </button>
-              )}
-
-              {/* Upload button - both video and audio */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={thumbnailSaving || thumbnailUploading}
-                className="flex items-center justify-center space-x-2 px-4 py-3 theme-btn-secondary rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] w-full sm:w-auto text-sm sm:text-base"
-              >
-                <Upload className="w-4 h-4" />
-                <span>
-                  {thumbnailUploading ? "Uploading..." : "Upload Thumbnail"}
-                </span>
-              </button>
-            </div>
-            <p className="text-xs sm:text-sm theme-text-muted mt-2">
-              {media.media_type === "video"
-                ? "Pause the video and set current frame, or upload a custom image (JPEG, PNG, WebP, GIF up to 5MB)"
-                : "Upload a custom thumbnail image (JPEG, PNG, WebP, GIF up to 5MB)"}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+          <div>
+            <p className="theme-text-muted">Type</p>
+            <p className="theme-text-primary font-medium capitalize">
+              {media.media_type}
             </p>
           </div>
-
-          {/* Media info */}
-          <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
-            <h1 className="text-xl sm:text-2xl font-bold theme-text-primary mb-3 sm:mb-4 break-words">
-              {media.filename}
-            </h1>
-
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
-              <div>
-                <p className="theme-text-muted">Type</p>
-                <p className="theme-text-primary font-medium capitalize">
-                  {media.media_type}
-                </p>
-              </div>
-              {media.duration && (
-                <div>
-                  <p className="theme-text-muted">Duration</p>
-                  <p className="theme-text-primary font-medium">
-                    {formatDuration(media.duration)}
-                  </p>
-                </div>
-              )}
-              {media.file_size && (
-                <div>
-                  <p className="theme-text-muted">Size</p>
-                  <p className="theme-text-primary font-medium">
-                    {formatFileSize(media.file_size)}
-                  </p>
-                </div>
-              )}
-              {media.width && media.height && (
-                <div>
-                  <p className="theme-text-muted">Resolution</p>
-                  <p className="theme-text-primary font-medium">
-                    {media.width}x{media.height}
-                  </p>
-                </div>
-              )}
+          {media.duration && (
+            <div>
+              <p className="theme-text-muted">Duration</p>
+              <p className="theme-text-primary font-medium">
+                {formatDuration(media.duration)}
+              </p>
             </div>
-
-            {/* Available qualities */}
-            {media.variants.length > 0 && (
-              <div className="mt-4 sm:mt-6">
-                <p className="theme-text-muted text-xs sm:text-sm mb-2">
-                  Available Qualities:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {media.variants.map((variant) => (
-                    <span
-                      key={variant.quality}
-                      className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm"
-                      style={{
-                        background:
-                          "color-mix(in srgb, var(--accent-primary) 15%, transparent)",
-                        color: "var(--accent-primary)",
-                        border:
-                          "1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent)",
-                      }}
-                    >
-                      {variant.quality}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tags */}
-            {media.tags && media.tags.length > 0 && (
-              <div className="mt-4 sm:mt-6">
-                <p className="theme-text-muted text-xs sm:text-sm mb-2">
-                  Tags:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {media.tags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      onClick={() => handleRemoveTag(tag.id)}
-                      className="group theme-button px-2 sm:px-3 py-1 hover:!bg-red-500/20 hover:!text-red-400 rounded-full text-xs sm:text-sm hover:!border-red-500/50 transition-all flex items-center gap-1 min-h-[32px]"
-                      title="Click to remove tag"
-                    >
-                      <span>{tag.name}</span>
-                      <X className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
+          {media.file_size && (
+            <div>
+              <p className="theme-text-muted">Size</p>
+              <p className="theme-text-primary font-medium">
+                {formatFileSize(media.file_size)}
+              </p>
+            </div>
+          )}
+          {media.width && media.height && (
+            <div>
+              <p className="theme-text-muted">Resolution</p>
+              <p className="theme-text-primary font-medium">
+                {media.width}x{media.height}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Analytics sidebar */}
-        <div className="space-y-4 sm:space-y-6">
-          <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold theme-text-primary mb-3 sm:mb-4 flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5" />
-              <span>Analytics</span>
-            </h2>
-
-            {analytics ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center space-x-2 theme-text-muted mb-1">
-                    <Eye className="w-4 h-4" />
-                    <span className="text-sm">Total Views</span>
-                  </div>
-                  <p className="text-3xl font-bold theme-text-primary">
-                    {analytics.total_plays}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="theme-text-muted text-sm mb-1">Completions</p>
-                  <p className="text-3xl font-bold theme-text-primary">
-                    {analytics.total_completes}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="theme-text-muted text-sm mb-1">
-                    Completion Rate
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className="flex-1 rounded-full h-2"
-                      style={{ background: "var(--btn-secondary-bg)" }}
-                    >
-                      <div
-                        className="h-2 rounded-full transition-all"
-                        style={{
-                          width: `${analytics.completion_rate}%`,
-                          background: "var(--status-success)",
-                        }}
-                      />
-                    </div>
-                    <span className="theme-text-primary font-medium">
-                      {analytics.completion_rate}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="theme-text-muted">No analytics data yet</p>
-            )}
+        {/* Available qualities */}
+        {media.variants.length > 0 && (
+          <div className="mt-4 sm:mt-6">
+            <p className="theme-text-muted text-xs sm:text-sm mb-2">
+              Available Qualities:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {media.variants.map((variant) => (
+                <span
+                  key={variant.quality}
+                  className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm"
+                  style={{
+                    background:
+                      "color-mix(in srgb, var(--accent-primary) 15%, transparent)",
+                    color: "var(--accent-primary)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent)",
+                  }}
+                >
+                  {variant.quality}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Tags */}
+        {media.tags && media.tags.length > 0 && (
+          <div className="mt-4 sm:mt-6">
+            <p className="theme-text-muted text-xs sm:text-sm mb-2">Tags:</p>
+            <div className="flex flex-wrap gap-2">
+              {media.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="theme-button px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm min-h-[32px] inline-flex items-center"
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

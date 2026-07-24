@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { mediaApi } from "../lib/api";
+import { mediaApi } from "../../lib/api";
+import { useGallery } from "../../contexts/GalleryContext";
 import {
   Upload as UploadIcon,
   CheckCircle,
@@ -23,6 +24,7 @@ export default function Upload() {
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const navigate = useNavigate();
+  const { refreshMedia } = useGallery();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -159,6 +161,9 @@ export default function Upload() {
 
         if (status === "ready" || status === "failed") {
           clearInterval(interval);
+          if (status === "ready") {
+            refreshMedia();
+          }
         }
       } catch (error) {
         clearInterval(interval);
@@ -192,8 +197,8 @@ export default function Upload() {
   };
 
   return (
-    <div className="container mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
-      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold theme-text-primary mb-6 sm:mb-8">
+    <div className="max-w-4xl">
+      <h1 className="text-2xl font-bold theme-text-primary mb-6">
         Upload Media
       </h1>
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import desc, func
+from ..auth import require_admin
 from ..database import get_db
 from ..models import Media, MediaStatus, MediaType, MediaVariant, Analytics
 from typing import Optional, List
@@ -129,16 +130,13 @@ async def get_media(media_id: str, db: Session = Depends(get_db)):
         "tags": [{"id": t.id, "name": t.name} for t in media.tags]
     }
 
-class DeleteRequest(BaseModel):
-    password: str
-
 class RenameRequest(BaseModel):
     filename: str
 
 class ThumbnailRequest(BaseModel):
     timestamp: float
 
-@router.post("/media/{media_id}/thumbnail")
+@router.post("/media/{media_id}/thumbnail", dependencies=[Depends(require_admin)])
 async def set_thumbnail(
     media_id: str,
     request: ThumbnailRequest,
@@ -185,7 +183,7 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024  # 5MB
 
 
-@router.post("/media/{media_id}/thumbnail/upload")
+@router.post("/media/{media_id}/thumbnail/upload", dependencies=[Depends(require_admin)])
 async def upload_thumbnail(
     media_id: str,
     file: UploadFile = File(...),
@@ -256,7 +254,7 @@ async def upload_thumbnail(
         )
 
 
-@router.patch("/media/{media_id}")
+@router.patch("/media/{media_id}", dependencies=[Depends(require_admin)])
 async def rename_media(
     media_id: str,
     request: RenameRequest,
@@ -271,16 +269,11 @@ async def rename_media(
 
     return {"message": "Media renamed successfully", "filename": request.filename}
 
-@router.delete("/media/{media_id}")
+@router.delete("/media/{media_id}", dependencies=[Depends(require_admin)])
 async def delete_media(
     media_id: str,
-    request: DeleteRequest,
     db: Session = Depends(get_db)
 ):
-    # Verify password
-    if request.password != "ddd":
-        raise HTTPException(status_code=403, detail="Invalid password")
-
     media = db.query(Media).filter(Media.id == media_id).first()
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -319,7 +312,7 @@ async def delete_media(
 
     return {"message": "Media deleted successfully"}
 
-@router.get("/media/stats/overview")
+@router.get("/media/stats/overview", dependencies=[Depends(require_admin)])
 async def get_stats_overview(db: Session = Depends(get_db)):
     total_media = db.query(func.count(Media.id)).scalar()
     total_videos = db.query(func.count(Media.id)).filter(Media.media_type == MediaType.VIDEO).scalar()

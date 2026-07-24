@@ -25,6 +25,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - MEDIA_ROOT=/media
       - CORS_ORIGINS=http://localhost:9090,http://localhost:5173
+      - JWT_SECRET=dev-insecure-secret
     volumes:
       - ./backend:/app
       - ./media:/media

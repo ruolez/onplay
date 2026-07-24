@@ -128,17 +128,34 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Breakdown by IP address with reverse DNS hostname resolution
   - Top sources display showing bandwidth consumers
 
-### Media Management
+### Admin Section (`/admin`)
 
-- **Password-protected Deletion**: Hardcoded password "ddd"
+All management lives behind admin authentication — the public site is a pure player (browse, search, tag-filter, play). No admin link is shown publicly; admins navigate to `/admin` directly.
+
+- **Auth**: Single admin account seeded as `admin`/`admin` on first boot (change it in Settings). JWT (HS256) in an HttpOnly `onplay_admin` cookie, 7-day expiry. Password change revokes all outstanding sessions via a `pwd_ts` claim. Backend: `backend/app/auth.py` (deps/utils), `backend/app/api/auth.py` (routes). Frontend: `src/admin/AuthContext.tsx` + `RequireAuth.tsx`.
+- **Lazy chunk**: Everything under `src/admin/` loads via `React.lazy` from `App.tsx` — public visitors never download admin code.
+- **Layout**: Desktop fixed sidebar / mobile top bar + slide-over drawer (`src/admin/AdminLayout.tsx`), themed entirely with `.theme-*` utilities so both themes work.
+- **Pages**: Dashboard (stat cards + recent uploads), Media (paginated table with rename/tags/thumbnail/delete via modals), Upload (moved from public), Analytics (Overview tab = old Stats page; Listeners tab = unique listeners), Tags (delete unused), Settings (change password, logout).
+- **Persistent player** keeps playing over the admin (layout pads for `--mini-player-height`).
+- **Cache coherence**: admin mutations call `useGallery().refreshMedia()/refreshTags()` so the public gallery stays fresh.
+
+### Listener Tracking
+
+- **Listener ID**: Persistent anonymous UUID in localStorage (`onplay-listener-id`, `src/lib/listenerId.ts`), injected into every `trackAnalytics` call inside `api.ts` (single funnel — no call-site changes needed).
+- **Server capture** (`backend/app/api/analytics.py` + `client_info.py`): real client IP from leftmost `X-Forwarded-For` (works behind both dev 1-hop and prod 2-hop nginx), User-Agent parsed to device/browser/os, `listeners` summary table upserted atomically (`ON CONFLICT`) per event.
+- **Startup migrations** (`backend/app/migrations.py`): idempotent DDL under a Postgres advisory lock (4 prod workers race) — adds `analytics.listener_id` + indexes. `create_all` only creates new tables; existing-table changes must go here.
+
+### Media Management (admin-only)
+
+- **Deletion**: Admin session required (the old hardcoded "ddd" password is gone)
 - **Rename Functionality**: Update media filenames
 - **Custom Thumbnails**: Pause video and set current frame as thumbnail
 - **Cache-busting**: Timestamp query params for thumbnail updates
 - **Tagging System**:
-  - Create tags on-the-fly when tagging media
+  - Create tags on-the-fly when tagging media (admin)
   - Case-insensitive tag matching (prevents duplicates)
-  - Filter media by multiple tags with OR logic
-  - Click tag to remove from media
+  - Filter media by multiple tags with OR logic (public gallery keeps tag filtering)
+  - Tag add/remove/delete moved to admin (Media page tag editor + Tags page)
   - Quick-select from existing tags
   - Tags displayed in both grid and list views
 - **Sorting & Organization**:
@@ -156,13 +173,17 @@ onplay/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
+│   │   │   ├── auth.py           # Admin auth routes (login/logout/me/change-password)
 │   │   │   ├── media.py          # Media CRUD endpoints
-│   │   │   ├── upload.py         # File upload handling
-│   │   │   ├── analytics.py      # Analytics tracking
+│   │   │   ├── upload.py         # File upload handling (admin-gated router)
+│   │   │   ├── analytics.py      # Analytics tracking + listener endpoints
 │   │   │   └── tags.py           # Tag management endpoints
 │   │   ├── worker/
 │   │   │   └── tasks.py          # Celery tasks (video/audio processing)
-│   │   ├── models.py             # SQLAlchemy models (Media, Tag, MediaVariant, Analytics)
+│   │   ├── models.py             # SQLAlchemy models (Media, Tag, MediaVariant, Analytics, AdminUser, Listener)
+│   │   ├── auth.py               # JWT/bcrypt utils, require_admin dependency, admin seeding
+│   │   ├── client_info.py        # Real client IP (X-Forwarded-For) + User-Agent parsing
+│   │   ├── migrations.py         # Idempotent startup DDL (advisory-locked)
 │   │   ├── database.py           # DB session management
 │   │   └── celery_app.py         # Celery configuration
 │   └── requirements.txt
@@ -172,11 +193,17 @@ onplay/
 │   │   ├── sw.js                 # Service worker (network-first caching)
 │   │   └── icons/                # PWA icons (192, 512, apple-touch)
 │   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Upload.tsx        # Upload interface
-│   │   │   ├── Gallery.tsx       # Media grid/list with filters and tags
-│   │   │   ├── Player.tsx        # Video player with analytics
-│   │   │   └── Stats.tsx         # Dashboard with bandwidth tracking
+│   │   ├── pages/                # Public pages
+│   │   │   ├── Gallery.tsx       # Media grid/list with filters and tags (play-only)
+│   │   │   └── Player.tsx        # Full-page player (no management UI)
+│   │   ├── admin/                # Admin section (lazy-loaded chunk)
+│   │   │   ├── AdminRoutes.tsx   # AuthProvider + admin route tree
+│   │   │   ├── AuthContext.tsx   # Session state + 401 interceptor
+│   │   │   ├── RequireAuth.tsx   # Login gate layout route
+│   │   │   ├── AdminLayout.tsx   # Sidebar (desktop) / drawer (mobile) shell
+│   │   │   ├── components/       # Modal, ConfirmDialog, Rename/TagEditor/Thumbnail modals
+│   │   │   └── pages/            # Login, Dashboard, MediaLibrary, Upload, Analytics,
+│   │   │                         #   StatsOverview, ListenerDetail, Tags, Settings
 │   │   ├── components/
 │   │   │   ├── VideoPlayer.tsx         # Video.js wrapper with HLS + autoplay
 │   │   │   ├── PersistentPlayer.tsx    # Bottom bar player component
@@ -194,7 +221,8 @@ onplay/
 │   │   ├── machines/
 │   │   │   └── queueMachine.ts    # XState machine for playback queue
 │   │   ├── lib/
-│   │   │   ├── api.ts            # Axios API client
+│   │   │   ├── api.ts            # Axios API client (withCredentials; injects listener_id)
+│   │   │   ├── listenerId.ts     # Persistent anonymous listener UUID (localStorage)
 │   │   │   ├── theme.ts          # Theme definitions
 │   │   │   └── utils.ts          # Format helpers (duration, file size, dates)
 │   │   └── main.tsx
@@ -587,27 +615,42 @@ User watches video → Nginx serves HLS segments → Nginx writes to bandwidth.l
 
 ## API Endpoints
 
+Admin-only endpoints require the `onplay_admin` HttpOnly session cookie (JWT), obtained via `POST /api/auth/login`. Public endpoints need no auth.
+
+### Auth
+
+- `POST /api/auth/login` - Login (`{username, password}`), sets HttpOnly session cookie (7-day JWT)
+- `POST /api/auth/logout` - Clear session cookie
+- `GET /api/auth/me` - Current admin (401 when not authenticated)
+- `POST /api/auth/change-password` - Change admin password (revokes all other sessions via `pwd_ts` claim, re-issues own cookie)
+
 ### Media
 
-- `POST /api/upload` - Upload media file
-- `GET /api/media` - List media (filterable by type, status) - includes tags array
-- `GET /api/media/{id}` - Get single media with variants and tags
-- `DELETE /api/media/{id}` - Delete media (requires password)
-- `PATCH /api/media/{id}` - Rename media
-- `POST /api/media/{id}/thumbnail` - Set custom thumbnail from timestamp
+- `POST /api/upload` - Upload media file (admin)
+- `GET /api/upload/status/{id}` - Poll processing status (admin)
+- `GET /api/media` - List media (public; filterable by type, status; includes tags array)
+- `GET /api/media/{id}` - Get single media with variants and tags (public)
+- `DELETE /api/media/{id}` - Delete media (admin)
+- `PATCH /api/media/{id}` - Rename media (admin)
+- `POST /api/media/{id}/thumbnail` - Set custom thumbnail from timestamp (admin)
+- `POST /api/media/{id}/thumbnail/upload` - Upload custom thumbnail image (admin)
+- `GET /api/media/stats/overview` - Library stats (admin)
 
 ### Tags
 
-- `GET /api/tags` - List all tags
-- `POST /api/media/{id}/tags` - Add tag to media (creates tag if doesn't exist)
-- `DELETE /api/media/{id}/tags/{tag_id}` - Remove tag from media
+- `GET /api/tags` - List all tags (public; gallery filter chips need it)
+- `POST /api/media/{id}/tags` - Add tag to media, creates tag if needed (admin)
+- `DELETE /api/media/{id}/tags/{tag_id}` - Remove tag from media (admin)
+- `DELETE /api/tags/{tag_id}` - Delete unused tag (admin)
 
 ### Analytics
 
-- `POST /api/analytics/track` - Track playback event
-- `GET /api/analytics/media/{id}` - Get media analytics
-- `GET /api/analytics/overview` - Dashboard overview (includes bandwidth tracking)
+- `POST /api/analytics/track` - Track playback event (public; accepts optional `listener_id`)
+- `GET /api/analytics/media/{id}` - Get media analytics (admin)
+- `GET /api/analytics/overview` - Dashboard overview (admin; includes bandwidth tracking)
   - Returns: total_plays, total_completes, total_bandwidth_bytes, bandwidth_by_ip (top 10), top_media
+- `GET /api/analytics/listeners` - Paginated unique listeners with device/IP/play totals (admin)
+- `GET /api/analytics/listeners/{listener_id}` - Per-listener play history + recent events (admin)
 
 ## Environment Variables
 
@@ -616,7 +659,8 @@ User watches video → Nginx serves HLS segments → Nginx writes to bandwidth.l
 DATABASE_URL=postgresql://user:pass@db:5432/mediadb
 REDIS_URL=redis://redis:6379/0
 MEDIA_ROOT=/media
-DELETE_PASSWORD=ddd
+JWT_SECRET=<random hex>       # signs admin session tokens; dev fallback exists, prod set by install.sh
+COOKIE_SECURE=true            # prod only (HTTPS); unset/false in dev
 
 # Frontend
 VITE_API_URL=http://localhost:8080/api

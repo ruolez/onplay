@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { mediaApi } from "../lib/api";
+import { mediaApi } from "../../lib/api";
 import {
   BarChart3,
   Play,
@@ -9,9 +9,9 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { formatFileSize } from "../lib/utils";
+import { formatFileSize } from "../../lib/utils";
 
-export default function Stats() {
+export default function StatsOverview() {
   const [overview, setOverview] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function Stats() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+      <div>
         <p className="sr-only" role="status">
           Loading statistics…
         </p>
@@ -81,13 +81,8 @@ export default function Stats() {
   }
 
   return (
-    <div className="container mx-auto px-3 xs:px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold theme-text-primary flex items-center space-x-2 sm:space-x-3">
-          <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10" />
-          <span>Statistics</span>
-        </h1>
-
+    <div>
+      <div className="flex items-center justify-end mb-6">
         <div className="flex space-x-2 w-full sm:w-auto">
           {[7, 30, 90].map((d) => (
             <button

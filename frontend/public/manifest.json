@@ -45,17 +45,5 @@
       "form_factor": "wide",
       "label": "Media gallery on desktop"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Upload Media",
-      "url": "/upload",
-      "description": "Upload new media files"
-    },
-    {
-      "name": "View Stats",
-      "url": "/stats",
-      "description": "View analytics and stats"
-    }
   ]
 }
