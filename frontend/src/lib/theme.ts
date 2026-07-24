@@ -74,6 +74,10 @@ export interface ThemeConfig {
   iconVideo: string;
   iconTag: string;
   iconAll: string;
+
+  // Chart series (categorical pair, CVD-validated per theme)
+  chartSeries1: string;
+  chartSeries2: string;
 }
 
 // Available theme names
@@ -133,6 +137,8 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     iconVideo: "#60a5fa",
     iconTag: "#fbbf24",
     iconAll: "#94a3b8",
+    chartSeries1: "#3b82f6",
+    chartSeries2: "#d97706",
   },
 
   linen: {
@@ -210,6 +216,8 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     iconVideo: "#3b82f6",
     iconTag: "#d97706",
     iconAll: "#0969da",
+    chartSeries1: "#0969da",
+    chartSeries2: "#e76f51",
   },
 };
 
@@ -283,6 +291,9 @@ export function applyTheme(theme: ThemeConfig) {
   root.style.setProperty("--icon-video", theme.iconVideo);
   root.style.setProperty("--icon-tag", theme.iconTag);
   root.style.setProperty("--icon-all", theme.iconAll);
+
+  root.style.setProperty("--chart-1", theme.chartSeries1);
+  root.style.setProperty("--chart-2", theme.chartSeries2);
 
   // Keep browser chrome (status/URL bar) in sync with the active theme
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');

@@ -1,314 +1,201 @@
-import { useEffect, useState } from "react";
-import { mediaApi } from "../../lib/api";
-import {
-  BarChart3,
-  Play,
-  CheckCircle,
-  TrendingUp,
-  HardDrive,
-  Clock,
-  AlertCircle,
-} from "lucide-react";
-import { formatFileSize } from "../../lib/utils";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertCircle, Headphones } from "lucide-react";
+import SegmentedControl from "../../components/SegmentedControl";
+import KpiCard from "../components/analytics/KpiCard";
+import TrendChart from "../components/analytics/TrendChart";
+import BreakdownCard from "../components/analytics/BreakdownCard";
+import TopMediaList from "../components/analytics/TopMediaList";
+import { analyticsApi, type AnalyticsDashboard } from "../../lib/api";
+
+type Period = "7" | "30" | "90";
 
 export default function StatsOverview() {
-  const [overview, setOverview] = useState<any>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [period, setPeriod] = useState<Period>("7");
+  const [data, setData] = useState<AnalyticsDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [days, setDays] = useState(7);
+  const requestSeq = useRef(0);
 
-  useEffect(() => {
-    loadData();
-  }, [days]);
-
-  const loadData = async () => {
-    try {
+  const loadData = useCallback(async (days: number, initial: boolean) => {
+    const seq = ++requestSeq.current;
+    if (initial) {
       setLoading(true);
-      setLoadError(false);
-      const [overviewRes, analyticsRes] = await Promise.all([
-        mediaApi.getStatsOverview(),
-        mediaApi.getAnalyticsOverview(days),
-      ]);
-      setOverview(overviewRes.data);
-      setAnalytics(analyticsRes.data);
-    } catch (error) {
-      console.error("Failed to load stats:", error);
+    } else {
+      // Period switch: hold the previous render at reduced opacity instead
+      // of flashing a skeleton (no layout jump).
+      setRefreshing(true);
+    }
+    setLoadError(false);
+    try {
+      const res = await analyticsApi.getDashboard(days);
+      if (seq !== requestSeq.current) return;
+      setData(res.data);
+    } catch {
+      if (seq !== requestSeq.current) return;
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData(Number(period), data === null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, loadData]);
 
   if (loading) {
     return (
       <div>
         <p className="sr-only" role="status">
-          Loading statistics…
+          Loading analytics…
         </p>
+        <div className="flex justify-end mb-4" aria-hidden="true">
+          <div className="skeleton-block h-10 w-48 rounded-lg" />
+        </div>
         <div
-          className="h-9 sm:h-10 w-48 skeleton-block rounded-lg animate-pulse mb-6 sm:mb-8"
-          aria-hidden="true"
-        />
-        <div
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6 mb-6 sm:mb-8"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6"
           aria-hidden="true"
         >
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 animate-pulse"
-            >
-              <div className="h-4 w-24 skeleton-block mb-4" />
-              <div className="h-8 w-16 skeleton-block mb-2" />
-              <div className="h-3 w-20 skeleton-block" />
-            </div>
+            <div key={i} className="skeleton-block h-28 rounded-xl" />
           ))}
         </div>
         <div
-          className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6 animate-pulse"
+          className="skeleton-block h-[340px] rounded-xl mb-4 sm:mb-6"
+          aria-hidden="true"
+        />
+        <div
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6"
           aria-hidden="true"
         >
-          <div className="h-5 w-36 skeleton-block mb-4" />
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-10 skeleton-block" />
-            ))}
-          </div>
+          <div className="skeleton-block h-64 rounded-xl" />
+          <div className="skeleton-block h-64 rounded-xl lg:col-span-2" />
         </div>
       </div>
     );
   }
 
+  if (loadError && !data) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center gap-3 theme-card rounded-xl p-4"
+      >
+        <AlertCircle
+          className="w-5 h-5 flex-shrink-0"
+          style={{ color: "var(--status-error)" }}
+        />
+        <p className="theme-text-secondary text-sm flex-1">
+          Failed to load analytics. Check your connection and try again.
+        </p>
+        <button
+          onClick={() => loadData(Number(period), true)}
+          className="theme-btn-secondary px-3 py-2 rounded-lg text-sm font-medium"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const { summary, timeseries, devices, top_media, period_days } = data;
+  const kpis = summary.current;
+  const hasData = kpis.plays > 0 || summary.previous.plays > 0;
+
   return (
-    <div>
-      <div className="flex items-center justify-end mb-6">
-        <div className="flex space-x-2 w-full sm:w-auto">
-          {[7, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg font-medium text-sm sm:text-base min-h-[44px] ${
-                days === d ? "theme-btn-primary" : "theme-btn-secondary"
-              }`}
-            >
-              {d} days
-            </button>
-          ))}
-        </div>
+    <div
+      className="transition-opacity duration-150"
+      style={{ opacity: refreshing ? 0.55 : 1 }}
+    >
+      {/* Period selector */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        {loadError ? (
+          <p className="text-sm" style={{ color: "var(--status-error)" }}>
+            Refresh failed — showing previous data.
+          </p>
+        ) : (
+          <span />
+        )}
+        <SegmentedControl<Period>
+          options={[
+            { value: "7", label: "7d" },
+            { value: "30", label: "30d" },
+            { value: "90", label: "90d" },
+          ]}
+          value={period}
+          onChange={setPeriod}
+        />
       </div>
 
-      {loadError && (
-        <div
-          role="alert"
-          className="flex items-center gap-3 theme-card rounded-lg p-4 mb-6"
-        >
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <p className="theme-text-secondary text-sm flex-1">
-            Failed to load statistics. Check your connection and try again.
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <KpiCard
+          label="Plays"
+          value={kpis.plays.toLocaleString()}
+          delta={summary.deltas.plays}
+          periodDays={period_days}
+          cardClass="theme-stat-card-1"
+        />
+        <KpiCard
+          label="Unique listeners"
+          value={kpis.unique_listeners.toLocaleString()}
+          delta={summary.deltas.unique_listeners}
+          periodDays={period_days}
+          cardClass="theme-stat-card-2"
+        />
+        <KpiCard
+          label="Completions"
+          value={kpis.completions.toLocaleString()}
+          delta={summary.deltas.completions}
+          periodDays={period_days}
+          cardClass="theme-stat-card-3"
+        />
+        <KpiCard
+          label="Completion rate"
+          value={`${kpis.completion_rate}%`}
+          delta={summary.deltas.completion_rate_pp}
+          deltaUnit="pp"
+          periodDays={period_days}
+          cardClass="theme-stat-card-4"
+        />
+      </div>
+
+      {hasData ? (
+        <>
+          {/* Trend chart */}
+          <div className="theme-card rounded-xl p-5 mb-4 sm:mb-6">
+            <h2 className="font-semibold theme-text-primary mb-3">
+              Listening over time
+            </h2>
+            <TrendChart data={timeseries} />
+          </div>
+
+          {/* Breakdown + top media */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            <BreakdownCard devices={devices} />
+            <div className="lg:col-span-2">
+              <TopMediaList items={top_media} />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="theme-card rounded-xl p-12 text-center">
+          <Headphones className="w-10 h-10 theme-text-muted mx-auto mb-3 opacity-60" />
+          <p className="theme-text-primary font-medium mb-1">
+            No listening data yet
           </p>
-          <button
-            onClick={loadData}
-            className="theme-btn-secondary px-3 py-2 rounded-lg text-sm font-medium"
-          >
-            Retry
-          </button>
+          <p className="theme-text-muted text-sm">
+            Trends, listener breakdowns, and top media appear here once people
+            start playing your media.
+          </p>
         </div>
       )}
-
-      {/* Overview Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="theme-stat-card-1 rounded-lg sm:rounded-xl p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <p className="theme-text-secondary text-sm sm:text-base">
-              Total Media
-            </p>
-            <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 theme-icon-accent" />
-          </div>
-          <p className="text-2xl sm:text-4xl font-bold theme-text-primary">
-            {overview?.total_media || 0}
-          </p>
-          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
-            {overview?.total_videos || 0} videos, {overview?.total_audio || 0}{" "}
-            audio
-          </div>
-        </div>
-
-        <div className="theme-stat-card-2 rounded-lg sm:rounded-xl p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <p className="theme-text-secondary text-sm sm:text-base">Ready</p>
-            <CheckCircle
-              className="w-6 h-6 sm:w-8 sm:h-8"
-              style={{ color: "var(--status-success)" }}
-            />
-          </div>
-          <p className="text-2xl sm:text-4xl font-bold theme-text-primary">
-            {overview?.ready || 0}
-          </p>
-          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
-            {overview?.processing || 0} processing, {overview?.failed || 0}{" "}
-            failed
-          </div>
-        </div>
-
-        <div className="theme-stat-card-3 rounded-lg sm:rounded-xl p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <p className="theme-text-secondary text-sm sm:text-base">Storage</p>
-            <HardDrive className="w-6 h-6 sm:w-8 sm:h-8 theme-icon-accent" />
-          </div>
-          <p className="text-2xl sm:text-4xl font-bold theme-text-primary">
-            {formatFileSize(overview?.total_size_bytes || 0)}
-          </p>
-          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
-            All media files
-          </div>
-        </div>
-
-        <div className="theme-stat-card-4 rounded-lg sm:rounded-xl p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <p className="theme-text-secondary text-sm sm:text-base">
-              Duration
-            </p>
-            <Clock className="w-6 h-6 sm:w-8 sm:h-8 theme-icon-accent" />
-          </div>
-          <p className="text-2xl sm:text-4xl font-bold theme-text-primary">
-            {Math.round((overview?.total_duration_seconds || 0) / 60)}m
-          </p>
-          <div className="mt-2 text-xs sm:text-sm theme-text-muted">
-            All content
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
-        {/* Playback Stats */}
-        <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-bold theme-text-primary mb-4 sm:mb-6 flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
-            <span>Playback Stats</span>
-          </h2>
-
-          <div className="grid grid-cols-2 gap-3 xs:gap-4 sm:gap-6 mb-4 sm:mb-6">
-            <div
-              className="p-3 sm:p-4 rounded-lg"
-              style={{ background: "var(--input-bg)" }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="theme-text-secondary text-sm">
-                  Total Plays
-                </span>
-                <Play className="w-4 h-4 sm:w-5 sm:h-5 theme-icon-accent" />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold theme-text-primary">
-                {analytics?.total_plays || 0}
-              </p>
-            </div>
-
-            <div
-              className="p-3 sm:p-4 rounded-lg"
-              style={{ background: "var(--input-bg)" }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="theme-text-secondary text-sm">
-                  Completions
-                </span>
-                <CheckCircle
-                  className="w-4 h-4 sm:w-5 sm:h-5"
-                  style={{ color: "var(--status-success)" }}
-                />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold theme-text-primary">
-                {analytics?.total_completes || 0}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="theme-text-secondary text-sm">
-                Completion Rate
-              </span>
-              <span className="theme-text-primary font-medium text-sm">
-                {analytics?.total_plays > 0
-                  ? Math.round(
-                      (analytics.total_completes / analytics.total_plays) * 100,
-                    )
-                  : 0}
-                %
-              </span>
-            </div>
-            <div
-              className="w-full rounded-full h-2 sm:h-3"
-              style={{ background: "var(--input-bg)" }}
-            >
-              <div
-                className="h-2 sm:h-3 rounded-full transition-all"
-                style={{
-                  background: "var(--status-success)",
-                  width: `${
-                    analytics?.total_plays > 0
-                      ? (analytics.total_completes / analytics.total_plays) *
-                        100
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Top Media */}
-        <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-bold theme-text-primary mb-4 sm:mb-6 flex items-center space-x-2">
-            <Play className="w-5 h-5 sm:w-6 sm:h-6" />
-            <span>Most Played</span>
-          </h2>
-
-          {analytics?.top_media && analytics.top_media.length > 0 ? (
-            <div className="space-y-2 sm:space-y-3">
-              {analytics.top_media
-                .slice(0, 5)
-                .map((item: any, index: number) => (
-                  <div
-                    key={item.media_id}
-                    className="flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors"
-                    style={{ background: "var(--input-bg)" }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background =
-                        "var(--input-focus)20")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "var(--input-bg)")
-                    }
-                  >
-                    <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-                      <div
-                        className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0"
-                        style={{
-                          background: "var(--accent-primary)30",
-                          color: "var(--accent-primary)",
-                        }}
-                      >
-                        {index + 1}
-                      </div>
-                      <p className="theme-text-primary font-medium truncate text-sm sm:text-base">
-                        {item.filename}
-                      </p>
-                    </div>
-                    <span className="theme-text-muted text-xs sm:text-sm flex-shrink-0 ml-2">
-                      {item.play_count} plays
-                    </span>
-                  </div>
-                ))}
-            </div>
-          ) : (
-            <p className="theme-text-muted text-center py-6 sm:py-8 text-sm">
-              No playback data yet
-            </p>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

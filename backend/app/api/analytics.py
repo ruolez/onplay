@@ -8,7 +8,7 @@ from ..database import get_db
 from ..models import Analytics, Listener, Media, BandwidthStats
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import functools
 import socket
 
@@ -202,6 +202,164 @@ async def get_analytics_overview(
         "bandwidth_by_ip": bandwidth_by_ip_list[:10],  # Top 10 IPs
         "top_media": top_media_details
     }
+
+def _pct_delta(current: float, previous: float):
+    """Percent change vs previous period; None when there is no baseline."""
+    if previous == 0:
+        return None
+    return round((current - previous) / previous * 100, 1)
+
+
+@router.get("/analytics/dashboard", dependencies=[Depends(require_admin)])
+async def get_analytics_dashboard(
+    days: int = Query(7, ge=1, le=365),
+    db: Session = Depends(get_db)
+):
+    """Consolidated data for the admin analytics overview: KPIs with
+    previous-period deltas, a gap-filled daily timeseries, listener
+    device/browser/os breakdowns, and top media - one round trip.
+
+    Windows are aligned to UTC calendar days so buckets and the
+    previous-period comparison are like-for-like; "today" is a partial
+    bucket in both the chart and the KPIs (standard analytics behavior).
+    """
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    cur_start = today_start - timedelta(days=days - 1)
+    prev_start = cur_start - timedelta(days=days)
+
+    # --- Summary: both windows in one pass via COUNT(...) FILTER (...) ---
+    in_current = Analytics.timestamp >= cur_start
+    in_previous = Analytics.timestamp < cur_start
+    row = db.query(
+        func.count(Analytics.id).filter(Analytics.event_type == "play", in_current).label("plays"),
+        func.count(Analytics.id).filter(Analytics.event_type == "complete", in_current).label("completions"),
+        func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play", in_current).label("listeners"),
+        func.count(Analytics.id).filter(Analytics.event_type == "play", in_previous).label("prev_plays"),
+        func.count(Analytics.id).filter(Analytics.event_type == "complete", in_previous).label("prev_completions"),
+        func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play", in_previous).label("prev_listeners"),
+    ).filter(
+        Analytics.timestamp >= prev_start,
+        Analytics.event_type.in_(["play", "complete"]),
+    ).one()
+
+    rate = round(row.completions / row.plays * 100, 1) if row.plays else 0.0
+    prev_rate = round(row.prev_completions / row.prev_plays * 100, 1) if row.prev_plays else 0.0
+
+    summary = {
+        "current": {
+            "plays": row.plays,
+            "unique_listeners": row.listeners,
+            "completions": row.completions,
+            "completion_rate": rate,
+        },
+        "previous": {
+            "plays": row.prev_plays,
+            "unique_listeners": row.prev_listeners,
+            "completions": row.prev_completions,
+            "completion_rate": prev_rate,
+        },
+        "deltas": {
+            "plays": _pct_delta(row.plays, row.prev_plays),
+            "unique_listeners": _pct_delta(row.listeners, row.prev_listeners),
+            "completions": _pct_delta(row.completions, row.prev_completions),
+            # percentage-point difference (percent-change of a rate misleads)
+            "completion_rate_pp": round(rate - prev_rate, 1) if row.prev_plays else None,
+        },
+    }
+
+    # --- Timeseries: daily buckets, gap-filled with zeros server-side ---
+    day_col = func.date_trunc("day", Analytics.timestamp)
+    ts_rows = db.query(
+        day_col.label("day"),
+        func.count(Analytics.id).filter(Analytics.event_type == "play").label("plays"),
+        func.count(Analytics.id).filter(Analytics.event_type == "complete").label("completions"),
+        func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play").label("listeners"),
+    ).filter(
+        Analytics.timestamp >= cur_start,
+        Analytics.event_type.in_(["play", "complete"]),
+    ).group_by(day_col).all()
+
+    by_day = {r.day.date(): r for r in ts_rows}
+    timeseries = []
+    for i in range(days):
+        day = (cur_start + timedelta(days=i)).date()
+        r = by_day.get(day)
+        timeseries.append({
+            "date": day.isoformat(),
+            "plays": r.plays if r else 0,
+            "unique_listeners": r.listeners if r else 0,
+            "completions": r.completions if r else 0,
+        })
+
+    # --- Breakdowns: same cohort as the unique-listeners KPI. Rows without
+    # a listener_id (recorded before listener tracking) are excluded;
+    # "Unknown" covers only unparseable user agents. ---
+    def breakdown(column):
+        rows = db.query(
+            func.coalesce(column, "Unknown").label("name"),
+            func.count(func.distinct(Analytics.listener_id)).label("listeners"),
+        ).filter(
+            Analytics.timestamp >= cur_start,
+            Analytics.event_type == "play",
+            Analytics.listener_id.isnot(None),
+        ).group_by("name").order_by(desc("listeners")).all()
+        return [{"name": r.name, "listeners": r.listeners} for r in rows]
+
+    devices = {
+        "device": breakdown(Analytics.device),
+        "browser": breakdown(Analytics.browser),
+        "os": breakdown(Analytics.os),
+    }
+
+    # --- Top media: one grouped query + one batch Media fetch (no N+1) ---
+    top_rows = db.query(
+        Analytics.media_id,
+        func.count(Analytics.id).filter(Analytics.event_type == "play").label("plays"),
+        func.count(Analytics.id).filter(Analytics.event_type == "complete").label("completions"),
+        func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play").label("listeners"),
+        func.max(Analytics.timestamp).filter(Analytics.event_type == "play").label("last_played"),
+    ).filter(
+        Analytics.timestamp >= cur_start,
+        Analytics.event_type.in_(["play", "complete"]),
+    ).group_by(Analytics.media_id).having(
+        func.count(Analytics.id).filter(Analytics.event_type == "play") > 0
+    ).order_by(desc("plays")).limit(10).all()
+
+    from .media import versioned_thumbnail
+
+    media_by_id = {}
+    if top_rows:
+        media_by_id = {
+            m.id: m
+            for m in db.query(Media).filter(Media.id.in_([r.media_id for r in top_rows])).all()
+        }
+
+    top_media = []
+    for r in top_rows:
+        media = media_by_id.get(r.media_id)
+        if not media:
+            continue
+        top_media.append({
+            "media_id": r.media_id,
+            "filename": media.original_filename,
+            "media_type": media.media_type.value,
+            "thumbnail_path": versioned_thumbnail(media),
+            "plays": r.plays,
+            "completions": r.completions,
+            "completion_rate": round(r.completions / r.plays * 100, 1) if r.plays else 0.0,
+            "unique_listeners": r.listeners,
+            "last_played": r.last_played.isoformat() if r.last_played else None,
+        })
+
+    return {
+        "period_days": days,
+        "summary": summary,
+        "timeseries": timeseries,
+        "devices": devices,
+        "top_media": top_media,
+    }
+
 
 @router.get("/analytics/listeners", dependencies=[Depends(require_admin)])
 async def list_listeners(

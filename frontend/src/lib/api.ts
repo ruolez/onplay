@@ -233,4 +233,64 @@ export const analyticsApi = {
   async getListenerDetail(listenerId: string) {
     return api.get<ListenerDetail>(`/analytics/listeners/${listenerId}`);
   },
+
+  async getDashboard(days = 7) {
+    return api.get<AnalyticsDashboard>("/analytics/dashboard", {
+      params: { days },
+    });
+  },
 };
+
+export interface DashboardKpis {
+  plays: number;
+  unique_listeners: number;
+  completions: number;
+  completion_rate: number;
+}
+
+export interface DashboardDeltas {
+  plays: number | null;
+  unique_listeners: number | null;
+  completions: number | null;
+  completion_rate_pp: number | null;
+}
+
+export interface TimeseriesPoint {
+  date: string;
+  plays: number;
+  unique_listeners: number;
+  completions: number;
+}
+
+export interface BreakdownItem {
+  name: string;
+  listeners: number;
+}
+
+export interface TopMediaItem {
+  media_id: string;
+  filename: string;
+  media_type: string;
+  thumbnail_path: string | null;
+  plays: number;
+  completions: number;
+  completion_rate: number;
+  unique_listeners: number;
+  last_played: string | null;
+}
+
+export interface AnalyticsDashboard {
+  period_days: number;
+  summary: {
+    current: DashboardKpis;
+    previous: DashboardKpis;
+    deltas: DashboardDeltas;
+  };
+  timeseries: TimeseriesPoint[];
+  devices: {
+    device: BreakdownItem[];
+    browser: BreakdownItem[];
+    os: BreakdownItem[];
+  };
+  top_media: TopMediaItem[];
+}
