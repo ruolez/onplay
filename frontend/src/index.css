@@ -448,3 +448,30 @@
     border-width: 1.5px;
   }
 }
+
+/* Expanded player title marquee — only applied when the title overflows;
+   --marquee-shift is the negative overflow distance set from JS */
+@keyframes player-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  45%,
+  55% {
+    transform: translateX(var(--marquee-shift));
+  }
+  85%,
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.player-title-marquee {
+  animation: player-marquee 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-title-marquee {
+    animation: none;
+  }
+}

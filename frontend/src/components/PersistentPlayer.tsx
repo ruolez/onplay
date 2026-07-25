@@ -20,6 +20,8 @@ import {
   SkipBack,
   SkipForward,
   Shuffle,
+  Repeat,
+  Repeat1,
   Volume2,
   VolumeX,
   Maximize,
@@ -75,6 +77,8 @@ export default function PersistentPlayer() {
     setShowWakeLockInfoModal,
     isShuffled,
     toggleShuffle,
+    repeatMode,
+    cycleRepeatMode,
     closePlayer,
     errorMessage,
   } = usePlayer();
@@ -123,6 +127,33 @@ export default function PersistentPlayer() {
     ro.observe(el);
     return () => ro.disconnect();
   }, [!!currentMedia]);
+
+  // Marquee long titles: measure how far the title overflows its wrapper
+  const titleWrapRef = useRef<HTMLDivElement>(null);
+  const [titleShift, setTitleShift] = useState(0);
+  useLayoutEffect(() => {
+    const wrap = titleWrapRef.current;
+    if (!wrap) return;
+    const measure = () =>
+      setTitleShift(Math.max(0, wrap.scrollWidth - wrap.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [currentMedia?.filename]);
+
+  // Haptic tick when scrubbing crosses a minute boundary (Android only)
+  const lastScrubMinuteRef = useRef(-1);
+  const handleScrubMove = useCallback(
+    (time: number) => {
+      const minute = Math.floor(time / 60);
+      if (minute !== lastScrubMinuteRef.current) {
+        lastScrubMinuteRef.current = minute;
+        haptics.buttonPress();
+      }
+    },
+    [haptics],
+  );
 
   // Swipe gesture for mini player (left/right for tracks, up to expand)
   const miniPlayerGestures = useSwipeGesture({
@@ -376,6 +407,14 @@ export default function PersistentPlayer() {
   const playerSrc = `/media/hls/${currentMedia.id}/master.m3u8`;
   const isAudio = currentMedia.media_type === "audio";
 
+  // Next track for the Up Next preview (wraps when repeating the queue)
+  const nextUp =
+    currentIndex >= 0 && currentIndex < queue.length - 1
+      ? queue[currentIndex + 1]
+      : repeatMode === "all" && queue.length > 0
+        ? queue[0]
+        : null;
+
   const errorBanner = errorMessage ? (
     <div
       role="alert"
@@ -466,13 +505,13 @@ export default function PersistentPlayer() {
               src={currentMedia.thumbnail_path}
               alt=""
               className="w-full h-full object-cover scale-125"
-              style={{ filter: "blur(60px) brightness(0.5) saturate(1.3)" }}
+              style={{ filter: "blur(60px) brightness(0.68) saturate(1.6)" }}
             />
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.65) 100%)",
+                  "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.5) 100%)",
               }}
             />
           </div>
@@ -581,10 +620,12 @@ export default function PersistentPlayer() {
               available zone via ResizeObserver (--art-size) */}
           <div
             ref={artZoneRef}
-            className="relative flex-1 min-h-[96px] w-full flex items-center justify-center py-2"
+            className="relative flex-1 min-h-[96px] w-full flex flex-col items-center py-2"
           >
+            {/* 2:3 spacers bias the artwork slightly above center */}
+            <div className="flex-[2]" aria-hidden="true" />
             <div
-              className="relative rounded-2xl overflow-hidden md:max-w-[400px] md:max-h-[400px]"
+              className="relative flex-shrink-0 rounded-2xl overflow-hidden md:max-w-[400px] md:max-h-[400px]"
               style={{
                 width: "var(--art-size, 280px)",
                 height: "var(--art-size, 280px)",
@@ -613,6 +654,7 @@ export default function PersistentPlayer() {
                 </div>
               )}
             </div>
+            <div className="flex-[3]" aria-hidden="true" />
 
             {/* Swipe Hint - shown once on first expand, then never again */}
             {showSwipeHint && (
@@ -628,22 +670,29 @@ export default function PersistentPlayer() {
           <div className="w-full max-w-[340px] md:max-w-[400px] flex-shrink-0 flex flex-col items-center">
             {/* Track Info */}
             <div className="w-full text-center">
-              <h2 className="text-lg font-bold theme-text-primary truncate">
-                {currentMedia.filename.replace(/\.[^/.]+$/, "")}
-              </h2>
-              <p className="text-sm theme-text-muted mt-0.5 flex items-center justify-center gap-2">
-                {isAudio ? (
-                  <Music className="w-4 h-4" />
-                ) : (
-                  <Video className="w-4 h-4" />
-                )}
-                {isAudio ? "Audio" : "Video"}
-                {queuePosition && (
-                  <span className="ml-2">
-                    • {queuePosition.current} of {queuePosition.total}
-                  </span>
-                )}
-              </p>
+              <div ref={titleWrapRef} className="w-full overflow-hidden">
+                <h2
+                  className={`text-xl xs:text-2xl font-bold theme-text-primary whitespace-nowrap ${
+                    titleShift > 0
+                      ? "player-title-marquee w-max"
+                      : "text-center"
+                  }`}
+                  style={
+                    titleShift > 0
+                      ? ({
+                          "--marquee-shift": `-${titleShift}px`,
+                        } as React.CSSProperties)
+                      : undefined
+                  }
+                >
+                  {currentMedia.filename.replace(/\.[^/.]+$/, "")}
+                </h2>
+              </div>
+              {queuePosition && (
+                <p className="text-sm theme-text-muted mt-1">
+                  {queuePosition.current} of {queuePosition.total}
+                </p>
+              )}
               {errorBanner && <div className="mt-2">{errorBanner}</div>}
             </div>
 
@@ -733,15 +782,50 @@ export default function PersistentPlayer() {
                 />
               </button>
 
-              {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
-              <div
-                className="w-10 h-10 xs:w-12 xs:h-12 flex-shrink-0"
-                aria-hidden="true"
-              />
+              {/* Repeat — mirrors Shuffle on the other side, keeps Play centered */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptics.buttonPress();
+                  cycleRepeatMode();
+                }}
+                className={`p-2.5 xs:p-3 rounded-full transition-colors ${
+                  repeatMode === "off" ? "theme-text-primary" : ""
+                }`}
+                style={
+                  repeatMode !== "off"
+                    ? {
+                        background: "var(--btn-primary-bg)",
+                        color: "var(--btn-primary-text)",
+                      }
+                    : {}
+                }
+                title={
+                  repeatMode === "off"
+                    ? "Repeat"
+                    : repeatMode === "all"
+                      ? "Repeat all"
+                      : "Repeat one"
+                }
+                aria-label={
+                  repeatMode === "off"
+                    ? "Enable repeat"
+                    : repeatMode === "all"
+                      ? "Repeat all - tap for repeat one"
+                      : "Repeat one - tap to disable"
+                }
+                aria-pressed={repeatMode !== "off"}
+              >
+                {repeatMode === "one" ? (
+                  <Repeat1 className="w-5 h-5 xs:w-6 xs:h-6" />
+                ) : (
+                  <Repeat className="w-5 h-5 xs:w-6 xs:h-6" />
+                )}
+              </button>
             </div>
 
             {/* Progress Bar — below the transport controls */}
-            <div className="w-full mt-[clamp(10px,2vh,20px)]">
+            <div className="w-full mt-[clamp(6px,1.5vh,16px)]">
               <SeekBar
                 currentTime={currentTime}
                 duration={duration}
@@ -749,10 +833,11 @@ export default function PersistentPlayer() {
                 onSeek={handleSeek}
                 onScrubStart={handleScrubStart}
                 onScrubEnd={handleScrubEnd}
-                showThumb
-                className="w-full h-4 rounded-full"
+                onScrubMove={handleScrubMove}
+                growOnScrub
+                className="w-full"
               />
-              <div className="flex justify-between mt-1.5 text-xs theme-text-muted tabular-nums">
+              <div className="flex justify-between text-xs theme-text-muted tabular-nums">
                 <span>{formatDuration(currentTime)}</span>
                 <span>
                   -{formatDuration(Math.max(0, duration - currentTime))}
@@ -760,19 +845,34 @@ export default function PersistentPlayer() {
               </div>
             </div>
 
-            {/* Secondary Controls */}
-            <div className="flex items-center justify-center gap-4 mt-[clamp(4px,1vh,12px)]">
-              {/* Queue */}
+            {/* Secondary Controls — Up Next preview opens the queue */}
+            <div className="w-full flex items-center gap-2 mt-[clamp(6px,1.5vh,14px)]">
               <button
                 onClick={() => {
                   haptics.buttonPress();
                   setIsQueueOpen(true);
                 }}
-                className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                className="flex-1 min-w-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full transition-colors"
+                style={{ background: "var(--player-bar-button-hover)" }}
                 aria-label="View play queue"
                 title="Play queue"
               >
-                <ListMusic className="w-5 h-5" />
+                <ListMusic className="w-4 h-4 flex-shrink-0 theme-text-muted" />
+                {nextUp ? (
+                  <>
+                    <span className="text-xs theme-text-muted flex-shrink-0 uppercase tracking-wide">
+                      Up Next
+                    </span>
+                    <span className="text-xs font-medium theme-text-primary truncate">
+                      {nextUp.filename.replace(/\.[^/.]+$/, "")}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs theme-text-muted">
+                    Queue • {queue.length}{" "}
+                    {queue.length === 1 ? "track" : "tracks"}
+                  </span>
+                )}
               </button>
 
               {/* Fullscreen (Video only) */}

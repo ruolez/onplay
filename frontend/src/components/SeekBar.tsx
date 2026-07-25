@@ -8,7 +8,9 @@ interface SeekBarProps {
   onSeek: (time: number) => void;
   onScrubStart?: () => void;
   onScrubEnd?: () => void;
+  onScrubMove?: (time: number) => void;
   showThumb?: boolean;
+  growOnScrub?: boolean;
   className?: string;
   trackBackground?: string;
 }
@@ -22,7 +24,9 @@ export default function SeekBar({
   onSeek,
   onScrubStart,
   onScrubEnd,
+  onScrubMove,
   showThumb = false,
+  growOnScrub = false,
   className = "",
   trackBackground,
 }: SeekBarProps) {
@@ -47,7 +51,9 @@ export default function SeekBar({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (scrubTime === null || !duration) return;
-    setScrubTime(timeFromPointer(e.clientX));
+    const time = timeFromPointer(e.clientX);
+    setScrubTime(time);
+    onScrubMove?.(time);
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -96,6 +102,83 @@ export default function SeekBar({
   const progress = duration ? (displayTime / duration) * 100 : 0;
   const bufferedPercent =
     duration && bufferedEnd ? Math.min(100, (bufferedEnd / duration) * 100) : 0;
+  const isScrubbing = scrubTime !== null;
+
+  // Modern rest state: thin track and hidden thumb until touched/hovered,
+  // then the track grows and the thumb + time bubble appear
+  if (growOnScrub) {
+    return (
+      <div
+        ref={trackRef}
+        role="slider"
+        tabIndex={0}
+        aria-label="Seek position"
+        aria-valuemin={0}
+        aria-valuemax={Math.round(duration) || 0}
+        aria-valuenow={Math.round(displayTime) || 0}
+        aria-valuetext={`${formatDuration(displayTime)} of ${formatDuration(duration)}`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onKeyDown={handleKeyDown}
+        onTouchStart={(e) => e.stopPropagation()}
+        className={`group relative flex items-center h-8 cursor-pointer touch-none ${className}`}
+      >
+        <div
+          className={`relative w-full rounded-full overflow-hidden transition-[height] duration-150 ${
+            isScrubbing ? "h-2.5" : "h-1.5"
+          }`}
+          style={{
+            background: trackBackground ?? "var(--player-progress-bg)",
+          }}
+        >
+          {bufferedPercent > 0 && (
+            <div
+              className="absolute inset-y-0 left-0 rounded-[inherit] pointer-events-none"
+              style={{
+                width: `${bufferedPercent}%`,
+                background: "rgba(255, 255, 255, 0.12)",
+              }}
+            />
+          )}
+          <div
+            className="absolute inset-y-0 left-0 rounded-[inherit] pointer-events-none"
+            style={{
+              width: `${progress}%`,
+              background: "var(--btn-primary-bg)",
+            }}
+          />
+        </div>
+        <div
+          className={`absolute top-1/2 w-3.5 h-3.5 rounded-full shadow-md pointer-events-none transition-opacity duration-150 ${
+            isScrubbing
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"
+          }`}
+          style={{
+            left: `${progress}%`,
+            transform: "translate(-50%, -50%)",
+            background: "var(--btn-primary-bg)",
+            boxShadow: "0 1px 4px rgba(0, 0, 0, 0.4)",
+          }}
+        />
+        {isScrubbing && (
+          <div
+            className="absolute -top-6 px-2 py-0.5 rounded text-xs pointer-events-none whitespace-nowrap theme-text-primary"
+            style={{
+              left: `clamp(24px, ${progress}%, calc(100% - 24px))`,
+              transform: "translateX(-50%)",
+              background: "var(--dropdown-bg, rgba(0, 0, 0, 0.85))",
+              border: "1px solid var(--card-border)",
+            }}
+          >
+            {formatDuration(scrubTime!)}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

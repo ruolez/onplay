@@ -51,6 +51,10 @@ interface PlayerContextType {
   isShuffled: boolean;
   toggleShuffle: () => void;
 
+  // Repeat
+  repeatMode: RepeatMode;
+  cycleRepeatMode: () => void;
+
   // Actions
   openPlayer: (mediaId: string, queueItems?: Media[]) => void;
   closePlayer: () => void;
@@ -89,7 +93,10 @@ interface PlayerPersistedState {
 
 const PLAYER_STATE_KEY = "player-state";
 const SHUFFLE_STORAGE_KEY = "player-shuffle";
+const REPEAT_STORAGE_KEY = "player-repeat";
 const MAX_STATE_AGE_MS = 60 * 60 * 1000; // 1 hour
+
+export type RepeatMode = "off" | "all" | "one";
 
 function shuffleWithCurrentFirst(
   items: Media[],
@@ -183,6 +190,35 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   });
   const shuffledQueueRef = useRef<Media[] | null>(null);
+
+  // Repeat state (persisted to localStorage)
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(() => {
+    try {
+      const saved = localStorage.getItem(REPEAT_STORAGE_KEY);
+      return saved === "all" || saved === "one" ? saved : "off";
+    } catch {
+      return "off";
+    }
+  });
+
+  const cycleRepeatMode = useCallback(() => {
+    setRepeatMode((prev) => {
+      const next: RepeatMode =
+        prev === "off" ? "all" : prev === "all" ? "one" : "off";
+      try {
+        localStorage.setItem(REPEAT_STORAGE_KEY, next);
+      } catch {
+        // ignore localStorage errors (private mode etc.)
+      }
+      return next;
+    });
+  }, []);
+
+  // Refs for use inside player event callbacks (avoids stale closures)
+  const repeatModeRef = useRef(repeatMode);
+  useEffect(() => {
+    repeatModeRef.current = repeatMode;
+  }, [repeatMode]);
 
   // Track pending restore state (for seeking after track loads)
   const pendingRestoreRef = useRef<{
@@ -504,6 +540,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     queueRef.current = queue;
   }, [queue]);
+  const currentIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   // Subscribe to Gallery state changes (live queue updates)
   useEffect(() => {
@@ -694,6 +734,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [send]);
 
   const handlePlaybackEnded = useCallback(() => {
+    const mode = repeatModeRef.current;
+
+    // Repeat one: restart the current track without touching the queue
+    if (mode === "one") {
+      playerRef.current?.seek(0);
+      playerRef.current?.getPlayer()?.play();
+      send({ type: "SEEK", time: 0 });
+      return;
+    }
+
+    // Repeat all: wrap to the first track when the queue runs out
+    const q = queueRef.current;
+    const idx = currentIndexRef.current;
+    const atEnd = !(idx >= 0 && idx < q.length - 1);
+    if (mode === "all" && atEnd && q.length > 0) {
+      send({ type: "LOAD_TRACK", mediaId: q[0].id, queueItems: q });
+      return;
+    }
+
     send({ type: "PLAYBACK_ENDED" });
   }, [send]);
 
@@ -753,6 +812,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setShowWakeLockInfoModal,
         isShuffled,
         toggleShuffle,
+        repeatMode,
+        cycleRepeatMode,
         openPlayer,
         closePlayer,
         togglePlayPause,
