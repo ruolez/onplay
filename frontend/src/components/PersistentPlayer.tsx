@@ -1,4 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { usePlayer } from "../contexts/PlayerContext";
 import DualVideoPlayer from "./DualVideoPlayer";
 import QueuePanel from "./QueuePanel";
@@ -95,9 +101,28 @@ export default function PersistentPlayer() {
   const haptics = useHaptics();
   const miniPlayerRef = useRef<HTMLDivElement>(null);
   const expandedPlayerRef = useRef<HTMLDivElement>(null);
+  const artZoneRef = useRef<HTMLDivElement>(null);
 
   // Publish the mini bar height so App can pad page content above it
   useHeightVar(miniPlayerRef, "--mini-player-height", !!currentMedia);
+
+  // Square artwork = min(zone width, zone height), published as a CSS var so
+  // the art tracks the dynamic viewport (mobile address bar show/hide)
+  useLayoutEffect(() => {
+    const el = artZoneRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const side = Math.floor(
+        Math.max(
+          0,
+          Math.min(entry.contentRect.width, entry.contentRect.height),
+        ),
+      );
+      el.style.setProperty("--art-size", `${side}px`);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [!!currentMedia]);
 
   // Swipe gesture for mini player (left/right for tracks, up to expand)
   const miniPlayerGestures = useSwipeGesture({
@@ -546,231 +571,254 @@ export default function PersistentPlayer() {
           </div>
         </div>
 
-        {/* Scrollable Content */}
+        {/* Content — artwork zone is the single flexible region; the bottom
+            stack keeps its natural height anchored above the safe area */}
         <div
-          className="relative flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center px-6"
+          className="relative flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col items-center px-6"
           style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
         >
-          {/* Album Art / Video Thumbnail — height-capped so the controls
-              below always fit on short screens (e.g. iPhone SE) */}
+          {/* Album Art / Video Thumbnail — square side measured from the
+              available zone via ResizeObserver (--art-size) */}
           <div
-            className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-2xl mt-2 flex-shrink-0"
-            style={{
-              maxWidth: "clamp(140px, calc(100svh - 380px), 340px)",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-            }}
+            ref={artZoneRef}
+            className="relative flex-1 min-h-[96px] w-full flex items-center justify-center py-2"
           >
-            {currentMedia.thumbnail_path ? (
-              <img
-                src={currentMedia.thumbnail_path}
-                alt={currentMedia.filename}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center"
-                style={{
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 55%, #1a1a2e) 0%, color-mix(in srgb, var(--accent-secondary, var(--accent-primary)) 45%, #16162a) 100%)",
-                }}
-              >
-                {isAudio ? (
-                  <Music className="w-20 h-20 text-white/80" />
-                ) : (
-                  <Video className="w-20 h-20 text-white/80" />
-                )}
+            <div
+              className="relative rounded-2xl overflow-hidden md:max-w-[400px] md:max-h-[400px]"
+              style={{
+                width: "var(--art-size, 280px)",
+                height: "var(--art-size, 280px)",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              {currentMedia.thumbnail_path ? (
+                <img
+                  src={currentMedia.thumbnail_path}
+                  alt={currentMedia.filename}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full h-full flex items-center justify-center"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, color-mix(in srgb, var(--accent-primary) 55%, #1a1a2e) 0%, color-mix(in srgb, var(--accent-secondary, var(--accent-primary)) 45%, #16162a) 100%)",
+                  }}
+                >
+                  {isAudio ? (
+                    <Music className="w-20 h-20 text-white/80" />
+                  ) : (
+                    <Video className="w-20 h-20 text-white/80" />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Swipe Hint - shown once on first expand, then never again */}
+            {showSwipeHint && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none px-3 py-1.5 rounded-full bg-black/45 backdrop-blur-sm whitespace-nowrap">
+                <p className="text-[11px] text-white/80">
+                  Swipe down to minimize • left/right to change tracks
+                </p>
               </div>
             )}
           </div>
 
-          {/* Track Info */}
-          <div className="w-full max-w-[340px] mt-4 text-center flex-shrink-0">
-            <h2 className="text-lg font-bold theme-text-primary truncate">
-              {currentMedia.filename.replace(/\.[^/.]+$/, "")}
-            </h2>
-            <p className="text-sm theme-text-muted mt-1 flex items-center justify-center gap-2">
-              {isAudio ? (
-                <Music className="w-4 h-4" />
-              ) : (
-                <Video className="w-4 h-4" />
-              )}
-              {isAudio ? "Audio" : "Video"}
-              {queuePosition && (
-                <span className="ml-2">
-                  • {queuePosition.current} of {queuePosition.total}
-                </span>
-              )}
-            </p>
-            {errorBanner && <div className="mt-3">{errorBanner}</div>}
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full max-w-[340px] mt-5 flex-shrink-0">
-            <SeekBar
-              currentTime={currentTime}
-              duration={duration}
-              bufferedEnd={bufferedEnd}
-              onSeek={handleSeek}
-              onScrubStart={handleScrubStart}
-              onScrubEnd={handleScrubEnd}
-              showThumb
-              className="w-full h-4 rounded-full"
-            />
-            <div className="flex justify-between mt-1.5 text-xs theme-text-muted">
-              <span>{formatDuration(currentTime)}</span>
-              <span>
-                -{formatDuration(Math.max(0, duration - currentTime))}
-              </span>
+          {/* Bottom stack — info, controls, progress, secondary */}
+          <div className="w-full max-w-[340px] md:max-w-[400px] flex-shrink-0 flex flex-col items-center">
+            {/* Track Info */}
+            <div className="w-full text-center">
+              <h2 className="text-lg font-bold theme-text-primary truncate">
+                {currentMedia.filename.replace(/\.[^/.]+$/, "")}
+              </h2>
+              <p className="text-sm theme-text-muted mt-0.5 flex items-center justify-center gap-2">
+                {isAudio ? (
+                  <Music className="w-4 h-4" />
+                ) : (
+                  <Video className="w-4 h-4" />
+                )}
+                {isAudio ? "Audio" : "Video"}
+                {queuePosition && (
+                  <span className="ml-2">
+                    • {queuePosition.current} of {queuePosition.total}
+                  </span>
+                )}
+              </p>
+              {errorBanner && <div className="mt-2">{errorBanner}</div>}
             </div>
-          </div>
 
-          {/* Main Controls */}
-          <div className="flex items-center justify-center gap-4 xs:gap-5 mt-5 flex-shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                haptics.buttonPress();
-                toggleShuffle();
-              }}
-              disabled={queue.length < 2}
-              className={`p-3 rounded-full transition-colors ${
-                queue.length < 2
-                  ? "theme-text-muted opacity-30 cursor-not-allowed"
-                  : isShuffled
-                    ? ""
-                    : "theme-text-primary"
-              }`}
-              style={
-                isShuffled && queue.length >= 2
-                  ? {
-                      background: "var(--btn-primary-bg)",
-                      color: "var(--btn-primary-text)",
-                    }
-                  : {}
-              }
-              title={isShuffled ? "Shuffle on" : "Shuffle"}
-              aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
-              aria-pressed={isShuffled}
-            >
-              <Shuffle className="w-6 h-6" />
-            </button>
+            {/* Main Controls — compact below the xs breakpoint so the row
+                never overflows narrow phones */}
+            <div className="flex items-center justify-center gap-2 xs:gap-4 mt-[clamp(8px,2vh,20px)]">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  haptics.buttonPress();
+                  toggleShuffle();
+                }}
+                disabled={queue.length < 2}
+                className={`p-2.5 xs:p-3 rounded-full transition-colors ${
+                  queue.length < 2
+                    ? "theme-text-muted opacity-30 cursor-not-allowed"
+                    : isShuffled
+                      ? ""
+                      : "theme-text-primary"
+                }`}
+                style={
+                  isShuffled && queue.length >= 2
+                    ? {
+                        background: "var(--btn-primary-bg)",
+                        color: "var(--btn-primary-text)",
+                      }
+                    : {}
+                }
+                title={isShuffled ? "Shuffle on" : "Shuffle"}
+                aria-label={isShuffled ? "Disable shuffle" : "Enable shuffle"}
+                aria-pressed={isShuffled}
+              >
+                <Shuffle className="w-5 h-5 xs:w-6 xs:h-6" />
+              </button>
 
-            <button
-              onClick={handlePlayPrevious}
-              disabled={!hasPrevious}
-              className={`p-4 rounded-full transition-all theme-text-primary ${
-                !hasPrevious && "opacity-30 cursor-not-allowed"
-              }`}
-              aria-label="Previous track"
-            >
-              <SkipBack className="w-8 h-8" fill="currentColor" />
-            </button>
-
-            <button
-              onClick={handleTogglePlayPause}
-              className="p-5 rounded-full transition-all hover:scale-105 active:scale-95"
-              style={{
-                background: "var(--btn-primary-bg)",
-                color: "var(--btn-primary-text)",
-              }}
-              aria-label={
-                isBuffering ? "Buffering" : isPlaying ? "Pause" : "Play"
-              }
-            >
-              {isBuffering ? (
-                <Loader2 className="w-10 h-10 animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="w-10 h-10" fill="currentColor" />
-              ) : (
-                <Play
-                  className="w-10 h-10 translate-x-[2px]"
+              <button
+                onClick={handlePlayPrevious}
+                disabled={!hasPrevious}
+                className={`p-3 xs:p-4 rounded-full transition-all theme-text-primary ${
+                  !hasPrevious && "opacity-30 cursor-not-allowed"
+                }`}
+                aria-label="Previous track"
+              >
+                <SkipBack
+                  className="w-7 h-7 xs:w-8 xs:h-8"
                   fill="currentColor"
                 />
-              )}
-            </button>
-
-            <button
-              onClick={handlePlayNext}
-              disabled={!hasNext}
-              className={`p-4 rounded-full transition-all theme-text-primary ${
-                !hasNext && "opacity-30 cursor-not-allowed"
-              }`}
-              aria-label="Next track"
-            >
-              <SkipForward className="w-8 h-8" fill="currentColor" />
-            </button>
-
-            {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
-            <div className="w-12 h-12 flex-shrink-0" aria-hidden="true" />
-          </div>
-
-          {/* Secondary Controls */}
-          <div className="flex items-center justify-center gap-4 mt-4 flex-shrink-0">
-            {/* Queue */}
-            <button
-              onClick={() => {
-                haptics.buttonPress();
-                setIsQueueOpen(true);
-              }}
-              className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
-              aria-label="View play queue"
-              title="Play queue"
-            >
-              <ListMusic className="w-5 h-5" />
-            </button>
-
-            {/* Fullscreen (Video only) */}
-            {!isAudio && (
-              <button
-                onClick={toggleFullscreen}
-                className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
-                aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              >
-                {isFullscreen ? (
-                  <Minimize className="w-5 h-5" />
-                ) : (
-                  <Maximize className="w-5 h-5" />
-                )}
               </button>
-            )}
 
-            {/* Volume (Desktop) */}
-            <div className="hidden md:flex items-center gap-2">
               <button
-                onClick={toggleMute}
-                className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
-                aria-label={isMuted ? "Unmute" : "Mute"}
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="w-5 h-5" />
-                ) : (
-                  <Volume2 className="w-5 h-5" />
-                )}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleVolumeChange}
-                aria-label="Volume"
-                className="w-20 h-1 rounded-lg appearance-none cursor-pointer"
+                onClick={handleTogglePlayPause}
+                className="p-4 xs:p-5 rounded-full transition-all hover:scale-105 active:scale-95"
                 style={{
-                  background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, var(--player-progress-bg) ${volume * 100}%, var(--player-progress-bg) 100%)`,
+                  background: "var(--btn-primary-bg)",
+                  color: "var(--btn-primary-text)",
                 }}
+                aria-label={
+                  isBuffering ? "Buffering" : isPlaying ? "Pause" : "Play"
+                }
+              >
+                {isBuffering ? (
+                  <Loader2 className="w-9 h-9 xs:w-10 xs:h-10 animate-spin" />
+                ) : isPlaying ? (
+                  <Pause
+                    className="w-9 h-9 xs:w-10 xs:h-10"
+                    fill="currentColor"
+                  />
+                ) : (
+                  <Play
+                    className="w-9 h-9 xs:w-10 xs:h-10 translate-x-[2px]"
+                    fill="currentColor"
+                  />
+                )}
+              </button>
+
+              <button
+                onClick={handlePlayNext}
+                disabled={!hasNext}
+                className={`p-3 xs:p-4 rounded-full transition-all theme-text-primary ${
+                  !hasNext && "opacity-30 cursor-not-allowed"
+                }`}
+                aria-label="Next track"
+              >
+                <SkipForward
+                  className="w-7 h-7 xs:w-8 xs:h-8"
+                  fill="currentColor"
+                />
+              </button>
+
+              {/* Invisible spacer mirrors Shuffle button to keep Play centered */}
+              <div
+                className="w-10 h-10 xs:w-12 xs:h-12 flex-shrink-0"
+                aria-hidden="true"
               />
             </div>
-          </div>
 
-          {/* Swipe Hint - shown once on first expand, then never again */}
-          {showSwipeHint && (
-            <div className="text-center mt-4 pb-4 flex-shrink-0">
-              <p className="text-xs theme-text-muted">
-                Swipe down to minimize • Swipe left/right to change tracks
-              </p>
+            {/* Progress Bar — below the transport controls */}
+            <div className="w-full mt-[clamp(10px,2vh,20px)]">
+              <SeekBar
+                currentTime={currentTime}
+                duration={duration}
+                bufferedEnd={bufferedEnd}
+                onSeek={handleSeek}
+                onScrubStart={handleScrubStart}
+                onScrubEnd={handleScrubEnd}
+                showThumb
+                className="w-full h-4 rounded-full"
+              />
+              <div className="flex justify-between mt-1.5 text-xs theme-text-muted tabular-nums">
+                <span>{formatDuration(currentTime)}</span>
+                <span>
+                  -{formatDuration(Math.max(0, duration - currentTime))}
+                </span>
+              </div>
             </div>
-          )}
+
+            {/* Secondary Controls */}
+            <div className="flex items-center justify-center gap-4 mt-[clamp(4px,1vh,12px)]">
+              {/* Queue */}
+              <button
+                onClick={() => {
+                  haptics.buttonPress();
+                  setIsQueueOpen(true);
+                }}
+                className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                aria-label="View play queue"
+                title="Play queue"
+              >
+                <ListMusic className="w-5 h-5" />
+              </button>
+
+              {/* Fullscreen (Video only) */}
+              {!isAudio && (
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                  aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-5 h-5" />
+                  ) : (
+                    <Maximize className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+
+              {/* Volume (Desktop) */}
+              <div className="hidden md:flex items-center gap-2">
+                <button
+                  onClick={toggleMute}
+                  className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                  aria-label={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="w-5 h-5" />
+                  ) : (
+                    <Volume2 className="w-5 h-5" />
+                  )}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  aria-label="Volume"
+                  className="w-20 h-1 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, var(--btn-primary-bg) 0%, var(--btn-primary-bg) ${volume * 100}%, var(--player-progress-bg) ${volume * 100}%, var(--player-progress-bg) 100%)`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

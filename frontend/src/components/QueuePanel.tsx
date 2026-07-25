@@ -83,6 +83,7 @@ export default function QueuePanel({
         aria-label="Play queue"
         className="fixed inset-x-0 bottom-0 z-[111] max-h-[70vh] rounded-t-2xl overflow-hidden flex flex-col"
         style={{
+          maxHeight: "70dvh",
           background: "var(--card-bg)",
           borderTop: "1px solid var(--card-border)",
           transform: dragY ? `translateY(${dragY}px)` : undefined,
