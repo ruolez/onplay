@@ -4,7 +4,7 @@ import { Headphones, Monitor, Smartphone, Tablet } from "lucide-react";
 import SegmentedControl from "../../components/SegmentedControl";
 import StatsOverview from "./StatsOverview";
 import { analyticsApi, type ListenerSummary } from "../../lib/api";
-import { formatDate } from "../../lib/utils";
+import { formatDate, formatLocation } from "../../lib/utils";
 
 type AnalyticsTab = "overview" | "listeners";
 
@@ -151,15 +151,18 @@ function ListenersTab() {
                       </span>
                     </span>
                   </td>
-                  <td className="px-4 py-3 theme-text-secondary">
-                    <span
-                      className="truncate inline-block max-w-[180px] align-bottom"
-                      title={l.ip_address ?? undefined}
+                  <td className="px-4 py-3">
+                    <div
+                      className="flex flex-col"
+                      title={l.hostname ?? undefined}
                     >
-                      {l.hostname && l.hostname !== l.ip_address
-                        ? l.hostname
-                        : (l.ip_address ?? "—")}
-                    </span>
+                      <span className="theme-text-secondary">
+                        {formatLocation(l.city, l.country) ?? "—"}
+                      </span>
+                      <span className="text-xs theme-text-muted font-mono">
+                        {l.ip_address ?? ""}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 theme-text-secondary">
                     {l.total_plays}

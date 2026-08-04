@@ -184,6 +184,8 @@ export interface ListenerSummary {
   listener_id: string;
   ip_address: string | null;
   hostname: string | null;
+  city: string | null;
+  country: string | null;
   device: string | null;
   browser: string | null;
   os: string | null;

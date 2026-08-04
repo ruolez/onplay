@@ -13,7 +13,7 @@ import {
   analyticsApi,
   type ListenerDetail as ListenerDetailData,
 } from "../../lib/api";
-import { formatDate } from "../../lib/utils";
+import { formatDate, formatLocation } from "../../lib/utils";
 import { formatRelative } from "./Analytics";
 
 const EVENT_COLORS: Record<string, string> = {
@@ -99,9 +99,15 @@ export default function ListenerDetail() {
           {listener.ip_address && (
             <>
               {" · "}
-              {listener.hostname && listener.hostname !== listener.ip_address
-                ? `${listener.hostname} (${listener.ip_address})`
-                : listener.ip_address}
+              {(() => {
+                const location = formatLocation(
+                  listener.city,
+                  listener.country,
+                );
+                return location
+                  ? `${location} (${listener.ip_address})`
+                  : listener.ip_address;
+              })()}
             </>
           )}
         </p>

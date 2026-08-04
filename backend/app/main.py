@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from .database import engine, Base, SessionLocal
 from .auth import require_admin, seed_admin
 from .migrations import run_startup_migrations
+from .geoip import ensure_db as ensure_geoip_db
 from .api import auth, upload, media, analytics, tags
 import os
 import json
@@ -14,6 +15,7 @@ from typing import Dict, Set
 Base.metadata.create_all(bind=engine)
 run_startup_migrations(engine)
 seed_admin(SessionLocal)
+ensure_geoip_db()
 
 app = FastAPI(
     title="OnPlay API",

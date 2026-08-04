@@ -342,6 +342,7 @@ services:
     volumes:
       - ./backend:/app
       - ./media:/media
+      - geoip_data:/geoip
     depends_on:
       - postgres
       - redis
@@ -409,6 +410,7 @@ volumes:
   postgres_data:
   redis_data:
   nginx_logs:
+  geoip_data:
 EOF
 
     print_success "Production docker-compose configuration created"

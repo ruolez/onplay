@@ -4,6 +4,7 @@ from sqlalchemy import func, desc, case
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ..auth import require_admin
 from ..client_info import get_client_ip, parse_user_agent
+from ..geoip import get_location
 from ..database import get_db
 from ..models import Analytics, Listener, Media, BandwidthStats
 from pydantic import BaseModel
@@ -387,26 +388,30 @@ async def list_listeners(
         ).group_by(Analytics.listener_id).all()
         unique_media = {listener_id: count for listener_id, count in rows}
 
+    items = []
+    for l in listeners:
+        city, country = get_location(l.ip_address)
+        items.append({
+            "listener_id": l.id,
+            "ip_address": l.ip_address,
+            "hostname": get_hostname(l.ip_address) if l.ip_address else None,
+            "city": city,
+            "country": country,
+            "device": l.device,
+            "browser": l.browser,
+            "os": l.os,
+            "first_seen": l.first_seen.isoformat() if l.first_seen else None,
+            "last_seen": l.last_seen.isoformat() if l.last_seen else None,
+            "total_events": l.total_events,
+            "total_plays": l.total_plays,
+            "unique_media_count": unique_media.get(l.id, 0),
+        })
+
     return {
         "total": total,
         "skip": skip,
         "limit": limit,
-        "items": [
-            {
-                "listener_id": l.id,
-                "ip_address": l.ip_address,
-                "hostname": get_hostname(l.ip_address) if l.ip_address else None,
-                "device": l.device,
-                "browser": l.browser,
-                "os": l.os,
-                "first_seen": l.first_seen.isoformat() if l.first_seen else None,
-                "last_seen": l.last_seen.isoformat() if l.last_seen else None,
-                "total_events": l.total_events,
-                "total_plays": l.total_plays,
-                "unique_media_count": unique_media.get(l.id, 0),
-            }
-            for l in listeners
-        ]
+        "items": items,
     }
 
 @router.get("/analytics/listeners/{listener_id}", dependencies=[Depends(require_admin)])
@@ -435,10 +440,14 @@ async def get_listener_detail(listener_id: str, db: Session = Depends(get_db)):
         Analytics.listener_id == listener_id
     ).order_by(desc(Analytics.timestamp)).limit(100).all()
 
+    city, country = get_location(listener.ip_address)
+
     return {
         "listener_id": listener.id,
         "ip_address": listener.ip_address,
         "hostname": get_hostname(listener.ip_address) if listener.ip_address else None,
+        "city": city,
+        "country": country,
         "device": listener.device,
         "browser": listener.browser,
         "os": listener.os,
