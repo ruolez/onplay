@@ -315,7 +315,9 @@ services:
   nginx:
     build: ./nginx
     ports:
-      - "8080:80"
+      # Loopback only: all traffic must come through the host nginx edge,
+      # which is what makes the X-Forwarded-For it sets trustworthy.
+      - "127.0.0.1:8080:80"
     volumes:
       - ./media:/var/www/media:ro
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
@@ -438,6 +440,17 @@ http {
 
     access_log /var/log/nginx/access.log main;
 
+    # Requests arrive via the host nginx over the Docker bridge, so
+    # $remote_addr would be the bridge gateway for every request. Recover
+    # the real client IP from the X-Forwarded-For the host nginx sets —
+    # this fixes both the bandwidth log and the XFF hop appended to the
+    # API. Only private (RFC1918) source addresses are trusted.
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    set_real_ip_from 10.0.0.0/8;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
     sendfile on;
     tcp_nopush on;
     tcp_nodelay on;
@@ -554,21 +567,25 @@ server {
         root /var/www/certbot;
     }
 
-    # Proxy settings
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
     proxy_buffering off;
     client_max_body_size 5G;
 
-    # Proxy to Docker nginx container
+    # Proxy to Docker nginx container.
+    # NOTE: proxy_set_header is NOT inherited from the server block once a
+    # location defines any header of its own, so every forwarding header
+    # must live inside the location. X-Forwarded-For is set fresh from
+    # \$remote_addr (not appended) — this is the trusted internet-facing
+    # edge, so clients can never spoof their reported IP.
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     # Health check
@@ -631,21 +648,25 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
 
-    # Proxy settings
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
     proxy_buffering off;
     client_max_body_size 5G;
 
-    # Proxy to Docker nginx container
+    # Proxy to Docker nginx container.
+    # NOTE: proxy_set_header is NOT inherited from the server block once a
+    # location defines any header of its own, so every forwarding header
+    # must live inside the location. X-Forwarded-For is set fresh from
+    # \$remote_addr (not appended) — this is the trusted internet-facing
+    # edge, so clients can never spoof their reported IP.
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
     # Health check
@@ -898,6 +919,18 @@ update_installation() {
     create_production_compose
     create_production_nginx_conf
     setup_log_rotation
+
+    # Refresh the host nginx reverse-proxy config too — older versions lost
+    # X-Forwarded-For/X-Real-IP because location-level proxy_set_header
+    # cancels the server-level ones, so every client appeared as the server.
+    if [ -n "${DOMAIN:-}" ]; then
+        if [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+            update_nginx_ssl_config
+        else
+            create_system_nginx_conf
+            nginx -t && systemctl reload nginx
+        fi
+    fi
     print_success "Production configuration refreshed"
 
     # Stop containers

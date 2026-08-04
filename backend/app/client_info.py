@@ -4,8 +4,11 @@ from fastapi import Request
 
 
 def get_client_ip(request: Request) -> Optional[str]:
-    """Real client IP behind nginx. Both dev (1 hop) and prod (2 hops) append
-    via $proxy_add_x_forwarded_for, so the leftmost entry is the browser."""
+    """Real client IP behind nginx. The prod edge (host nginx) sets
+    X-Forwarded-For fresh from $remote_addr — clients can't spoof it — and
+    the Docker nginx recovers it via the realip module before appending its
+    own hop, so the leftmost entry is always the browser. Dev (single nginx)
+    appends via $proxy_add_x_forwarded_for; leftmost is the browser there too."""
     xff = request.headers.get("x-forwarded-for")
     if xff:
         return xff.split(",")[0].strip()
