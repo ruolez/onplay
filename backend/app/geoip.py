@@ -101,29 +101,34 @@ def _get_reader() -> Optional[maxminddb.Reader]:
 
 
 @lru_cache(maxsize=4096)
-def _lookup(ip: str) -> Tuple[Optional[str], Optional[str]]:
+def _lookup(ip: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     reader = _reader
     if reader is None:
-        return None, None
+        return None, None, None
     try:
         record = reader.get(ip) or {}
     except (ValueError, maxminddb.InvalidDatabaseError):
-        return None, None
+        return None, None, None
     city = (record.get("city") or {}).get("names", {}).get("en")
+    subdivisions = record.get("subdivisions") or []
+    region = (subdivisions[0].get("names", {}).get("en")
+              if subdivisions else None)
     country = (record.get("country") or {}).get("iso_code")
-    return city, country
+    return city, region, country
 
 
-def get_location(ip: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
-    """(city, country_iso_code) for a public IP; (None, None) when unknown."""
+def get_location(
+    ip: Optional[str],
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """(city, region, country_iso_code) for a public IP; Nones when unknown."""
     if not ip:
-        return None, None
+        return None, None, None
     try:
         if not ip_address(ip).is_global:
-            return None, None
+            return None, None, None
     except ValueError:
-        return None, None
+        return None, None, None
     if _get_reader() is None:
         # Don't poison the cache while the database is still downloading.
-        return None, None
+        return None, None, None
     return _lookup(ip)

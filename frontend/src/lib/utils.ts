@@ -52,6 +52,7 @@ const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 export function formatLocation(
   city: string | null,
+  region: string | null,
   country: string | null,
 ): string | null {
   let countryName: string | null = null;
@@ -62,6 +63,6 @@ export function formatLocation(
       countryName = country;
     }
   }
-  if (city && countryName) return `${city}, ${countryName}`;
-  return countryName ?? city;
+  const parts = [city, region, countryName].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
 }

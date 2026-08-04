@@ -390,12 +390,13 @@ async def list_listeners(
 
     items = []
     for l in listeners:
-        city, country = get_location(l.ip_address)
+        city, region, country = get_location(l.ip_address)
         items.append({
             "listener_id": l.id,
             "ip_address": l.ip_address,
             "hostname": get_hostname(l.ip_address) if l.ip_address else None,
             "city": city,
+            "region": region,
             "country": country,
             "device": l.device,
             "browser": l.browser,
@@ -440,13 +441,14 @@ async def get_listener_detail(listener_id: str, db: Session = Depends(get_db)):
         Analytics.listener_id == listener_id
     ).order_by(desc(Analytics.timestamp)).limit(100).all()
 
-    city, country = get_location(listener.ip_address)
+    city, region, country = get_location(listener.ip_address)
 
     return {
         "listener_id": listener.id,
         "ip_address": listener.ip_address,
         "hostname": get_hostname(listener.ip_address) if listener.ip_address else None,
         "city": city,
+        "region": region,
         "country": country,
         "device": listener.device,
         "browser": listener.browser,

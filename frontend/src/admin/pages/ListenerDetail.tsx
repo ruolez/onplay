@@ -102,6 +102,7 @@ export default function ListenerDetail() {
               {(() => {
                 const location = formatLocation(
                   listener.city,
+                  listener.region,
                   listener.country,
                 );
                 return location

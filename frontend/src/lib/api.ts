@@ -185,6 +185,7 @@ export interface ListenerSummary {
   ip_address: string | null;
   hostname: string | null;
   city: string | null;
+  region: string | null;
   country: string | null;
   device: string | null;
   browser: string | null;

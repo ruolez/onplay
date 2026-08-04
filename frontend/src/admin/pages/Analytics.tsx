@@ -157,7 +157,7 @@ function ListenersTab() {
                       title={l.hostname ?? undefined}
                     >
                       <span className="theme-text-secondary">
-                        {formatLocation(l.city, l.country) ?? "—"}
+                        {formatLocation(l.city, l.region, l.country) ?? "—"}
                       </span>
                       <span className="text-xs theme-text-muted font-mono">
                         {l.ip_address ?? ""}
