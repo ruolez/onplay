@@ -16,6 +16,7 @@ import ThemeSelector from "./components/ThemeSelector";
 import PersistentPlayer from "./components/PersistentPlayer";
 import MobileBottomNav from "./components/MobileBottomNav";
 import { useTheme } from "./contexts/ThemeContext";
+import { usePlayer } from "./contexts/PlayerContext";
 import { themes, applyTheme } from "./lib/theme";
 import { useServiceWorkerUpdate } from "./hooks/useServiceWorkerUpdate";
 import { useInstallPrompt } from "./hooks/useInstallPrompt";
@@ -404,6 +405,23 @@ function PublicLayout() {
   );
 }
 
+// The admin section is player-free: entering it closes any active playback
+// and the bottom bar is never rendered there.
+function PlayerChrome() {
+  const location = useLocation();
+  const { currentMedia, closePlayer } = usePlayer();
+  const isAdmin = location.pathname.startsWith("/admin");
+
+  useEffect(() => {
+    if (isAdmin && currentMedia) {
+      closePlayer();
+    }
+  }, [isAdmin, currentMedia, closePlayer]);
+
+  if (isAdmin) return null;
+  return <PersistentPlayer />;
+}
+
 function App() {
   return (
     <Router>
@@ -430,8 +448,8 @@ function App() {
         />
       </Routes>
 
-      {/* Persistent Player */}
-      <PersistentPlayer />
+      {/* Persistent Player (hidden and closed on admin routes) */}
+      <PlayerChrome />
     </Router>
   );
 }

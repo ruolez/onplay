@@ -316,6 +316,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Only restore if player is idle
     if (machineState !== "idle") return;
 
+    // Admin is player-free — don't resurrect playback on admin page loads
+    if (window.location.pathname.startsWith("/admin")) return;
+
     const saved = localStorage.getItem(PLAYER_STATE_KEY);
     if (!saved) return;
 

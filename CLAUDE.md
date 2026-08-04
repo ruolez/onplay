@@ -136,7 +136,7 @@ All management lives behind admin authentication — the public site is a pure p
 - **Lazy chunk**: Everything under `src/admin/` loads via `React.lazy` from `App.tsx` — public visitors never download admin code.
 - **Layout**: Desktop fixed sidebar / mobile top bar + slide-over drawer (`src/admin/AdminLayout.tsx`), themed entirely with `.theme-*` utilities so both themes work.
 - **Pages**: Dashboard (stat cards + recent uploads), Media (paginated table with rename/tags/thumbnail/delete via modals), Upload (moved from public), Analytics (Overview tab = old Stats page; Listeners tab = unique listeners), Tags (delete unused), Settings (change password, logout).
-- **Persistent player** keeps playing over the admin (layout pads for `--mini-player-height`).
+- **Admin is player-free**: entering any `/admin` route closes active playback and the bottom bar never renders there (`PlayerChrome` in `App.tsx`); state restore is also skipped on admin page loads. Row-action dropdowns in Media render as fixed-position portals to `document.body` — in-card absolute positioning gets clipped by the table's scroll container and painted under fixed bars (`theme-card`'s `backdrop-filter` creates a stacking context that traps any in-card z-index).
 - **Cache coherence**: admin mutations call `useGallery().refreshMedia()/refreshTags()` so the public gallery stays fresh.
 
 ### Listener Tracking

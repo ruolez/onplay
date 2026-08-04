@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   Edit2,
@@ -43,12 +44,18 @@ export default function MediaLibrary() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [search, setSearch] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{
+    right: number;
+    top?: number;
+    bottom?: number;
+  } | null>(null);
   const [renameTarget, setRenameTarget] = useState<Media | null>(null);
   const [tagTarget, setTagTarget] = useState<Media | null>(null);
   const [thumbnailTarget, setThumbnailTarget] = useState<Media | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Media | null>(null);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const loadPage = useCallback(
     async (skip: number, append: boolean) => {
@@ -85,16 +92,29 @@ export default function MediaLibrary() {
     refreshMedia();
   }, [loadPage, refreshMedia]);
 
-  // Close row menu on outside click
+  // Close row menu on outside click, scroll, or resize (the dropdown is a
+  // fixed-position portal, so it must not stay anchored to a moved row)
   useEffect(() => {
     if (!menuOpenId) return;
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpenId(null);
+      const target = e.target as Node;
+      if (
+        menuRef.current?.contains(target) ||
+        dropdownRef.current?.contains(target)
+      ) {
+        return;
       }
+      setMenuOpenId(null);
     };
+    const close = () => setMenuOpenId(null);
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [menuOpenId]);
 
   const filtered = useMemo(() => {
@@ -142,67 +162,113 @@ export default function MediaLibrary() {
       ref={menuOpenId === media.id ? menuRef : undefined}
     >
       <button
-        onClick={() => setMenuOpenId(menuOpenId === media.id ? null : media.id)}
+        onClick={(e) => {
+          if (menuOpenId === media.id) {
+            setMenuOpenId(null);
+            return;
+          }
+          // The dropdown renders as a fixed-position portal so it can't be
+          // clipped by the table's scroll container or painted under the
+          // persistent player bar (theme-card's backdrop-filter traps any
+          // in-card z-index below it). Flip upward when the space between the
+          // trigger and the player bar can't fit the menu.
+          const rect = e.currentTarget.getBoundingClientRect();
+          const playerBarHeight =
+            parseFloat(
+              getComputedStyle(document.documentElement).getPropertyValue(
+                "--mini-player-height",
+              ),
+            ) || 0;
+          const opensUp =
+            window.innerHeight - playerBarHeight - rect.bottom < 220;
+          setMenuPos({
+            right: window.innerWidth - rect.right,
+            ...(opensUp
+              ? { bottom: window.innerHeight - rect.top + 4 }
+              : { top: rect.bottom + 4 }),
+          });
+          setMenuOpenId(media.id);
+        }}
         className="p-2 rounded-lg hover:bg-white/10 transition-colors"
         aria-label="Actions"
       >
         <MoreVertical className="w-4 h-4 theme-text-muted" />
       </button>
-      {menuOpenId === media.id && (
-        <div className="absolute right-0 top-full mt-1 w-48 theme-dropdown rounded-lg py-1 z-[100] shadow-xl">
-          <Link
-            to={`/player/${media.id}`}
-            className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full"
-            onClick={() => setMenuOpenId(null)}
-          >
-            <ExternalLink className="w-4 h-4" />
-            Open player
-          </Link>
-          <button
-            onClick={() => {
-              setRenameTarget(media);
-              setMenuOpenId(null);
-            }}
-            className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
-          >
-            <Edit2 className="w-4 h-4" />
-            Rename
-          </button>
-          <button
-            onClick={() => {
-              setTagTarget(media);
-              setMenuOpenId(null);
-            }}
-            className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
-          >
-            <TagIcon className="w-4 h-4" />
-            Edit tags
-          </button>
-          <button
-            onClick={() => {
-              setThumbnailTarget(media);
-              setMenuOpenId(null);
-            }}
-            className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
-          >
-            <Image className="w-4 h-4" />
-            Edit thumbnail
-          </button>
-          <button
-            onClick={() => {
-              setDeleteTarget(media);
-              setMenuOpenId(null);
-            }}
-            className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
-            style={{ color: "var(--status-error)" }}
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
-        </div>
-      )}
     </div>
   );
+
+  // Rendered once (not per rowMenu call — the desktop table and mobile list
+  // both render triggers for the same media, and a portal would escape the
+  // md:hidden wrapper and duplicate)
+  const menuMedia = menuOpenId
+    ? (items.find((m) => m.id === menuOpenId) ?? null)
+    : null;
+
+  const rowMenuDropdown =
+    menuMedia && menuPos
+      ? createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed w-48 theme-dropdown rounded-lg py-1 z-[130] shadow-xl"
+            style={{
+              right: menuPos.right,
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+            }}
+          >
+            <Link
+              to={`/player/${menuMedia.id}`}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full"
+              onClick={() => setMenuOpenId(null)}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open player
+            </Link>
+            <button
+              onClick={() => {
+                setRenameTarget(menuMedia);
+                setMenuOpenId(null);
+              }}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
+            >
+              <Edit2 className="w-4 h-4" />
+              Rename
+            </button>
+            <button
+              onClick={() => {
+                setTagTarget(menuMedia);
+                setMenuOpenId(null);
+              }}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
+            >
+              <TagIcon className="w-4 h-4" />
+              Edit tags
+            </button>
+            <button
+              onClick={() => {
+                setThumbnailTarget(menuMedia);
+                setMenuOpenId(null);
+              }}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
+            >
+              <Image className="w-4 h-4" />
+              Edit thumbnail
+            </button>
+            <button
+              onClick={() => {
+                setDeleteTarget(menuMedia);
+                setMenuOpenId(null);
+              }}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
+              style={{ color: "var(--status-error)" }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="space-y-4">
@@ -374,7 +440,9 @@ export default function MediaLibrary() {
             {filtered.map((media) => (
               <div
                 key={media.id}
-                className="theme-card rounded-xl p-3 flex items-center gap-3"
+                className={`theme-card rounded-xl p-3 flex items-center gap-3 relative ${
+                  menuOpenId === media.id ? "z-[110]" : ""
+                }`}
               >
                 {media.thumbnail_path ? (
                   <img
@@ -438,6 +506,8 @@ export default function MediaLibrary() {
           )}
         </>
       )}
+
+      {rowMenuDropdown}
 
       {/* Modals */}
       <RenameModal
