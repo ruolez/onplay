@@ -8,6 +8,7 @@ import {
   Music,
   MoreVertical,
   Play,
+  RefreshCw,
   Search,
   Tag as TagIcon,
   Trash2,
@@ -18,6 +19,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import RenameModal from "../components/RenameModal";
 import TagEditorModal from "../components/TagEditorModal";
 import AdminThumbnailModal from "../components/AdminThumbnailModal";
+import ReplaceMediaModal from "../components/ReplaceMediaModal";
 import { mediaApi, type Media } from "../../lib/api";
 import { formatDate, formatDuration, formatFileSize } from "../../lib/utils";
 import { useGallery } from "../../contexts/GalleryContext";
@@ -52,6 +54,7 @@ export default function MediaLibrary() {
   const [renameTarget, setRenameTarget] = useState<Media | null>(null);
   const [tagTarget, setTagTarget] = useState<Media | null>(null);
   const [thumbnailTarget, setThumbnailTarget] = useState<Media | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<Media | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Media | null>(null);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -180,7 +183,7 @@ export default function MediaLibrary() {
               ),
             ) || 0;
           const opensUp =
-            window.innerHeight - playerBarHeight - rect.bottom < 220;
+            window.innerHeight - playerBarHeight - rect.bottom < 256;
           setMenuPos({
             right: window.innerWidth - rect.right,
             ...(opensUp
@@ -253,6 +256,16 @@ export default function MediaLibrary() {
             >
               <Image className="w-4 h-4" />
               Edit thumbnail
+            </button>
+            <button
+              onClick={() => {
+                setReplaceTarget(menuMedia);
+                setMenuOpenId(null);
+              }}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Replace file
             </button>
             <button
               onClick={() => {
@@ -526,6 +539,11 @@ export default function MediaLibrary() {
       <AdminThumbnailModal
         media={thumbnailTarget}
         onClose={() => setThumbnailTarget(null)}
+        onChanged={reload}
+      />
+      <ReplaceMediaModal
+        media={replaceTarget}
+        onClose={() => setReplaceTarget(null)}
         onChanged={reload}
       />
       <ConfirmDialog

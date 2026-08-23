@@ -8,6 +8,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 import os
 import shutil
+import aiofiles
 from pathlib import Path
 from PIL import Image
 import io
@@ -268,6 +269,95 @@ async def rename_media(
     db.commit()
 
     return {"message": "Media renamed successfully", "filename": request.filename}
+
+@router.post("/media/{media_id}/replace", dependencies=[Depends(require_admin)])
+async def replace_media(
+    media_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Replace the media file in place: same id, so thumbnail, tags, and all
+    analytics survive; variants and HLS output are rebuilt from the new file."""
+    from .upload import get_media_type, MAX_FILE_SIZE
+    from ..worker.tasks import process_media
+
+    media = db.query(Media).filter(Media.id == media_id).first()
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    if media.status in (MediaStatus.UPLOADING, MediaStatus.PROCESSING):
+        raise HTTPException(status_code=409, detail="Media is currently being processed")
+
+    try:
+        new_type = get_media_type(file.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if new_type != media.media_type:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Replacement must be a {media.media_type.value} file"
+        )
+
+    previous_status = media.status
+    media.status = MediaStatus.UPLOADING
+    db.commit()
+
+    media_root = Path(os.getenv("MEDIA_ROOT", "/media"))
+    original_dir = media_root / "original"
+    original_dir.mkdir(parents=True, exist_ok=True)
+
+    file_extension = Path(file.filename).suffix
+    temp_path = original_dir / f"{media_id}{file_extension}.tmp"
+
+    # Stream to a temp file first: a failed upload must leave the existing
+    # media (and its stats) fully intact
+    try:
+        file_size = 0
+        async with aiofiles.open(temp_path, 'wb') as f:
+            while chunk := await file.read(1024 * 1024):  # 1MB chunks
+                file_size += len(chunk)
+                if file_size > MAX_FILE_SIZE:
+                    raise HTTPException(status_code=400, detail="File too large")
+                await f.write(chunk)
+    except Exception as e:
+        temp_path.unlink(missing_ok=True)
+        media.status = previous_status
+        db.commit()
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+    # New file is safely on disk - now discard the old artifacts
+    db.query(MediaVariant).filter(MediaVariant.media_id == media_id).delete()
+
+    shutil.rmtree(media_root / "hls" / media_id, ignore_errors=True)
+
+    for old_file in original_dir.glob(f"{media_id}.*"):
+        if old_file == temp_path:
+            continue
+        try:
+            os.remove(old_file)
+        except Exception as e:
+            print(f"Error deleting old original file: {e}")
+
+    original_path = original_dir / f"{media_id}{file_extension}"
+    temp_path.rename(original_path)
+
+    media.filename = file.filename
+    media.file_size = file_size
+    media.status = MediaStatus.PROCESSING
+    media.error_message = None
+    db.commit()
+
+    process_media.delay(media.id, str(original_path), regenerate_thumbnail=False)
+
+    return {
+        "id": media.id,
+        "filename": media.original_filename,
+        "status": media.status,
+        "message": "File uploaded successfully, processing started"
+    }
 
 @router.delete("/media/{media_id}", dependencies=[Depends(require_admin)])
 async def delete_media(

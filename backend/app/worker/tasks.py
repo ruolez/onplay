@@ -4,6 +4,7 @@ from ..models import Media, MediaVariant, MediaStatus, MediaType
 import ffmpeg
 import os
 import redis
+import uuid
 from pathlib import Path
 from PIL import Image
 import mutagen
@@ -18,7 +19,7 @@ _redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"
 _BANDWIDTH_POSITION_KEY = "onplay:bandwidth:last_position"
 
 @celery_app.task(bind=True, name="app.worker.tasks.process_media")
-def process_media(self, media_id: str, original_path: str):
+def process_media(self, media_id: str, original_path: str, regenerate_thumbnail: bool = True):
     db = SessionLocal()
     try:
         media = db.query(Media).filter(Media.id == media_id).first()
@@ -46,9 +47,9 @@ def process_media(self, media_id: str, original_path: str):
 
         # Process based on media type
         if media.media_type == MediaType.VIDEO:
-            process_video(media_id, original_path, db)
+            process_video(media_id, original_path, db, regenerate_thumbnail)
         elif media.media_type == MediaType.AUDIO:
-            process_audio(media_id, original_path, db)
+            process_audio(media_id, original_path, db, regenerate_thumbnail)
 
         # Update status to ready
         media.status = MediaStatus.READY
@@ -67,12 +68,16 @@ def process_media(self, media_id: str, original_path: str):
     finally:
         db.close()
 
-def process_video(media_id: str, input_path: str, db):
+def process_video(media_id: str, input_path: str, db, regenerate_thumbnail: bool = True):
     """Process video into multiple HLS variants"""
     media = db.query(Media).filter(Media.id == media_id).first()
 
     hls_dir = Path(MEDIA_ROOT) / "hls" / media_id
     hls_dir.mkdir(parents=True, exist_ok=True)
+
+    # Unique per-encode segment names: nginx serves *.ts as immutable for a
+    # year, so re-encodes (file replacement) must never reuse segment URLs
+    seg_prefix = f"seg_{uuid.uuid4().hex[:8]}"
 
     # Define quality variants
     variants = [
@@ -91,7 +96,7 @@ def process_video(media_id: str, input_path: str, db):
         variant_dir.mkdir(exist_ok=True)
 
         playlist_path = variant_dir / "playlist.m3u8"
-        segment_pattern = str(variant_dir / "segment_%03d.ts")
+        segment_pattern = str(variant_dir / f"{seg_prefix}_%03d.ts")
 
         try:
             input_stream = ffmpeg.input(input_path)
@@ -147,21 +152,27 @@ def process_video(media_id: str, input_path: str, db):
     except Exception as e:
         print(f"Master playlist generation failed: {e}")
 
-    # Generate thumbnail
-    try:
-        thumbnail_path = generate_thumbnail(input_path, media_id)
-        media.thumbnail_path = thumbnail_path
-    except Exception as e:
-        print(f"Thumbnail generation failed: {e}")
+    # Generate thumbnail (skipped on file replacement so a custom/original
+    # thumbnail survives, unless the media has none yet)
+    if regenerate_thumbnail or not media.thumbnail_path:
+        try:
+            thumbnail_path = generate_thumbnail(input_path, media_id)
+            media.thumbnail_path = thumbnail_path
+        except Exception as e:
+            print(f"Thumbnail generation failed: {e}")
 
     db.commit()
 
-def process_audio(media_id: str, input_path: str, db):
+def process_audio(media_id: str, input_path: str, db, regenerate_thumbnail: bool = True):
     """Process audio into multiple HLS variants"""
     media = db.query(Media).filter(Media.id == media_id).first()
 
     hls_dir = Path(MEDIA_ROOT) / "hls" / media_id
     hls_dir.mkdir(parents=True, exist_ok=True)
+
+    # Unique per-encode segment names: nginx serves *.ts as immutable for a
+    # year, so re-encodes (file replacement) must never reuse segment URLs
+    seg_prefix = f"seg_{uuid.uuid4().hex[:8]}"
 
     # Define audio quality variants
     variants = [
@@ -175,7 +186,7 @@ def process_audio(media_id: str, input_path: str, db):
         variant_dir.mkdir(exist_ok=True)
 
         playlist_path = variant_dir / "playlist.m3u8"
-        segment_pattern = str(variant_dir / "segment_%03d.ts")
+        segment_pattern = str(variant_dir / f"{seg_prefix}_%03d.ts")
 
         try:
             stream = ffmpeg.input(input_path)
@@ -220,12 +231,14 @@ def process_audio(media_id: str, input_path: str, db):
     except Exception as e:
         print(f"Master playlist generation failed: {e}")
 
-    # Generate waveform thumbnail for audio
-    try:
-        thumbnail_path = generate_audio_thumbnail(media_id)
-        media.thumbnail_path = thumbnail_path
-    except Exception as e:
-        print(f"Audio thumbnail generation failed: {e}")
+    # Generate waveform thumbnail for audio (skipped on file replacement so a
+    # custom thumbnail survives, unless the media has none yet)
+    if regenerate_thumbnail or not media.thumbnail_path:
+        try:
+            thumbnail_path = generate_audio_thumbnail(media_id)
+            media.thumbnail_path = thumbnail_path
+        except Exception as e:
+            print(f"Audio thumbnail generation failed: {e}")
 
     db.commit()
 

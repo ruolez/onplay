@@ -632,6 +632,7 @@ Admin-only endpoints require the `onplay_admin` HttpOnly session cookie (JWT), o
 - `GET /api/media/{id}` - Get single media with variants and tags (public)
 - `DELETE /api/media/{id}` - Delete media (admin)
 - `PATCH /api/media/{id}` - Rename media (admin)
+- `POST /api/media/{id}/replace` - Replace media file in place; same id, so thumbnail, tags, and analytics are kept while variants/HLS are rebuilt (admin)
 - `POST /api/media/{id}/thumbnail` - Set custom thumbnail from timestamp (admin)
 - `POST /api/media/{id}/thumbnail/upload` - Upload custom thumbnail image (admin)
 - `GET /api/media/stats/overview` - Library stats (admin)

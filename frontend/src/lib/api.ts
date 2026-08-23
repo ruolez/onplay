@@ -108,6 +108,33 @@ export const mediaApi = {
     });
   },
 
+  async replaceMedia(
+    id: string,
+    file: File,
+    onProgress?: (progress: number) => void,
+  ) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return api.post<{ id: string; filename: string; status: string }>(
+      `/media/${id}/replace`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+            onProgress(progress);
+          }
+        },
+      },
+    );
+  },
+
   async getUploadStatus(id: string) {
     return api.get(`/upload/status/${id}`);
   },
