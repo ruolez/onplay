@@ -51,6 +51,59 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
     const preloadPlayerRef = useRef<Player | null>(null);
     const isWaitingRef = useRef(false);
     const isFirstRender = useRef(true);
+    const attachedListenersRef = useRef<Array<[string, () => void]>>([]);
+
+    // Only ever remove the listeners we added. A bare `player.off("play")`
+    // also strips video.js's own `one("play", listenForUserActivity_)`, which
+    // is what starts the inactivity timer that hides the control bar.
+    const attachListeners = (player: Player) => {
+      for (const [event, handler] of attachedListenersRef.current) {
+        player.off(event, handler);
+      }
+      attachedListenersRef.current = [];
+
+      const add = (event: string, handler: () => void) => {
+        player.on(event, handler);
+        attachedListenersRef.current.push([event, handler]);
+      };
+
+      if (onPlay) add("play", onPlay);
+      if (onPause) add("pause", onPause);
+      if (onEnded) add("ended", onEnded);
+      if (onTimeUpdate) {
+        add("timeupdate", () => {
+          onTimeUpdate(player.currentTime() || 0);
+        });
+      }
+      if (onDurationChange) {
+        add("durationchange", () => {
+          onDurationChange(player.duration() || 0);
+        });
+      }
+
+      add("waiting", () => {
+        if (!isWaitingRef.current) {
+          isWaitingRef.current = true;
+          onBufferStart?.();
+        }
+      });
+
+      add("canplay", () => {
+        if (isWaitingRef.current) {
+          isWaitingRef.current = false;
+          onBufferEnd?.();
+        }
+      });
+
+      add("error", () => {
+        const error = player.error();
+        const message = error
+          ? `${error.code}: ${error.message}`
+          : "Unknown playback error";
+        console.error("[DualPlayer] Error:", message);
+        onError?.(message);
+      });
+    };
 
     // Initialize main player (only once)
     useEffect(() => {
@@ -179,7 +232,6 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
                     );
                   }
                 }, 1500);
-
               } else {
                 console.log(
                   "[DualPlayer] ⚠️ VHS not available - likely using Safari native HLS",
@@ -271,54 +323,7 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
       const player = playerRef.current;
       if (!player) return;
 
-      // Clear all old listeners
-      player.off("play");
-      player.off("pause");
-      player.off("ended");
-      player.off("timeupdate");
-      player.off("durationchange");
-      player.off("waiting");
-      player.off("canplay");
-      player.off("error");
-
-      // Attach new listeners with current callbacks
-      if (onPlay) player.on("play", onPlay);
-      if (onPause) player.on("pause", onPause);
-      if (onEnded) player.on("ended", onEnded);
-      if (onTimeUpdate) {
-        player.on("timeupdate", () => {
-          onTimeUpdate(player.currentTime() || 0);
-        });
-      }
-      if (onDurationChange) {
-        player.on("durationchange", () => {
-          onDurationChange(player.duration() || 0);
-        });
-      }
-
-      // Buffer events
-      player.on("waiting", () => {
-        if (!isWaitingRef.current) {
-          isWaitingRef.current = true;
-          onBufferStart?.();
-        }
-      });
-
-      player.on("canplay", () => {
-        if (isWaitingRef.current) {
-          isWaitingRef.current = false;
-          onBufferEnd?.();
-        }
-      });
-
-      player.on("error", () => {
-        const error = player.error();
-        const message = error
-          ? `${error.code}: ${error.message}`
-          : "Unknown playback error";
-        console.error("[DualPlayer] Error:", message);
-        onError?.(message);
-      });
+      attachListeners(player);
     }, [
       onPlay,
       onPause,
@@ -446,6 +451,7 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
         if (playerRef.current && !playerRef.current.isDisposed()) {
           playerRef.current.pause();
           playerRef.current.dispose();
+          attachedListenersRef.current = [];
         }
 
         // Swap references
@@ -467,51 +473,7 @@ const DualVideoPlayer = forwardRef<DualVideoPlayerRef, DualVideoPlayerProps>(
           player.controls(true);
           player.muted(false);
 
-          // Clear old listeners and add new ones
-          player.off("play");
-          player.off("pause");
-          player.off("ended");
-          player.off("timeupdate");
-          player.off("durationchange");
-          player.off("waiting");
-          player.off("canplay");
-          player.off("error");
-
-          if (onPlay) player.on("play", onPlay);
-          if (onPause) player.on("pause", onPause);
-          if (onEnded) player.on("ended", onEnded);
-          if (onTimeUpdate) {
-            player.on("timeupdate", () => {
-              onTimeUpdate(player.currentTime() || 0);
-            });
-          }
-          if (onDurationChange) {
-            player.on("durationchange", () => {
-              onDurationChange(player.duration() || 0);
-            });
-          }
-
-          player.on("waiting", () => {
-            if (!isWaitingRef.current) {
-              isWaitingRef.current = true;
-              onBufferStart?.();
-            }
-          });
-
-          player.on("canplay", () => {
-            if (isWaitingRef.current) {
-              isWaitingRef.current = false;
-              onBufferEnd?.();
-            }
-          });
-
-          player.on("error", () => {
-            const error = player.error();
-            const message = error
-              ? `${error.code}: ${error.message}`
-              : "Unknown playback error";
-            onError?.(message);
-          });
+          attachListeners(player);
 
           // Auto-play the swapped player
           player.play()?.catch((err) => {
