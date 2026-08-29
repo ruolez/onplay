@@ -50,8 +50,7 @@ export default function Gallery() {
   const [tagFilterOpen, setTagFilterOpen] = useState(false);
   const [mediaTypeMenuOpen, setMediaTypeMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { openPlayer, requestFullscreen, currentMedia, isPlaying } =
-    usePlayer();
+  const { openPlayer, currentMedia, isPlaying } = usePlayer();
   const [searchParams] = useSearchParams();
 
   // Refs for auto-scrolling to current track
@@ -173,14 +172,9 @@ export default function Gallery() {
 
   const handleCardClick = (item: Media) => {
     if (item.status === "ready") {
-      openPlayer(item.id, sortedMedia);
-
-      // Request fullscreen for videos after player initializes
-      if (item.media_type === "video") {
-        setTimeout(() => {
-          requestFullscreen();
-        }, 800);
-      }
+      openPlayer(item.id, sortedMedia, {
+        fullscreen: item.media_type === "video",
+      });
 
       // Auto-expand the in-app player when a song starts on mobile
       if (item.media_type === "audio" && window.innerWidth < 768) {

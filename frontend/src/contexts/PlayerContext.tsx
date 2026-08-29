@@ -56,7 +56,11 @@ interface PlayerContextType {
   cycleRepeatMode: () => void;
 
   // Actions
-  openPlayer: (mediaId: string, queueItems?: Media[]) => void;
+  openPlayer: (
+    mediaId: string,
+    queueItems?: Media[],
+    options?: { fullscreen?: boolean },
+  ) => void;
   closePlayer: () => void;
   togglePlayPause: () => void;
   seek: (time: number) => void;
@@ -229,6 +233,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Track current volume for use in callbacks (avoids stale closures)
   const volumeRef = useRef(1);
+  // Set by openPlayer; consumed on the first `play` event so fullscreen is
+  // requested before VHS appends any segment (a later fullscreen makes VHS
+  // wipe and re-decode the segment already playing, freezing video ~1s).
+  const pendingFullscreenRef = useRef(false);
 
   // Wrapper to conditionally request wake lock
   const conditionalRequestWakeLock = useCallback(() => {
@@ -593,8 +601,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // Actions
   const openPlayer = useCallback(
-    (mediaId: string, queueItems?: Media[]) => {
+    (
+      mediaId: string,
+      queueItems?: Media[],
+      options?: { fullscreen?: boolean },
+    ) => {
       conditionalRequestWakeLock();
+      pendingFullscreenRef.current = Boolean(options?.fullscreen);
       let finalQueue = queueItems;
       if (isShuffled && queueItems && queueItems.length > 1) {
         finalQueue = shuffleWithCurrentFirst(queueItems, mediaId);
@@ -626,6 +639,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const closePlayer = useCallback(() => {
     // Clear saved state when user manually closes
     localStorage.removeItem(PLAYER_STATE_KEY);
+    pendingFullscreenRef.current = false;
     releaseWakeLock();
     preloadService.stop();
     send({ type: "CLOSE" });
@@ -729,8 +743,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // VideoPlayer event handlers
   const handlePlaybackStarted = useCallback(() => {
+    if (pendingFullscreenRef.current) {
+      pendingFullscreenRef.current = false;
+      requestFullscreen();
+    }
     send({ type: "PLAYBACK_STARTED" });
-  }, [send]);
+  }, [send, requestFullscreen]);
 
   const handlePlaybackPaused = useCallback(() => {
     send({ type: "PLAYBACK_PAUSED" });
