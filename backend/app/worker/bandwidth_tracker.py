@@ -28,11 +28,21 @@ LOG_PATTERN = re.compile(
 # Extract media ID from URI: /media/hls/{media_id}/...
 MEDIA_ID_PATTERN = re.compile(r'/media/hls/([^/]+)/')
 
+# Whole-file downloads are served by nginx via X-Accel-Redirect, so the log
+# keeps the API request URI (query string included): /api/media/{id}/download
+DOWNLOAD_URI_PATTERN = re.compile(r'^/api/media/([0-9a-f-]{36})/download(?:[/?]|$)')
+
 
 def extract_media_id(uri: str) -> Optional[str]:
     """Extract media ID from request URI"""
-    match = MEDIA_ID_PATTERN.search(uri)
+    match = MEDIA_ID_PATTERN.search(uri) or DOWNLOAD_URI_PATTERN.match(uri)
     return match.group(1) if match else None
+
+
+def is_metered_uri(uri: str) -> bool:
+    """HLS segments and whole-file downloads count; playlists/thumbnails don't"""
+    path = uri.split('?', 1)[0]
+    return path.endswith('.ts') or DOWNLOAD_URI_PATTERN.match(uri) is not None
 
 
 def parse_log_line(line: str) -> Optional[dict]:
@@ -44,8 +54,7 @@ def parse_log_line(line: str) -> Optional[dict]:
     try:
         data = match.groupdict()
 
-        # Only track HLS segment requests (.ts files)
-        if not data['uri'].endswith('.ts'):
+        if not is_metered_uri(data['uri']):
             return None
 
         # Parse timestamp

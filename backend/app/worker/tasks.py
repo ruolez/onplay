@@ -1,6 +1,9 @@
 from ..celery_app import celery_app
 from ..database import SessionLocal
 from ..models import Media, MediaVariant, MediaStatus, MediaType
+from sqlalchemy import or_, and_
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
 import ffmpeg
 import os
 import redis
@@ -10,6 +13,7 @@ from PIL import Image
 import mutagen
 
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/media")
+DOWNLOAD_DIR = "download"
 
 # Shared Redis connection for cross-worker state.
 # Bandwidth tracking uses this to persist the nginx log file offset between
@@ -17,6 +21,7 @@ MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/media")
 # worker to re-parse the entire log from byte 0 when it picked up the task.
 _redis_client = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 _BANDWIDTH_POSITION_KEY = "onplay:bandwidth:last_position"
+_DOWNLOAD_BACKFILL_LOCK_KEY = "onplay:downloads:backfill_lock"
 
 @celery_app.task(bind=True, name="app.worker.tasks.process_media")
 def process_media(self, media_id: str, original_path: str, regenerate_thumbnail: bool = True):
@@ -25,6 +30,12 @@ def process_media(self, media_id: str, original_path: str, regenerate_thumbnail:
         media = db.query(Media).filter(Media.id == media_id).first()
         if not media:
             raise Exception(f"Media {media_id} not found")
+
+        # A (re)processed file gets a fresh download artifact - never expose
+        # a download built from a previous original
+        media.download_path = None
+        media.download_size = None
+        media.download_status = None
 
         # Extract metadata
         try:
@@ -54,6 +65,11 @@ def process_media(self, media_id: str, original_path: str, regenerate_thumbnail:
         # Update status to ready
         media.status = MediaStatus.READY
         db.commit()
+
+        # Download file is built in its own task so playback is available as
+        # soon as HLS is done and a slow transcode can't push this task past
+        # its time limit
+        generate_download.delay(media_id)
 
         return {"status": "success", "media_id": media_id}
 
@@ -241,6 +257,197 @@ def process_audio(media_id: str, input_path: str, db, regenerate_thumbnail: bool
             print(f"Audio thumbnail generation failed: {e}")
 
     db.commit()
+
+
+def _find_original(media_id: str) -> Optional[Path]:
+    """The preserved upload (extension unknown), or None."""
+    return next((Path(MEDIA_ROOT) / "original").glob(f"{media_id}.*"), None)
+
+
+def _remux_eligible(probe: dict) -> bool:
+    """True when the source can be copied into MP4 without re-encoding and
+    still play everywhere (H.264 yuv420p video, AAC or no audio)."""
+    video = next((s for s in probe["streams"] if s["codec_type"] == "video"), None)
+    audio = next((s for s in probe["streams"] if s["codec_type"] == "audio"), None)
+    return (
+        video is not None
+        and video.get("codec_name") == "h264"
+        and video.get("pix_fmt") == "yuv420p"
+        and (audio is None or audio.get("codec_name") == "aac")
+    )
+
+
+def generate_download_file(media: Media, original: Path) -> Tuple[str, int]:
+    """Build the downloadable file for a media item.
+
+    Video -> MP4 (original served as-is when it already is one, stream-copy
+    remux when codecs allow, high-quality libx264 otherwise).
+    Audio -> 320 kbps MP3 (original served as-is when it already is one).
+
+    Returns (path relative to MEDIA_ROOT, size in bytes). Raises on failure.
+    """
+    is_video = media.media_type == MediaType.VIDEO
+    target_ext = ".mp4" if is_video else ".mp3"
+
+    if original.suffix.lower() == target_ext:
+        return f"original/{original.name}", original.stat().st_size
+
+    out_dir = Path(MEDIA_ROOT) / DOWNLOAD_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    final_path = out_dir / f"{media.id}{target_ext}"
+    # Written under a temp name and renamed so a half-written file is never
+    # served; format= is required because ffmpeg can't infer it from ".tmp"
+    tmp_path = out_dir / f"{media.id}{target_ext}.tmp"
+
+    probe = ffmpeg.probe(str(original))
+    has_audio = any(s["codec_type"] == "audio" for s in probe["streams"])
+    title = Path(media.original_filename).stem or media.id
+    source = ffmpeg.input(str(original))
+
+    if is_video:
+        # Only the first video/audio stream: drops subtitles, attachments and
+        # extra tracks that the MP4 muxer would choke on
+        streams = [source["v:0"]] + ([source["a:0"]] if has_audio else [])
+        if _remux_eligible(probe):
+            codec_args = {"c": "copy"}
+        else:
+            codec_args = {
+                "c:v": "libx264",
+                "crf": 18,
+                "preset": "medium",
+                "pix_fmt": "yuv420p",
+                "c:a": "aac",
+                "b:a": "320k",
+            }
+        output = ffmpeg.output(
+            *streams,
+            str(tmp_path),
+            format="mp4",
+            movflags="+faststart",
+            metadata=f"title={title}",
+            **codec_args,
+        )
+    else:
+        # a:0 only: embedded cover art (m4a/flac) would otherwise be muxed as
+        # a video stream and fail
+        output = ffmpeg.output(
+            source["a:0"],
+            str(tmp_path),
+            format="mp3",
+            metadata=f"title={title}",
+            **{"c:a": "libmp3lame", "b:a": "320k", "id3v2_version": 3},
+        )
+
+    try:
+        ffmpeg.run(output, overwrite_output=True, capture_stdout=True, capture_stderr=True)
+    except ffmpeg.Error as e:
+        tmp_path.unlink(missing_ok=True)
+        stderr = e.stderr.decode(errors="replace")[-2000:] if e.stderr else ""
+        raise RuntimeError(f"ffmpeg failed: {stderr}") from e
+
+    tmp_path.rename(final_path)
+    return f"{DOWNLOAD_DIR}/{final_path.name}", final_path.stat().st_size
+
+
+@celery_app.task(
+    bind=True,
+    name="app.worker.tasks.generate_download",
+    time_limit=7200,
+    soft_time_limit=7000,
+)
+def generate_download(self, media_id: str):
+    """Create (or record) the download file for one media item. Failure never
+    affects playback: the media stays READY and download_status becomes
+    'failed'."""
+    db = SessionLocal()
+    try:
+        media = db.query(Media).filter(Media.id == media_id).first()
+        if not media or media.status != MediaStatus.READY:
+            return {"status": "skipped", "media_id": media_id}
+
+        original = _find_original(media_id)
+        if original is None:
+            media.download_status = "failed"
+            db.commit()
+            return {"status": "no_original", "media_id": media_id}
+
+        media.download_status = "pending"
+        db.commit()
+
+        try:
+            rel_path, size = generate_download_file(media, original)
+        except Exception as e:
+            print(f"Download generation failed for {media_id}: {e}")
+            db.rollback()
+            media = db.query(Media).filter(Media.id == media_id).first()
+            if media:
+                media.download_status = "failed"
+                db.commit()
+            return {"status": "failed", "media_id": media_id}
+
+        # The file may have been replaced while we were encoding; only record
+        # the result if the original we encoded is still the current one
+        db.expire_all()
+        media = db.query(Media).filter(Media.id == media_id).first()
+        if (
+            not media
+            or media.status != MediaStatus.READY
+            or _find_original(media_id) != original
+        ):
+            if rel_path.startswith(f"{DOWNLOAD_DIR}/"):
+                (Path(MEDIA_ROOT) / rel_path).unlink(missing_ok=True)
+            return {"status": "stale", "media_id": media_id}
+
+        media.download_path = rel_path
+        media.download_size = size
+        media.download_status = "ready"
+        db.commit()
+        return {"status": "success", "media_id": media_id, "path": rel_path}
+    finally:
+        db.close()
+
+
+@celery_app.task(name="app.worker.tasks.backfill_downloads")
+def backfill_downloads(batch: int = 25):
+    """Queue download generation for READY media that has no download file
+    (library items processed before this feature existed, or whose task was
+    lost). 'failed' rows are not retried automatically. Runs from beat; the
+    Redis lock keeps overlapping runs from double-queueing."""
+    if not _redis_client.set(_DOWNLOAD_BACKFILL_LOCK_KEY, "1", nx=True, ex=240):
+        return {"status": "locked"}
+
+    db = SessionLocal()
+    try:
+        stale_before = datetime.now(timezone.utc) - timedelta(hours=3)
+        rows = (
+            db.query(Media.id)
+            .filter(
+                Media.status == MediaStatus.READY,
+                Media.download_path.is_(None),
+                or_(
+                    Media.download_status.is_(None),
+                    and_(
+                        Media.download_status == "pending",
+                        Media.updated_at < stale_before,
+                    ),
+                ),
+            )
+            .order_by(Media.created_at.desc())
+            .limit(batch)
+            .all()
+        )
+        media_ids = [row[0] for row in rows]
+        if media_ids:
+            db.query(Media).filter(Media.id.in_(media_ids)).update(
+                {"download_status": "pending"}, synchronize_session=False
+            )
+            db.commit()
+        for media_id in media_ids:
+            generate_download.delay(media_id)
+        return {"status": "success", "queued": len(media_ids)}
+    finally:
+        db.close()
+
 
 def create_master_playlist_video(media_id: str, variants: list, db):
     """

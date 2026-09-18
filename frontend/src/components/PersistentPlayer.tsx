@@ -38,6 +38,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { WakeLockInfoModal } from "./WakeLockInfoModal";
+import DownloadButton from "./DownloadButton";
 
 export default function PersistentPlayer() {
   const {
@@ -538,8 +539,18 @@ export default function PersistentPlayer() {
             Now Playing
           </span>
 
-          {/* Wake Lock - screen sleep toggle */}
+          {/* Download + Wake Lock - screen sleep toggle */}
           <div className="flex items-center -mr-2">
+            {currentMedia && (
+              <DownloadButton
+                media={currentMedia}
+                variant="icon"
+                hideWhenUnavailable
+                haptic
+                className="p-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                iconClassName="w-5 h-5"
+              />
+            )}
             <button
               onClick={() => {
                 haptics.buttonPress();
@@ -1188,6 +1199,22 @@ export default function PersistentPlayer() {
                 >
                   <List className="w-6 h-6" />
                 </button>
+              )}
+
+              {/* Download - Desktop only */}
+              {currentMedia && (
+                <DownloadButton
+                  media={currentMedia}
+                  variant="icon"
+                  hideWhenUnavailable
+                  className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                  iconClassName="w-6 h-6"
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background =
+                      "var(--player-bar-button-hover)")
+                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                />
               )}
 
               {/* Fullscreen Button (Video only) */}

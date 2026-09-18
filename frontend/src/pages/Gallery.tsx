@@ -7,6 +7,7 @@ import { useGallery } from "../contexts/GalleryContext";
 import SegmentedControl from "../components/SegmentedControl";
 import GallerySkeleton from "../components/GallerySkeleton";
 import EqualizerBars from "../components/EqualizerBars";
+import DownloadButton from "../components/DownloadButton";
 import {
   Play,
   Music,
@@ -570,15 +571,24 @@ export default function Gallery() {
                           )}
                         </div>
 
-                        {/* Details button - Right aligned */}
-                        <button
-                          onClick={(e) => handleViewDetails(e, item.id)}
-                          className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
-                          title="View details"
-                          aria-label={`View details for ${item.filename}`}
-                        >
-                          <Info className="w-4 h-4 theme-text-muted" />
-                        </button>
+                        {/* Actions - Right aligned */}
+                        <div className="flex items-center flex-shrink-0 -mr-1">
+                          {item.status === "ready" && (
+                            <DownloadButton
+                              media={item}
+                              variant="icon"
+                              hideWhenUnavailable
+                            />
+                          )}
+                          <button
+                            onClick={(e) => handleViewDetails(e, item.id)}
+                            className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                            title="View details"
+                            aria-label={`View details for ${item.filename}`}
+                          >
+                            <Info className="w-4 h-4 theme-text-muted" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Tags - capped to one line */}
@@ -747,6 +757,14 @@ export default function Gallery() {
                       </div>
 
                       {/* Actions */}
+                      {item.status === "ready" && (
+                        <DownloadButton
+                          media={item}
+                          variant="icon"
+                          hideWhenUnavailable
+                          iconClassName="w-3.5 h-3.5 theme-text-muted"
+                        />
+                      )}
                       <button
                         onClick={(e) => handleViewDetails(e, item.id)}
                         className="flex-shrink-0 p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"

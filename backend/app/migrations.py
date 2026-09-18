@@ -7,6 +7,13 @@ STATEMENTS = [
     "CREATE INDEX IF NOT EXISTS ix_analytics_listener_id ON analytics (listener_id)",
     "CREATE INDEX IF NOT EXISTS ix_analytics_media_id ON analytics (media_id)",
     "CREATE INDEX IF NOT EXISTS ix_analytics_event_ts ON analytics (event_type, timestamp)",
+    "ALTER TABLE media ADD COLUMN IF NOT EXISTS download_path VARCHAR",
+    "ALTER TABLE media ADD COLUMN IF NOT EXISTS download_size BIGINT",
+    "ALTER TABLE media ADD COLUMN IF NOT EXISTS download_status VARCHAR",
+    # Whole-file downloads are metered through the bandwidth pipeline; a few
+    # multi-GB files in one hourly bucket overflow the original int32 columns
+    "ALTER TABLE bandwidth_logs ALTER COLUMN bytes_sent TYPE BIGINT",
+    "ALTER TABLE bandwidth_stats ALTER COLUMN total_bytes TYPE BIGINT",
 ]
 
 LOCK_KEY = 872634917  # advisory lock: prod runs 4 workers that race on DDL

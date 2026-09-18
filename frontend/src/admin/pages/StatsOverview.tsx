@@ -57,10 +57,10 @@ export default function StatsOverview() {
           <div className="skeleton-block h-10 w-48 rounded-lg" />
         </div>
         <div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6"
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6"
           aria-hidden="true"
         >
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="skeleton-block h-28 rounded-xl" />
           ))}
         </div>
@@ -106,7 +106,11 @@ export default function StatsOverview() {
 
   const { summary, timeseries, devices, top_media, period_days } = data;
   const kpis = summary.current;
-  const hasData = kpis.plays > 0 || summary.previous.plays > 0;
+  const hasData =
+    kpis.plays > 0 ||
+    summary.previous.plays > 0 ||
+    kpis.downloads > 0 ||
+    summary.previous.downloads > 0;
 
   return (
     <div
@@ -134,7 +138,7 @@ export default function StatsOverview() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <KpiCard
           label="Plays"
           value={kpis.plays.toLocaleString()}
@@ -163,6 +167,13 @@ export default function StatsOverview() {
           deltaUnit="pp"
           periodDays={period_days}
           cardClass="theme-stat-card-4"
+        />
+        <KpiCard
+          label="Downloads"
+          value={kpis.downloads.toLocaleString()}
+          delta={summary.deltas.downloads}
+          periodDays={period_days}
+          cardClass="theme-stat-card-1"
         />
       </div>
 

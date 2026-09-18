@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Float, ForeignKey, Enum as SQLEnum, JSON, Table
+from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Float, ForeignKey, Enum as SQLEnum, JSON, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -43,6 +43,11 @@ class Media(Base):
     bitrate = Column(Integer, nullable=True)
     thumbnail_path = Column(String, nullable=True)
     error_message = Column(String, nullable=True)
+    # Downloadable file, relative to MEDIA_ROOT: "original/{id}.mp4" when the
+    # upload already is the target format, else "download/{id}.mp4|mp3"
+    download_path = Column(String, nullable=True)
+    download_size = Column(BigInteger, nullable=True)
+    download_status = Column(String, nullable=True)  # None | pending | ready | failed
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -120,7 +125,7 @@ class BandwidthLog(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     media_id = Column(String, ForeignKey("media.id", ondelete="CASCADE"), nullable=True)
     ip_address = Column(String, nullable=False, index=True)
-    bytes_sent = Column(Integer, nullable=False)
+    bytes_sent = Column(BigInteger, nullable=False)
     request_uri = Column(String, nullable=False)
     status_code = Column(Integer, nullable=False)
     request_time = Column(Float, nullable=True)  # Response time in seconds
@@ -136,7 +141,7 @@ class BandwidthStats(Base):
     ip_address = Column(String, nullable=False, index=True)
     session_id = Column(String, nullable=True, index=True)  # Track sessions
     date = Column(DateTime(timezone=True), nullable=False, index=True)  # Hourly aggregation
-    total_bytes = Column(Integer, nullable=False, default=0)
+    total_bytes = Column(BigInteger, nullable=False, default=0)
     request_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

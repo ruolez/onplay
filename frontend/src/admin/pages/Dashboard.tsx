@@ -107,7 +107,8 @@ export default function Dashboard() {
             {analytics?.total_plays ?? 0}
           </p>
           <p className="text-xs theme-text-muted mt-1.5">
-            {analytics?.total_completes ?? 0} completions
+            {analytics?.total_completes ?? 0} completions ·{" "}
+            {analytics?.total_downloads ?? 0} downloads
           </p>
         </div>
 

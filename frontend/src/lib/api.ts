@@ -2,7 +2,7 @@ import axios from "axios";
 import { getListenerId } from "./listenerId";
 
 // Use relative URL for production, absolute URL for local dev
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+export const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -31,8 +31,16 @@ export interface Media {
   thumbnail_path?: string;
   created_at: string;
   play_count?: number;
+  download_count?: number;
+  download?: MediaDownload | null;
+  download_status?: "pending" | "ready" | "failed" | null;
   variants: MediaVariant[];
   tags: Tag[];
+}
+
+export interface MediaDownload {
+  size: number | null;
+  format: "mp4" | "mp3";
 }
 
 export interface MediaVariant {
@@ -276,6 +284,7 @@ export interface DashboardKpis {
   unique_listeners: number;
   completions: number;
   completion_rate: number;
+  downloads: number;
 }
 
 export interface DashboardDeltas {
@@ -283,6 +292,7 @@ export interface DashboardDeltas {
   unique_listeners: number | null;
   completions: number | null;
   completion_rate_pp: number | null;
+  downloads: number | null;
 }
 
 export interface TimeseriesPoint {
@@ -307,6 +317,7 @@ export interface TopMediaItem {
   completion_rate: number;
   unique_listeners: number;
   last_played: string | null;
+  downloads: number;
 }
 
 export interface AnalyticsDashboard {

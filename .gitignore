@@ -41,3 +41,4 @@ Thumbs.db
 *.sql
 *.tar.gz
 celerybeat-schedule*
+media/download/

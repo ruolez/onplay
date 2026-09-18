@@ -28,4 +28,8 @@ celery_app.conf.beat_schedule = {
         'task': 'app.worker.tasks.process_bandwidth_logs',
         'schedule': 300.0,  # Run every 5 minutes
     },
+    'backfill-downloads': {
+        'task': 'app.worker.tasks.backfill_downloads',
+        'schedule': 300.0,  # Generate download files for media that lack one
+    },
 }

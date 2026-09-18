@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, case
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ..auth import require_admin
-from ..client_info import get_client_ip, parse_user_agent
+from ..analytics_service import record_event
 from ..geoip import get_location
 from ..database import get_db
 from ..models import Analytics, Listener, Media, BandwidthStats
@@ -52,50 +51,15 @@ async def track_event(
     if not media:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    listener_id = (event.listener_id or "").strip()[:64] or None
-    ip = get_client_ip(request)
-    user_agent = request.headers.get("user-agent")
-    device, browser, os_name = parse_user_agent(user_agent)
-
-    analytics = Analytics(
+    record_event(
+        db,
         media_id=event.media_id,
         event_type=event.event_type,
-        device=device,
-        browser=browser,
-        os=os_name,
-        ip_address=ip,
+        request=request,
+        listener_id=event.listener_id,
         session_id=event.session_id,
-        listener_id=listener_id,
-        data=event.data
+        data=event.data,
     )
-    db.add(analytics)
-
-    if listener_id:
-        play_inc = 1 if event.event_type == "play" else 0
-        stmt = pg_insert(Listener).values(
-            id=listener_id,
-            ip_address=ip,
-            user_agent=user_agent,
-            device=device,
-            browser=browser,
-            os=os_name,
-            total_events=1,
-            total_plays=play_inc,
-        ).on_conflict_do_update(
-            index_elements=[Listener.id],
-            set_={
-                "last_seen": func.now(),
-                "ip_address": ip,
-                "user_agent": user_agent,
-                "device": device,
-                "browser": browser,
-                "os": os_name,
-                "total_events": Listener.total_events + 1,
-                "total_plays": Listener.total_plays + play_inc,
-            },
-        )
-        db.execute(stmt)
-
     db.commit()
 
     return {"message": "Event tracked successfully"}
@@ -117,6 +81,11 @@ async def get_media_analytics(media_id: str, db: Session = Depends(get_db)):
         Analytics.event_type == "complete"
     ).scalar() or 0
 
+    total_downloads = db.query(func.count(Analytics.id)).filter(
+        Analytics.media_id == media_id,
+        Analytics.event_type == "download"
+    ).scalar() or 0
+
     completion_rate = (total_completes / total_plays * 100) if total_plays > 0 else 0
 
     return {
@@ -124,6 +93,7 @@ async def get_media_analytics(media_id: str, db: Session = Depends(get_db)):
         "filename": media.original_filename,
         "total_plays": total_plays,
         "total_completes": total_completes,
+        "total_downloads": total_downloads,
         "completion_rate": round(completion_rate, 2)
     }
 
@@ -141,6 +111,11 @@ async def get_analytics_overview(
 
     total_completes = db.query(func.count(Analytics.id)).filter(
         Analytics.event_type == "complete",
+        Analytics.timestamp >= since
+    ).scalar() or 0
+
+    total_downloads = db.query(func.count(Analytics.id)).filter(
+        Analytics.event_type == "download",
         Analytics.timestamp >= since
     ).scalar() or 0
 
@@ -199,6 +174,7 @@ async def get_analytics_overview(
         "period_days": days,
         "total_plays": total_plays,
         "total_completes": total_completes,
+        "total_downloads": total_downloads,
         "total_bandwidth_bytes": total_bandwidth,
         "bandwidth_by_ip": bandwidth_by_ip_list[:10],  # Top 10 IPs
         "top_media": top_media_details
@@ -236,12 +212,14 @@ async def get_analytics_dashboard(
         func.count(Analytics.id).filter(Analytics.event_type == "play", in_current).label("plays"),
         func.count(Analytics.id).filter(Analytics.event_type == "complete", in_current).label("completions"),
         func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play", in_current).label("listeners"),
+        func.count(Analytics.id).filter(Analytics.event_type == "download", in_current).label("downloads"),
         func.count(Analytics.id).filter(Analytics.event_type == "play", in_previous).label("prev_plays"),
         func.count(Analytics.id).filter(Analytics.event_type == "complete", in_previous).label("prev_completions"),
         func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play", in_previous).label("prev_listeners"),
+        func.count(Analytics.id).filter(Analytics.event_type == "download", in_previous).label("prev_downloads"),
     ).filter(
         Analytics.timestamp >= prev_start,
-        Analytics.event_type.in_(["play", "complete"]),
+        Analytics.event_type.in_(["play", "complete", "download"]),
     ).one()
 
     rate = round(row.completions / row.plays * 100, 1) if row.plays else 0.0
@@ -253,12 +231,14 @@ async def get_analytics_dashboard(
             "unique_listeners": row.listeners,
             "completions": row.completions,
             "completion_rate": rate,
+            "downloads": row.downloads,
         },
         "previous": {
             "plays": row.prev_plays,
             "unique_listeners": row.prev_listeners,
             "completions": row.prev_completions,
             "completion_rate": prev_rate,
+            "downloads": row.prev_downloads,
         },
         "deltas": {
             "plays": _pct_delta(row.plays, row.prev_plays),
@@ -266,6 +246,7 @@ async def get_analytics_dashboard(
             "completions": _pct_delta(row.completions, row.prev_completions),
             # percentage-point difference (percent-change of a rate misleads)
             "completion_rate_pp": round(rate - prev_rate, 1) if row.prev_plays else None,
+            "downloads": _pct_delta(row.downloads, row.prev_downloads),
         },
     }
 
@@ -320,9 +301,10 @@ async def get_analytics_dashboard(
         func.count(Analytics.id).filter(Analytics.event_type == "complete").label("completions"),
         func.count(func.distinct(Analytics.listener_id)).filter(Analytics.event_type == "play").label("listeners"),
         func.max(Analytics.timestamp).filter(Analytics.event_type == "play").label("last_played"),
+        func.count(Analytics.id).filter(Analytics.event_type == "download").label("downloads"),
     ).filter(
         Analytics.timestamp >= cur_start,
-        Analytics.event_type.in_(["play", "complete"]),
+        Analytics.event_type.in_(["play", "complete", "download"]),
     ).group_by(Analytics.media_id).having(
         func.count(Analytics.id).filter(Analytics.event_type == "play") > 0
     ).order_by(desc("plays")).limit(10).all()
@@ -351,6 +333,7 @@ async def get_analytics_dashboard(
             "completion_rate": round(r.completions / r.plays * 100, 1) if r.plays else 0.0,
             "unique_listeners": r.listeners,
             "last_played": r.last_played.isoformat() if r.last_played else None,
+            "downloads": r.downloads,
         })
 
     return {

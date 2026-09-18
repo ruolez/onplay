@@ -63,6 +63,13 @@ export default function TopMediaList({ items }: { items: TopMediaItem[] }) {
                   <Users className="w-3 h-3" />
                   {item.unique_listeners} listener
                   {item.unique_listeners === 1 ? "" : "s"}
+                  {item.downloads > 0 && (
+                    <>
+                      {" "}
+                      · {item.downloads} download
+                      {item.downloads === 1 ? "" : "s"}
+                    </>
+                  )}
                   {item.last_played && (
                     <> · {formatRelative(item.last_played)}</>
                   )}

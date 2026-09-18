@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
+  Download,
   Edit2,
   ExternalLink,
   Image,
@@ -15,6 +16,7 @@ import {
   Video,
 } from "lucide-react";
 import SegmentedControl from "../../components/SegmentedControl";
+import DownloadButton from "../../components/DownloadButton";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RenameModal from "../components/RenameModal";
 import TagEditorModal from "../components/TagEditorModal";
@@ -227,6 +229,13 @@ export default function MediaLibrary() {
               <ExternalLink className="w-4 h-4" />
               Open player
             </Link>
+            {menuMedia.status === "ready" && (
+              <DownloadButton
+                media={menuMedia}
+                variant="menu"
+                onDownloaded={() => setMenuOpenId(null)}
+              />
+            )}
             <button
               onClick={() => {
                 setRenameTarget(menuMedia);
@@ -343,6 +352,7 @@ export default function MediaLibrary() {
                     <th className="px-4 py-3 font-medium">Duration</th>
                     <th className="px-4 py-3 font-medium">Size</th>
                     <th className="px-4 py-3 font-medium">Plays</th>
+                    <th className="px-4 py-3 font-medium">Downloads</th>
                     <th className="px-4 py-3 font-medium">Tags</th>
                     <th className="px-4 py-3 font-medium">Added</th>
                     <th className="px-4 py-3 font-medium w-12"></th>
@@ -414,6 +424,33 @@ export default function MediaLibrary() {
                         <span className="flex items-center gap-1">
                           <Play className="w-3 h-3" />
                           {media.play_count ?? 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 theme-text-secondary">
+                        <span
+                          className="flex items-center gap-1"
+                          title={
+                            media.download_status === "failed"
+                              ? "Download file could not be generated"
+                              : media.download_status === "pending"
+                                ? "Download file is being prepared"
+                                : undefined
+                          }
+                        >
+                          <Download className="w-3 h-3" />
+                          {media.download_count ?? 0}
+                          {media.status === "ready" &&
+                            media.download_status !== "ready" && (
+                              <span
+                                className="w-1.5 h-1.5 rounded-full inline-block ml-0.5"
+                                style={{
+                                  background:
+                                    media.download_status === "failed"
+                                      ? "var(--status-error)"
+                                      : "var(--status-warning)",
+                                }}
+                              />
+                            )}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -496,6 +533,8 @@ export default function MediaLibrary() {
                     {media.duration ? formatDuration(media.duration) : "—"}
                     <span>·</span>
                     {media.play_count ?? 0} plays
+                    <span>·</span>
+                    {media.download_count ?? 0} downloads
                   </p>
                 </div>
                 {rowMenu(media)}

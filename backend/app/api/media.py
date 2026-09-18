@@ -1,20 +1,53 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File, Request
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import desc, func
 from ..auth import require_admin
+from ..analytics_service import record_event
+from ..client_info import get_client_ip
 from ..database import get_db
 from ..models import Media, MediaStatus, MediaType, MediaVariant, Analytics
 from typing import Optional, List
 from pydantic import BaseModel
 import os
+import re
 import shutil
+import unicodedata
 import aiofiles
 from pathlib import Path
 from PIL import Image
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 router = APIRouter()
+
+# download_path is server-generated, but the value is handed to nginx as an
+# X-Accel-Redirect target, so it is validated against this shape anyway
+DOWNLOAD_PATH_RE = re.compile(r"^(original|download)/[0-9a-f-]{36}\.(mp4|mp3)$")
+DOWNLOAD_CONTENT_TYPES = {"mp4": "video/mp4", "mp3": "audio/mpeg"}
+# Safari issues a second GET for attachments and download managers retry;
+# one download per media per client IP inside this window counts once
+DOWNLOAD_DEDUPE_WINDOW = timedelta(seconds=30)
+
+
+def download_info(media: Media) -> Optional[dict]:
+    """Public description of the downloadable file, or None until it exists."""
+    if media.download_status != "ready" or not media.download_path:
+        return None
+    return {
+        "size": media.download_size,
+        "format": media.download_path.rsplit(".", 1)[-1],
+    }
+
+
+def remove_download_files(media_root: Path, media_id: str) -> None:
+    """Delete generated download artifacts (including a half-written .tmp)."""
+    for file in (media_root / "download").glob(f"{media_id}.*"):
+        try:
+            os.remove(file)
+        except Exception as e:
+            print(f"Error deleting download file: {e}")
 
 
 def versioned_thumbnail(media: Media) -> Optional[str]:
@@ -62,19 +95,22 @@ async def list_media(
     total = query.count()
     media_list = query.order_by(desc(Media.created_at)).offset(skip).limit(limit).all()
 
-    # Build play count subquery for efficient aggregation
+    # One grouped query for play and download counts (no N+1)
     play_counts = {}
+    download_counts = {}
     if media_list:
         media_ids = [m.id for m in media_list]
-        play_count_results = db.query(
+        count_rows = db.query(
             Analytics.media_id,
-            func.count(Analytics.id).label('play_count')
+            func.count(Analytics.id).filter(Analytics.event_type == "play").label("plays"),
+            func.count(Analytics.id).filter(Analytics.event_type == "download").label("downloads"),
         ).filter(
             Analytics.media_id.in_(media_ids),
-            Analytics.event_type == "play"
+            Analytics.event_type.in_(["play", "download"])
         ).group_by(Analytics.media_id).all()
 
-        play_counts = {media_id: count for media_id, count in play_count_results}
+        play_counts = {row.media_id: row.plays for row in count_rows}
+        download_counts = {row.media_id: row.downloads for row in count_rows}
 
     return {
         "total": total,
@@ -91,6 +127,9 @@ async def list_media(
                 "created_at": m.created_at.isoformat() if m.created_at else None,
                 "file_size": m.file_size,
                 "play_count": play_counts.get(m.id, 0),
+                "download_count": download_counts.get(m.id, 0),
+                "download": download_info(m),
+                "download_status": m.download_status,
                 "tags": [{"id": t.id, "name": t.name} for t in m.tags]
             }
             for m in media_list
@@ -117,6 +156,8 @@ async def get_media(media_id: str, db: Session = Depends(get_db)):
         "thumbnail_path": versioned_thumbnail(media),
         "error_message": media.error_message,
         "created_at": media.created_at.isoformat() if media.created_at else None,
+        "download": download_info(media),
+        "download_status": media.download_status,
         "variants": [
             {
                 "quality": v.quality,
@@ -130,6 +171,79 @@ async def get_media(media_id: str, db: Session = Depends(get_db)):
         ],
         "tags": [{"id": t.id, "name": t.name} for t in media.tags]
     }
+
+@router.api_route("/media/{media_id}/download", methods=["GET", "HEAD"])
+async def download_media(
+    media_id: str,
+    request: Request,
+    listener_id: Optional[str] = Query(None, max_length=64),
+    db: Session = Depends(get_db)
+):
+    """Serve the best-quality file (MP4 for video, 320k MP3 for audio) as an
+    attachment named after the media title. nginx streams the bytes via
+    X-Accel-Redirect; this route validates, names, and counts."""
+    media = db.query(Media).filter(Media.id == media_id).first()
+    if (
+        not media
+        or media.status != MediaStatus.READY
+        or media.download_status != "ready"
+        or not media.download_path
+        or not DOWNLOAD_PATH_RE.match(media.download_path)
+    ):
+        raise HTTPException(status_code=404, detail="Download not available")
+
+    media_root = Path(os.getenv("MEDIA_ROOT", "/media"))
+    file_path = media_root / media.download_path
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Download not available")
+
+    fmt = media.download_path.rsplit(".", 1)[-1]
+    # Titles are free text (renames), so path separators are just characters
+    title = re.sub(r"[/\\]+", "_", media.original_filename).strip()
+    stem = Path(title).stem or media.id
+    ascii_stem = (
+        unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode()
+    )
+    ascii_stem = re.sub(r'[^A-Za-z0-9 ._()\-]+', "_", ascii_stem).strip() or media.id
+    disposition = (
+        f'attachment; filename="{ascii_stem}.{fmt}"; '
+        f"filename*=UTF-8''{quote(stem)}.{fmt}"
+    )
+
+    # Count one download per user action: HEAD probes and resumed Range
+    # requests are not new downloads
+    range_header = (request.headers.get("range") or "").strip().lower()
+    if request.method == "GET" and (not range_header or range_header.startswith("bytes=0-")):
+        ip = get_client_ip(request)
+        recent = db.query(Analytics.id).filter(
+            Analytics.media_id == media_id,
+            Analytics.event_type == "download",
+            Analytics.ip_address == ip,
+            Analytics.timestamp >= datetime.now(timezone.utc) - DOWNLOAD_DEDUPE_WINDOW,
+        ).first()
+        if not recent:
+            record_event(
+                db,
+                media_id=media_id,
+                event_type="download",
+                request=request,
+                listener_id=listener_id,
+                data={"format": fmt, "size": media.download_size},
+            )
+            db.commit()
+
+    headers = {
+        "Content-Disposition": disposition,
+        "Cache-Control": "no-store",
+    }
+    if os.getenv("DOWNLOAD_USE_X_ACCEL", "true").lower() == "true":
+        headers["Content-Type"] = DOWNLOAD_CONTENT_TYPES[fmt]
+        headers["X-Accel-Redirect"] = f"/internal-media/{media.download_path}"
+        return Response(status_code=200, headers=headers)
+
+    # Direct-to-uvicorn fallback (no nginx in front)
+    return FileResponse(file_path, media_type=DOWNLOAD_CONTENT_TYPES[fmt], headers=headers)
+
 
 class RenameRequest(BaseModel):
     filename: str
@@ -332,6 +446,7 @@ async def replace_media(
     db.query(MediaVariant).filter(MediaVariant.media_id == media_id).delete()
 
     shutil.rmtree(media_root / "hls" / media_id, ignore_errors=True)
+    remove_download_files(media_root, media_id)
 
     for old_file in original_dir.glob(f"{media_id}.*"):
         if old_file == temp_path:
@@ -348,6 +463,9 @@ async def replace_media(
     media.file_size = file_size
     media.status = MediaStatus.PROCESSING
     media.error_message = None
+    media.download_path = None
+    media.download_size = None
+    media.download_status = None
     db.commit()
 
     process_media.delay(media.id, str(original_path), regenerate_thumbnail=False)
@@ -387,6 +505,8 @@ async def delete_media(
         except Exception as e:
             print(f"Error deleting HLS directory: {e}")
 
+    remove_download_files(Path(media_root), media_id)
+
     # Delete thumbnail
     if media.thumbnail_path:
         thumbnail_full_path = Path(media_root) / media.thumbnail_path.lstrip("/media/")
@@ -413,6 +533,10 @@ async def get_stats_overview(db: Session = Depends(get_db)):
 
     total_size = db.query(func.sum(Media.file_size)).scalar() or 0
     total_duration = db.query(func.sum(Media.duration)).scalar() or 0
+    # Generated download files only; originals are already in total_size
+    download_size = db.query(func.sum(Media.download_size)).filter(
+        Media.download_path.like("download/%")
+    ).scalar() or 0
 
     return {
         "total_media": total_media,
@@ -422,5 +546,6 @@ async def get_stats_overview(db: Session = Depends(get_db)):
         "ready": ready,
         "failed": failed,
         "total_size_bytes": total_size,
+        "download_size_bytes": download_size,
         "total_duration_seconds": total_duration
     }

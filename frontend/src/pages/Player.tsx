@@ -4,6 +4,7 @@ import { mediaApi, Media } from "../lib/api";
 import VideoPlayer from "../components/VideoPlayer";
 import { ArrowLeft } from "lucide-react";
 import { formatFileSize, formatDuration } from "../lib/utils";
+import DownloadButton from "../components/DownloadButton";
 
 export default function Player() {
   const { id } = useParams<{ id: string }>();
@@ -90,9 +91,18 @@ export default function Player() {
 
       {/* Media info */}
       <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
-        <h1 className="text-xl sm:text-2xl font-bold theme-text-primary mb-3 sm:mb-4 break-words">
-          {media.filename}
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3 sm:mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold theme-text-primary break-words min-w-0">
+            {media.filename}
+          </h1>
+          {media.status === "ready" && (
+            <DownloadButton
+              media={media}
+              variant="primary"
+              className="theme-btn-primary px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors min-h-[44px] sm:min-h-[40px] w-full sm:w-auto sm:flex-shrink-0"
+            />
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
           <div>

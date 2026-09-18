@@ -73,6 +73,11 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Video: Extracted from middle frame, user can select custom frame
   - Audio: Modern glassmorphism design with smooth waveform visualization
 - **Metadata Extraction**: Duration, bitrate, codec, resolution via FFmpeg probe
+- **Downloads** (public): every READY item gets one best-quality download file
+  - Video → MP4: original served as-is when it already is `.mp4`; otherwise stream-copy remux (H.264 yuv420p + AAC) or libx264 crf 18 transcode
+  - Audio → 320 kbps MP3: original served as-is when it already is `.mp3`; otherwise libmp3lame 320k with ID3 title
+  - Built by the `generate_download` Celery task after HLS (media is playable first); `media.download_path/size/status` track it; `backfill_downloads` (beat, every 5 min) fills older library items. Files live in `media/download/` or point at `media/original/`
+  - Served by `GET /api/media/{id}/download` via nginx `X-Accel-Redirect` (`/internal-media/`, `internal`) with an attachment filename from the media title; counted as an Analytics `download` event (HEAD, resumed Range requests, and repeats from the same IP within 30 s are not recounted) and metered in bandwidth stats
 
 ### User Interface
 
@@ -179,9 +184,11 @@ onplay/
 │   │   │   ├── analytics.py      # Analytics tracking + listener endpoints
 │   │   │   └── tags.py           # Tag management endpoints
 │   │   ├── worker/
-│   │   │   └── tasks.py          # Celery tasks (video/audio processing)
+│   │   │   ├── tasks.py          # Celery tasks (video/audio processing, download generation + backfill)
+│   │   │   └── bandwidth_tracker.py # Nginx bandwidth.log parser (HLS segments + downloads)
 │   │   ├── models.py             # SQLAlchemy models (Media, Tag, MediaVariant, Analytics, AdminUser, Listener)
 │   │   ├── auth.py               # JWT/bcrypt utils, require_admin dependency, admin seeding
+│   │   ├── analytics_service.py  # record_event(): Analytics row + Listener upsert, usable from any route
 │   │   ├── client_info.py        # Real client IP (X-Forwarded-For) + User-Agent parsing
 │   │   ├── migrations.py         # Idempotent startup DDL (advisory-locked)
 │   │   ├── database.py           # DB session management
@@ -222,6 +229,7 @@ onplay/
 │   │   │   └── queueMachine.ts    # XState machine for playback queue
 │   │   ├── lib/
 │   │   │   ├── api.ts            # Axios API client (withCredentials; injects listener_id)
+│   │   │   ├── download.ts       # Download URL / filename helpers (used by DownloadButton)
 │   │   │   ├── listenerId.ts     # Persistent anonymous listener UUID (localStorage)
 │   │   │   ├── theme.ts          # Theme definitions
 │   │   │   └── utils.ts          # Format helpers (duration, file size, dates)
@@ -592,8 +600,8 @@ Lock screen and notification controls for media playback using `useMediaSession`
 OnPlay tracks **actual bandwidth** consumed by parsing Nginx access logs, providing precise real-world usage data instead of estimates.
 
 **How It Works**:
-1. **Nginx Logging**: Custom log format captures every HLS segment (.ts file) request
-2. **Celery Beat Scheduler**: Runs task every 60 seconds, incremental processing
+1. **Nginx Logging**: Custom log format captures every HLS segment (.ts file) request, plus whole-file downloads served through the `internal` `/internal-media/` location (logged under their `/api/media/{id}/download` request URI)
+2. **Celery Beat Scheduler**: Runs task every 5 minutes, incremental processing
 3. **Database Storage**: Two-tier strategy - raw logs (90 days) + aggregated stats (hourly buckets, kept forever)
 4. **Analytics API**: Queries `BandwidthStats` for dashboard, real-time accurate bandwidth per IP
 
@@ -629,7 +637,8 @@ Admin-only endpoints require the `onplay_admin` HttpOnly session cookie (JWT), o
 - `POST /api/upload` - Upload media file (admin)
 - `GET /api/upload/status/{id}` - Poll processing status (admin)
 - `GET /api/media` - List media (public; filterable by type, status; includes tags array)
-- `GET /api/media/{id}` - Get single media with variants and tags (public)
+- `GET /api/media/{id}` - Get single media with variants and tags (public; includes `download: {size, format} | null` and `download_status`)
+- `GET /api/media/{id}/download` - Download best-quality file as an attachment (public; MP4 for video, 320k MP3 for audio; 404 until generated; nginx serves via X-Accel-Redirect; records a `download` analytics event)
 - `DELETE /api/media/{id}` - Delete media (admin)
 - `PATCH /api/media/{id}` - Rename media (admin)
 - `POST /api/media/{id}/replace` - Replace media file in place; same id, so thumbnail, tags, and analytics are kept while variants/HLS are rebuilt (admin)
@@ -727,3 +736,10 @@ VITE_API_URL=http://localhost:8080/api
 28. **PWA Viewport**: Use `100dvh` not `-webkit-fill-available` for dynamic viewport height
 29. **Wake Lock Re-acquisition**: Use `userWantsWakeLockRef` (user intent) not `isActive` (actual state) in visibility handler
 30. **Haptic Feedback**: Only works on Android - iOS Safari doesn't support Web Vibration API
+
+**Downloads:**
+31. **Two nginx configs**: any nginx change goes in both `nginx/nginx.conf` (dev image, needs `docker compose up -d --build nginx`) and the heredoc in `install.sh` `create_production_nginx_conf`
+32. **X-Accel-Redirect**: the `/internal-media/` location must stay `internal` with trailing slashes on both `location` and `alias`; `/media/original/` and `/media/download/` return 404 on purpose so downloads are always counted and named
+33. **Download cleanup**: `delete_media` and `replace_media` must remove `media/download/{id}.*` (the `.tmp` too) and null the three `download_*` columns; `process_media` also resets them
+34. **ffmpeg-python temp outputs**: writing to a `.tmp` path needs an explicit `format=` since ffmpeg cannot infer the container from the extension
+35. **HEAD on the download route**: FastAPI does not add HEAD to `@router.get` routes; the route is registered with `api_route(methods=["GET", "HEAD"])` so `curl -I` and browser probes work, and only GETs without a resumed Range are counted
