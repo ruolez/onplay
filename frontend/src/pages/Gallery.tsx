@@ -762,6 +762,7 @@ export default function Gallery() {
                           media={item}
                           variant="icon"
                           hideWhenUnavailable
+                          className="hidden sm:flex flex-shrink-0 p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] items-center justify-center"
                           iconClassName="w-3.5 h-3.5 theme-text-muted"
                         />
                       )}
