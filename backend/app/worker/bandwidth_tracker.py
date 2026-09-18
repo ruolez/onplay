@@ -131,6 +131,22 @@ def process_bandwidth_logs(
     if not parsed_entries:
         return new_position
 
+    # Media deleted since the request was logged would violate the FK and
+    # roll back the whole batch forever; keep the bytes, drop the reference
+    referenced_ids = {e['media_id'] for e in parsed_entries if e['media_id']}
+    if referenced_ids:
+        db_check = SessionLocal()
+        try:
+            existing_ids = {
+                row[0] for row in
+                db_check.query(Media.id).filter(Media.id.in_(referenced_ids)).all()
+            }
+        finally:
+            db_check.close()
+        for entry in parsed_entries:
+            if entry['media_id'] and entry['media_id'] not in existing_ids:
+                entry['media_id'] = None
+
     # Aggregate stats in memory per (media_id, ip, hour) bucket
     # so we only need one SELECT + one bulk INSERT/UPDATE for stats.
     bucket_totals: dict = {}

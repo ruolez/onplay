@@ -2,6 +2,7 @@ from ..celery_app import celery_app
 from ..database import SessionLocal
 from ..models import Media, MediaVariant, MediaStatus, MediaType
 from sqlalchemy import or_, and_
+from celery.signals import worker_ready
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 import ffmpeg
@@ -409,18 +410,23 @@ def generate_download(self, media_id: str):
 
 @celery_app.task(name="app.worker.tasks.backfill_downloads")
 def backfill_downloads(batch: int = 25):
-    """Queue download generation for READY media that has no download file
-    (library items processed before this feature existed, or whose task was
-    lost). 'failed' rows are not retried automatically. Runs from beat; the
-    Redis lock keeps overlapping runs from double-queueing."""
+    """Give READY media without a download file one (library items processed
+    before this feature existed, or whose task was lost).
+
+    Originals that already are MP4/MP3 need no encoding, so they are recorded
+    right here, all of them, in one pass. Everything else is queued to
+    generate_download, `batch` items per run, so transcodes trickle through
+    without starving new uploads. 'failed' rows are not retried
+    automatically. Runs from beat and at worker start; the Redis lock keeps
+    overlapping runs from double-queueing."""
     if not _redis_client.set(_DOWNLOAD_BACKFILL_LOCK_KEY, "1", nx=True, ex=240):
         return {"status": "locked"}
 
     db = SessionLocal()
     try:
         stale_before = datetime.now(timezone.utc) - timedelta(hours=3)
-        rows = (
-            db.query(Media.id)
+        candidates = (
+            db.query(Media)
             .filter(
                 Media.status == MediaStatus.READY,
                 Media.download_path.is_(None),
@@ -433,20 +439,43 @@ def backfill_downloads(batch: int = 25):
                 ),
             )
             .order_by(Media.created_at.desc())
-            .limit(batch)
             .all()
         )
-        media_ids = [row[0] for row in rows]
-        if media_ids:
-            db.query(Media).filter(Media.id.in_(media_ids)).update(
-                {"download_status": "pending"}, synchronize_session=False
-            )
-            db.commit()
-        for media_id in media_ids:
+
+        recorded = 0
+        to_encode = []
+        for media in candidates:
+            original = _find_original(media.id)
+            if original is None:
+                media.download_status = "failed"
+                continue
+            target_ext = ".mp4" if media.media_type == MediaType.VIDEO else ".mp3"
+            if original.suffix.lower() == target_ext:
+                media.download_path = f"original/{original.name}"
+                media.download_size = original.stat().st_size
+                media.download_status = "ready"
+                recorded += 1
+            elif len(to_encode) < batch:
+                media.download_status = "pending"
+                to_encode.append(media.id)
+        db.commit()
+
+        for media_id in to_encode:
             generate_download.delay(media_id)
-        return {"status": "success", "queued": len(media_ids)}
+        return {"status": "success", "recorded": recorded, "queued": len(to_encode)}
     finally:
         db.close()
+
+
+@worker_ready.connect
+def _kick_download_backfill(sender=None, **kwargs):
+    """Start the backfill as soon as a worker is up instead of waiting for the
+    first beat tick, so an update makes native-format items downloadable
+    within seconds."""
+    try:
+        backfill_downloads.delay()
+    except Exception as e:
+        print(f"Could not queue download backfill at startup: {e}")
 
 
 def create_master_playlist_video(media_id: str, variants: list, db):

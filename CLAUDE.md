@@ -76,7 +76,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 - **Downloads** (public): every READY item gets one best-quality download file
   - Video → MP4: original served as-is when it already is `.mp4`; otherwise stream-copy remux (H.264 yuv420p + AAC) or libx264 crf 18 transcode
   - Audio → 320 kbps MP3: original served as-is when it already is `.mp3`; otherwise libmp3lame 320k with ID3 title
-  - Built by the `generate_download` Celery task after HLS (media is playable first); `media.download_path/size/status` track it; `backfill_downloads` (beat, every 5 min) fills older library items. Files live in `media/download/` or point at `media/original/`
+  - Built by the `generate_download` Celery task after HLS (media is playable first); `media.download_path/size/status` track it; `backfill_downloads` (at worker start and every 5 min via beat) fills older library items: native MP4/MP3 originals are recorded instantly in one pass, other formats are queued 25 per run. Files live in `media/download/` or point at `media/original/`. The Player page polls every 10 s while an item is still "Preparing download…"
   - Served by `GET /api/media/{id}/download` via nginx `X-Accel-Redirect` (`/internal-media/`, `internal`) with an attachment filename from the media title; counted as an Analytics `download` event (HEAD, resumed Range requests, and repeats from the same IP within 30 s are not recounted) and metered in bandwidth stats
 
 ### User Interface

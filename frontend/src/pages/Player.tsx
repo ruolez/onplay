@@ -19,6 +19,28 @@ export default function Player() {
     }
   }, [id]);
 
+  // The download file is generated in the background after upload (and
+  // backfilled for older items); poll until it exists so the button appears
+  // without a manual reload
+  const downloadPending =
+    !!media &&
+    media.status === "ready" &&
+    !media.download &&
+    media.download_status !== "failed";
+
+  useEffect(() => {
+    if (!id || !downloadPending) return;
+    const timer = setInterval(async () => {
+      try {
+        const response = await mediaApi.getMediaById(id);
+        setMedia(response.data);
+      } catch {
+        // keep polling; transient errors are not worth surfacing here
+      }
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [id, downloadPending]);
+
   const loadMedia = async () => {
     try {
       const response = await mediaApi.getMediaById(id!);
