@@ -434,10 +434,10 @@ export default function Gallery() {
         searchQuery || selectedTags.length > 0 || filter !== "all" ? (
           <div className="text-center py-12 sm:py-20 px-4">
             <SearchX className="w-12 h-12 theme-text-muted mx-auto mb-4 opacity-60" />
-            <p className="theme-text-primary text-base sm:text-lg font-medium mb-1">
+            <p className="theme-text-primary text-lg font-medium mb-1">
               No matching media
             </p>
-            <p className="theme-text-muted text-sm mb-6">
+            <p className="theme-text-muted text-base sm:text-sm mb-6">
               {searchQuery
                 ? `Nothing matches "${searchQuery}" with the current filters.`
                 : "Nothing matches the current filters."}
@@ -456,10 +456,10 @@ export default function Gallery() {
         ) : (
           <div className="text-center py-12 sm:py-20 px-4">
             <UploadCloud className="w-12 h-12 theme-text-muted mx-auto mb-4 opacity-60" />
-            <p className="theme-text-primary text-base sm:text-lg font-medium mb-1">
+            <p className="theme-text-primary text-lg font-medium mb-1">
               No media yet
             </p>
-            <p className="theme-text-muted text-sm">
+            <p className="theme-text-muted text-base sm:text-sm">
               Nothing has been published yet. Check back soon.
             </p>
           </div>
@@ -555,14 +555,14 @@ export default function Gallery() {
                     {/* Info */}
                     <div className="p-2 xs:p-3 sm:p-4">
                       {/* Filename - First Line */}
-                      <h3 className="theme-text-primary font-medium truncate text-sm sm:text-base mb-1 sm:mb-2">
+                      <h3 className="theme-text-primary font-semibold truncate text-base mb-1 sm:mb-2">
                         {item.filename}
                       </h3>
 
                       {/* Play Count and Details - Second Line */}
                       <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
                         {/* Play Count - Left aligned */}
-                        <div className="flex items-center gap-2 text-xs sm:text-sm theme-text-muted flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-caption sm:text-sm theme-text-muted flex-1 min-w-0">
                           {(item.play_count ?? 0) > 0 && (
                             <div className="hidden md:flex items-center space-x-1">
                               <Play className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
@@ -597,13 +597,13 @@ export default function Gallery() {
                           {item.tags.slice(0, 2).map((tag) => (
                             <span
                               key={tag.id}
-                              className="px-1.5 py-0.5 bg-white/10 rounded text-xs theme-text-muted whitespace-nowrap"
+                              className="px-1.5 py-0.5 bg-white/10 rounded text-caption sm:text-xs theme-text-muted whitespace-nowrap"
                             >
                               {tag.name}
                             </span>
                           ))}
                           {item.tags.length > 2 && (
-                            <span className="text-xs theme-text-muted whitespace-nowrap">
+                            <span className="text-caption sm:text-xs theme-text-muted whitespace-nowrap">
                               +{item.tags.length - 2}
                             </span>
                           )}
@@ -702,7 +702,7 @@ export default function Gallery() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h3
-                            className={`font-medium text-[15px] truncate flex-1 ${
+                            className={`font-semibold text-base truncate flex-1 ${
                               isCurrentTrack ? "" : "theme-text-primary"
                             }`}
                             style={
@@ -717,7 +717,7 @@ export default function Gallery() {
                           {/* Status badge inline */}
                           {item.status !== "ready" && (
                             <div
-                              className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white flex-shrink-0 ${getStatusColor(item.status)}`}
+                              className={`px-1.5 py-0.5 rounded-full text-micro font-medium text-white flex-shrink-0 ${getStatusColor(item.status)}`}
                             >
                               {item.status}
                             </div>
@@ -730,13 +730,13 @@ export default function Gallery() {
                             {item.tags.slice(0, 2).map((tag) => (
                               <span
                                 key={tag.id}
-                                className="px-1.5 py-[1px] bg-white/10 rounded text-[11px] theme-text-muted whitespace-nowrap"
+                                className="px-1.5 py-[1px] bg-white/10 rounded text-caption sm:text-[11px] sm:leading-4 theme-text-muted whitespace-nowrap"
                               >
                                 {tag.name}
                               </span>
                             ))}
                             {item.tags.length > 2 && (
-                              <span className="text-[11px] theme-text-muted whitespace-nowrap">
+                              <span className="text-caption sm:text-[11px] sm:leading-4 theme-text-muted whitespace-nowrap">
                                 +{item.tags.length - 2}
                               </span>
                             )}
@@ -745,7 +745,7 @@ export default function Gallery() {
                       </div>
 
                       {/* Duration and Play Count - Right aligned */}
-                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-xs sm:text-sm theme-text-muted">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 text-caption sm:text-sm theme-text-muted">
                         {item.duration && (
                           <span>{formatDuration(item.duration)}</span>
                         )}
@@ -783,7 +783,7 @@ export default function Gallery() {
 
           {/* Total Duration Display */}
           <div
-            className="mt-4 pt-3 border-t flex items-center justify-center gap-1.5 text-xs theme-text-muted"
+            className="mt-4 pt-3 border-t flex items-center justify-center gap-1.5 text-caption sm:text-xs theme-text-muted"
             style={{ borderColor: "var(--card-border)" }}
           >
             <span>{sortedMedia.length} items</span>

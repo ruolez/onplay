@@ -114,19 +114,19 @@ export default function Player() {
       {/* Media info */}
       <div className="theme-card rounded-lg sm:rounded-xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3 sm:mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold theme-text-primary break-words min-w-0">
+          <h1 className="text-2xl font-bold theme-text-primary break-words min-w-0">
             {media.filename}
           </h1>
           {media.status === "ready" && (
             <DownloadButton
               media={media}
               variant="primary"
-              className="theme-btn-primary px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors min-h-[44px] sm:min-h-[40px] w-full sm:w-auto sm:flex-shrink-0"
+              className="theme-btn-primary px-4 py-2 rounded-lg text-base sm:text-sm font-medium inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors min-h-[44px] sm:min-h-[40px] w-full sm:w-auto sm:flex-shrink-0"
             />
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 text-caption sm:text-sm">
           <div>
             <p className="theme-text-muted">Type</p>
             <p className="theme-text-primary font-medium capitalize">
@@ -162,14 +162,14 @@ export default function Player() {
         {/* Available qualities */}
         {media.variants.length > 0 && (
           <div className="mt-4 sm:mt-6">
-            <p className="theme-text-muted text-xs sm:text-sm mb-2">
+            <p className="theme-text-muted text-caption sm:text-sm mb-2">
               Available Qualities:
             </p>
             <div className="flex flex-wrap gap-2">
               {media.variants.map((variant) => (
                 <span
                   key={variant.quality}
-                  className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm"
+                  className="px-2 sm:px-3 py-1 rounded-full text-caption sm:text-sm"
                   style={{
                     background:
                       "color-mix(in srgb, var(--accent-primary) 15%, transparent)",
@@ -188,12 +188,14 @@ export default function Player() {
         {/* Tags */}
         {media.tags && media.tags.length > 0 && (
           <div className="mt-4 sm:mt-6">
-            <p className="theme-text-muted text-xs sm:text-sm mb-2">Tags:</p>
+            <p className="theme-text-muted text-caption sm:text-sm mb-2">
+              Tags:
+            </p>
             <div className="flex flex-wrap gap-2">
               {media.tags.map((tag) => (
                 <span
                   key={tag.id}
-                  className="theme-button px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm min-h-[32px] inline-flex items-center"
+                  className="theme-button px-2 sm:px-3 py-1 rounded-full text-caption sm:text-sm min-h-[32px] inline-flex items-center"
                 >
                   {tag.name}
                 </span>

@@ -218,7 +218,7 @@ function PublicLayout() {
                 />
               </svg>
               <span
-                className={`logo-text text-sm sm:text-lg lg:text-xl theme-text-primary ${isMobileSearchOpen && location.pathname === "/" ? "hidden" : "inline"} sm:inline`}
+                className={`logo-text text-base sm:text-lg lg:text-xl theme-text-primary ${isMobileSearchOpen && location.pathname === "/" ? "hidden" : "inline"} sm:inline`}
               >
                 On<span className="middle-dot"> · </span>Play
               </span>

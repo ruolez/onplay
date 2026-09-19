@@ -32,8 +32,8 @@ export default function GallerySkeleton({ view }: { view: "grid" | "list" }) {
         >
           <div className="aspect-video skeleton-block !rounded-none" />
           <div className="p-2 xs:p-3 sm:p-4 space-y-2">
-            <div className="h-4 w-3/4 skeleton-block" />
-            <div className="h-3 w-1/2 skeleton-block" />
+            <div className="h-5 w-3/4 skeleton-block" />
+            <div className="h-3.5 w-1/2 skeleton-block" />
           </div>
         </div>
       ))}

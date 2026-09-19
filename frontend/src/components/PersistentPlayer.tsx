@@ -683,7 +683,7 @@ export default function PersistentPlayer() {
             <div className="w-full text-center">
               <div ref={titleWrapRef} className="w-full overflow-hidden">
                 <h2
-                  className={`text-xl xs:text-2xl font-bold theme-text-primary whitespace-nowrap ${
+                  className={`text-2xl font-bold theme-text-primary whitespace-nowrap ${
                     titleShift > 0
                       ? "player-title-marquee w-max"
                       : "text-center"
@@ -700,7 +700,7 @@ export default function PersistentPlayer() {
                 </h2>
               </div>
               {queuePosition && (
-                <p className="text-sm theme-text-muted mt-1">
+                <p className="text-base sm:text-sm theme-text-muted mt-1">
                   {queuePosition.current} of {queuePosition.total}
                 </p>
               )}
@@ -848,7 +848,7 @@ export default function PersistentPlayer() {
                 growOnScrub
                 className="w-full"
               />
-              <div className="flex justify-between text-xs theme-text-muted tabular-nums">
+              <div className="flex justify-between text-caption sm:text-xs theme-text-muted tabular-nums">
                 <span>{formatDuration(currentTime)}</span>
                 <span>
                   -{formatDuration(Math.max(0, duration - currentTime))}
@@ -871,15 +871,15 @@ export default function PersistentPlayer() {
                 <ListMusic className="w-4 h-4 flex-shrink-0 theme-text-muted" />
                 {nextUp ? (
                   <>
-                    <span className="text-xs theme-text-muted flex-shrink-0 uppercase tracking-wide">
+                    <span className="text-micro sm:text-xs theme-text-muted flex-shrink-0 uppercase tracking-wide">
                       Up Next
                     </span>
-                    <span className="text-xs font-medium theme-text-primary truncate">
+                    <span className="text-caption sm:text-xs font-medium theme-text-primary truncate">
                       {nextUp.filename.replace(/\.[^/.]+$/, "")}
                     </span>
                   </>
                 ) : (
-                  <span className="text-xs theme-text-muted">
+                  <span className="text-caption sm:text-xs theme-text-muted">
                     Queue • {queue.length}{" "}
                     {queue.length === 1 ? "track" : "tracks"}
                   </span>
@@ -997,10 +997,10 @@ export default function PersistentPlayer() {
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <h3 className="theme-text-primary font-medium text-sm truncate">
+              <h3 className="theme-text-primary font-semibold text-sm truncate">
                 {currentMedia.filename.replace(/\.[^/.]+$/, "")}
               </h3>
-              <p className="theme-text-muted text-xs">
+              <p className="theme-text-muted text-caption sm:text-xs tabular-nums">
                 {formatDuration(currentTime)} / -
                 {formatDuration(Math.max(0, duration - currentTime))}
               </p>

@@ -247,7 +247,7 @@ export default function QueuePanel({
                     {/* Track Info */}
                     <div className="flex-1 min-w-0">
                       <h4
-                        className={`font-medium text-sm truncate ${
+                        className={`font-semibold text-base sm:text-sm truncate ${
                           isCurrent
                             ? ""
                             : hasError
@@ -264,15 +264,15 @@ export default function QueuePanel({
                       </h4>
                       <div className="flex items-center gap-2 mt-0.5">
                         {track.media_type === "video" ? (
-                          <Video className="w-3 h-3 theme-text-muted" />
+                          <Video className="w-3.5 h-3.5 theme-text-muted" />
                         ) : (
-                          <Music className="w-3 h-3 theme-text-muted" />
+                          <Music className="w-3.5 h-3.5 theme-text-muted" />
                         )}
-                        <span className="theme-text-muted text-xs">
+                        <span className="theme-text-muted text-caption sm:text-xs">
                           {formatDuration(track.duration || 0)}
                         </span>
                         {hasError && (
-                          <span className="text-red-500 text-xs">
+                          <span className="text-red-500 text-caption sm:text-xs">
                             • Failed to load
                           </span>
                         )}

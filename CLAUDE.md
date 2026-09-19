@@ -94,6 +94,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - View mode (grid/list)
   - Sort type and order
 - **Responsive Design**: Mobile-first with Tailwind CSS
+- **Mobile Type Scale** (Spotify parity on phones): primary row/card text `text-base` (16) semibold, secondary `text-caption` (13/18), tiny labels `text-micro` (11/14), now-playing and Player page titles `text-2xl` (24). `caption`/`micro` are defined in `tailwind.config.js` with explicit line-heights. Phone-only: `sm:` overrides restore the previous desktop/tablet sizes. Bottom nav labels stay 14 (Spotify's tab labels are 11) and the mobile search input stays 16 to prevent iOS zoom.
 - **Mobile Navigation**: Optimized top bar for mobile devices
   - Logo + "On·Play" text always visible
   - Full-width search input (Gallery route only)

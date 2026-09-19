@@ -25,6 +25,13 @@ export default {
       },
     },
     extend: {
+      // Phone type scale (Spotify parity): 16 body / 13 caption / 11 micro / 24 title.
+      // 16 and 24 are text-base / text-2xl; these two carry explicit line-heights
+      // so row math stays predictable (arbitrary text-[13px] would not).
+      fontSize: {
+        caption: ["13px", { lineHeight: "18px" }],
+        micro: ["11px", { lineHeight: "14px" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
