@@ -98,7 +98,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
 - **Mobile Navigation**: Optimized top bar for mobile devices
   - Logo + "On·Play" text always visible
   - Full-width search input (Gallery route only)
-  - Compact theme selector with 2-column grid layout
+  - Light/dark toggle directly in the top bar (no hamburger menu); an Install app icon appears beside it when the browser offers PWA install
   - Search state synced via URL params between mobile/desktop
 - **Persistent Bottom Bar Player**: Spotify-style player that stays at bottom of screen
   - Click media cards to load into persistent player
@@ -553,7 +553,7 @@ Lock screen and notification controls for media playback using `useMediaSession`
 - **Shared State**: Both use URL query parameter `?q=...` for synchronization
 
 **Mobile UI Optimizations**:
-- Compact theme selector with 2-column grid
+- Top-bar light/dark toggle (replaced the one-item hamburger menu)
 - Reduced spacing (12px top padding)
 - Smaller touch targets (36px min-height)
 - Responsive text sizing

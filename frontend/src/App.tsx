@@ -20,7 +20,7 @@ import { usePlayer } from "./contexts/PlayerContext";
 import { themes, applyTheme } from "./lib/theme";
 import { useServiceWorkerUpdate } from "./hooks/useServiceWorkerUpdate";
 import { useInstallPrompt } from "./hooks/useInstallPrompt";
-import { Menu, X, Search, Download, RefreshCw } from "lucide-react";
+import { X, Search, Download, RefreshCw } from "lucide-react";
 
 const AdminRoutes = lazy(() => import("./admin/AdminRoutes"));
 
@@ -40,7 +40,6 @@ function ThemeApplier() {
 function PublicLayout() {
   const { updateAvailable, applyUpdate } = useServiceWorkerUpdate();
   const { canInstall, promptInstall } = useInstallPrompt();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -50,11 +49,9 @@ function PublicLayout() {
   const desktopSearchRef = useRef<HTMLInputElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
 
-  // Close mobile menu and search inputs on route change (the desktop search
-  // click-outside handler swallows clicks while open, so it must not leak
-  // onto other routes)
+  // Close search inputs on route change (the desktop search click-outside
+  // handler swallows clicks while open, so it must not leak onto other routes)
   useEffect(() => {
-    setMobileMenuOpen(false);
     setIsDesktopSearchOpen(false);
     setIsMobileSearchOpen(false);
   }, [location.pathname]);
@@ -186,7 +183,6 @@ function PublicLayout() {
             <Link
               to="/"
               className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0"
-              onClick={() => setMobileMenuOpen(false)}
             >
               <svg
                 className="w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12"
@@ -311,47 +307,21 @@ function PublicLayout() {
             </div>
 
             {/* Mobile Actions (right side) */}
-            <div className="md:hidden flex items-center space-x-2 flex-shrink-0">
-              <div className="w-px h-6 bg-tint/10 mr-1" />
-
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg theme-btn-secondary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label="Toggle menu"
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-5 h-5 theme-text-primary" />
-                ) : (
-                  <Menu className="w-5 h-5 theme-text-primary" />
-                )}
-              </button>
+            <div className="md:hidden flex items-center gap-2 flex-shrink-0">
+              {canInstall && (
+                <button
+                  onClick={promptInstall}
+                  className="p-2 rounded-lg theme-button transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label="Install app"
+                  title="Install app"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              )}
+              <ThemeSelector />
             </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 theme-dropdown border-t border-tint/10">
-            <div className="container mx-auto px-4 py-4 space-y-2">
-              {canInstall && (
-                <button
-                  onClick={() => {
-                    promptInstall();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] theme-nav-link hover:bg-tint/5"
-                >
-                  <Download className="w-5 h-5" />
-                  <span>Install app</span>
-                </button>
-              )}
-              <div className={canInstall ? "pt-2 border-t border-tint/10" : ""}>
-                <ThemeSelector />
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
 
       {/* App update prompt (new service worker waiting) */}
