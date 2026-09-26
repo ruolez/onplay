@@ -503,28 +503,7 @@ export default function Gallery() {
                       className="relative aspect-square overflow-hidden rounded-lg sm:rounded-xl"
                       style={{ background: "var(--btn-secondary-bg)" }}
                     >
-                      {item.thumbnail_path && item.media_type === "video" ? (
-                        // Square tile, widescreen frame: show the whole frame
-                        // over a blurred, dimmed copy of itself instead of
-                        // cropping its sides
-                        <>
-                          <img
-                            src={item.thumbnail_path}
-                            alt=""
-                            aria-hidden="true"
-                            className="absolute inset-0 w-full h-full object-cover scale-150 blur-xl brightness-90 saturate-150"
-                            loading={index < 6 ? "eager" : "lazy"}
-                            decoding="async"
-                          />
-                          <img
-                            src={item.thumbnail_path}
-                            alt=""
-                            className="relative w-full h-full object-contain"
-                            loading={index < 6 ? "eager" : "lazy"}
-                            decoding="async"
-                          />
-                        </>
-                      ) : item.thumbnail_path ? (
+                      {item.thumbnail_path ? (
                         <img
                           src={item.thumbnail_path}
                           alt=""
