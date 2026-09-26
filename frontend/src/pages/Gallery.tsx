@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Media } from "../lib/api";
 import { formatDuration, formatLongDuration } from "../lib/utils";
@@ -8,12 +9,14 @@ import SegmentedControl from "../components/SegmentedControl";
 import GallerySkeleton from "../components/GallerySkeleton";
 import EqualizerBars from "../components/EqualizerBars";
 import DownloadButton from "../components/DownloadButton";
+import { menuTriggerProps, useAnchoredMenu } from "../hooks/useAnchoredMenu";
 import {
   Play,
   Music,
   Grid3x3,
   Info,
   List,
+  MoreVertical,
   Tag as TagIcon,
   ChevronDown,
   Check,
@@ -53,6 +56,8 @@ export default function Gallery() {
   const navigate = useNavigate();
   const { openPlayer, currentMedia, isPlaying } = usePlayer();
   const [searchParams] = useSearchParams();
+
+  const cardMenu = useAnchoredMenu(96);
 
   // Refs for auto-scrolling to current track
   const mediaRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -196,6 +201,10 @@ export default function Gallery() {
       </div>
     );
   }
+
+  const cardMenuMedia = cardMenu.openId
+    ? (sortedMedia.find((m) => m.id === cardMenu.openId) ?? null)
+    : null;
 
   // Calculate total duration (filteredMedia and sortedMedia now come from context)
   const totalDuration = filteredMedia.reduce(
@@ -467,9 +476,16 @@ export default function Gallery() {
       ) : (
         <>
           {viewMode === "grid" ? (
-            <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 xs:gap-3 sm:gap-4 md:gap-5">
+            <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-5 sm:gap-x-4 sm:gap-y-7 md:gap-y-8">
               {sortedMedia.map((item, index) => {
                 const isCurrentTrack = currentMedia?.id === item.id;
+                const isMenuOpen = cardMenu.openId === item.id;
+                const meta = [
+                  (item.play_count ?? 0) > 0 ? `${item.play_count} plays` : "",
+                  ...item.tags.map((tag) => tag.name),
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
                 return (
                   <div
                     key={item.id}
@@ -479,136 +495,129 @@ export default function Gallery() {
                     role="button"
                     tabIndex={item.status === "ready" ? 0 : -1}
                     aria-label={`Play ${item.filename}`}
-                    className={`group relative theme-card rounded-lg sm:rounded-xl transition-all active:scale-95 sm:hover:scale-105 ${
+                    className={`group relative rounded-lg sm:rounded-xl transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--btn-primary-bg)] ${
                       item.status === "ready"
                         ? "cursor-pointer"
                         : "cursor-default"
                     }`}
-                    style={{
-                      WebkitTapHighlightColor: "transparent",
-                      ...(isCurrentTrack
-                        ? {
-                            border: "2px solid var(--btn-primary-bg)",
-                            boxShadow: "0 0 0 1px var(--btn-primary-bg)",
-                          }
-                        : {}),
-                    }}
+                    style={{ WebkitTapHighlightColor: "transparent" }}
                   >
-                    {/* Thumbnail */}
+                    {/* Artwork */}
                     <div
-                      className="relative overflow-hidden rounded-t-lg sm:rounded-t-xl"
-                      style={{ background: "var(--card-bg)" }}
+                      className="relative aspect-video overflow-hidden rounded-lg sm:rounded-xl"
+                      style={{ background: "var(--btn-secondary-bg)" }}
                     >
                       {item.thumbnail_path ? (
                         <img
                           src={item.thumbnail_path}
-                          alt={item.filename}
-                          className="w-full aspect-video object-cover"
+                          alt=""
+                          className="w-full h-full object-cover"
                           loading={index < 6 ? "eager" : "lazy"}
                           decoding="async"
                         />
                       ) : (
-                        <div className="flex items-center justify-center aspect-video">
+                        <div className="w-full h-full flex items-center justify-center">
                           {item.media_type === "video" ? (
                             <Play
-                              className="w-16 h-16 opacity-50"
+                              className="w-10 h-10 opacity-60"
                               style={{ color: "var(--icon-video)" }}
                             />
                           ) : (
                             <Music
-                              className="w-16 h-16 opacity-50"
+                              className="w-10 h-10 opacity-60"
                               style={{ color: "var(--icon-audio)" }}
                             />
                           )}
                         </div>
                       )}
 
-                      {/* Play overlay */}
-                      {item.status === "ready" && (
-                        <div
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                          style={{ background: "var(--card-overlay)" }}
-                        >
-                          <Play className="w-16 h-16 theme-text-primary drop-shadow-lg" />
-                        </div>
-                      )}
+                      {/* Hairline edge so light artwork doesn't bleed into the page */}
+                      <div
+                        className="pointer-events-none absolute inset-0 rounded-[inherit] border"
+                        style={{ borderColor: "var(--card-border)" }}
+                      />
 
-                      {/* Status badge - only show if not ready */}
-                      {item.status !== "ready" && (
-                        <div className="absolute top-2 right-2">
-                          <div
-                            className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(item.status)}`}
-                          >
-                            {item.status}
+                      {/* Play affordance (hover-capable devices only) */}
+                      {item.status === "ready" && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity [@media(hover:hover)]:group-hover:opacity-100">
+                          <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center scale-90 transition-transform [@media(hover:hover)]:group-hover:scale-100">
+                            <Play
+                              className="w-5 h-5 ml-0.5 text-white"
+                              fill="currentColor"
+                            />
                           </div>
                         </div>
                       )}
 
-                      {/* Duration chip overlay */}
+                      {item.status !== "ready" && (
+                        <div
+                          className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-micro font-medium text-white ${getStatusColor(item.status)}`}
+                        >
+                          {item.status}
+                        </div>
+                      )}
+
+                      {isCurrentTrack && (
+                        <div
+                          className="absolute bottom-1.5 left-1.5 px-1.5 py-1 rounded-md bg-black/75 flex items-center"
+                          style={{ color: "var(--btn-primary-bg)" }}
+                        >
+                          <EqualizerBars
+                            playing={isPlaying}
+                            className="!w-3.5 !h-3.5"
+                          />
+                        </div>
+                      )}
+
                       {item.duration && (
-                        <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium leading-tight">
+                        <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/80 text-white text-micro font-semibold tabular-nums">
                           {formatDuration(item.duration)}
                         </div>
                       )}
                     </div>
 
-                    {/* Info */}
-                    <div className="p-2 xs:p-3 sm:p-4">
-                      {/* Filename - First Line */}
-                      <h3 className="theme-text-primary font-semibold truncate text-base mb-1 sm:mb-2">
-                        {item.filename}
-                      </h3>
-
-                      {/* Play Count and Details - Second Line */}
-                      <div className="flex items-center justify-between mb-1 sm:mb-2 gap-1">
-                        {/* Play Count - Left aligned */}
-                        <div className="flex items-center gap-2 text-caption sm:text-sm theme-text-muted flex-1 min-w-0">
-                          {(item.play_count ?? 0) > 0 && (
-                            <div className="hidden md:flex items-center space-x-1">
-                              <Play className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span>{item.play_count}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Actions - Right aligned */}
-                        <div className="flex items-center flex-shrink-0 -mr-1">
-                          {item.status === "ready" && (
-                            <DownloadButton
-                              media={item}
-                              variant="icon"
-                              hideWhenUnavailable
-                            />
-                          )}
-                          <button
-                            onClick={(e) => handleViewDetails(e, item.id)}
-                            className="p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
-                            title="View details"
-                            aria-label={`View details for ${item.filename}`}
-                          >
-                            <Info className="w-4 h-4 theme-text-muted" />
-                          </button>
-                        </div>
+                    {/* Text */}
+                    <div className="mt-2 sm:mt-2.5 flex items-start gap-1">
+                      <div className="min-w-0 flex-1">
+                        <h3
+                          className={`text-base font-semibold leading-snug line-clamp-2 ${
+                            isCurrentTrack ? "" : "theme-text-primary"
+                          }`}
+                          style={
+                            isCurrentTrack
+                              ? { color: "var(--btn-primary-bg)" }
+                              : undefined
+                          }
+                          title={item.filename}
+                        >
+                          {item.filename}
+                        </h3>
+                        {meta && (
+                          <p className="mt-0.5 text-caption sm:text-sm theme-text-muted truncate">
+                            {meta}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Tags - capped to one line */}
-                      {item.tags.length > 0 && (
-                        <div className="mt-1.5 sm:mt-2 flex items-center gap-1 overflow-hidden">
-                          {item.tags.slice(0, 2).map((tag) => (
-                            <span
-                              key={tag.id}
-                              className="px-1.5 py-0.5 bg-white/10 rounded text-caption sm:text-xs theme-text-muted whitespace-nowrap"
-                            >
-                              {tag.name}
-                            </span>
-                          ))}
-                          {item.tags.length > 2 && (
-                            <span className="text-caption sm:text-xs theme-text-muted whitespace-nowrap">
-                              +{item.tags.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      <button
+                        {...menuTriggerProps}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cardMenu.toggle(item.id, e.currentTarget);
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className={`-mr-2 -mt-1.5 flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full transition-opacity hover:bg-[color:color-mix(in_srgb,var(--text-primary)_10%,transparent)] ${
+                          isMenuOpen
+                            ? "opacity-100"
+                            : "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100"
+                        }`}
+                        aria-label={`More options for ${item.filename}`}
+                        aria-haspopup="menu"
+                        aria-expanded={isMenuOpen}
+                      >
+                        <MoreVertical className="w-5 h-5 theme-text-muted" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -792,6 +801,45 @@ export default function Gallery() {
           </div>
         </>
       )}
+
+      {/* Card menu: one portal at the page root, not inside the card — React
+          events bubble through portals, so a click here would reach the
+          card's onClick and start playback */}
+      {cardMenuMedia &&
+        cardMenu.pos &&
+        createPortal(
+          <div
+            ref={cardMenu.dropdownRef}
+            role="menu"
+            className="fixed w-56 theme-dropdown rounded-lg py-1 z-[130] shadow-xl"
+            style={{
+              right: cardMenu.pos.right,
+              top: cardMenu.pos.top,
+              bottom: cardMenu.pos.bottom,
+            }}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => {
+                cardMenu.close();
+                handleViewDetails(e, cardMenuMedia.id);
+              }}
+              className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
+            >
+              <Info className="w-4 h-4" />
+              View details
+            </button>
+            {cardMenuMedia.status === "ready" && (
+              <DownloadButton
+                media={cardMenuMedia}
+                variant="menu"
+                onDownloaded={cardMenu.close}
+              />
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import SegmentedControl from "../../components/SegmentedControl";
 import DownloadButton from "../../components/DownloadButton";
+import { menuTriggerProps, useAnchoredMenu } from "../../hooks/useAnchoredMenu";
 import ConfirmDialog from "../components/ConfirmDialog";
 import RenameModal from "../components/RenameModal";
 import TagEditorModal from "../components/TagEditorModal";
@@ -47,20 +48,19 @@ export default function MediaLibrary() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [search, setSearch] = useState("");
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{
-    right: number;
-    top?: number;
-    bottom?: number;
-  } | null>(null);
+  const {
+    openId: menuOpenId,
+    pos: menuPos,
+    dropdownRef,
+    toggle: toggleMenu,
+    close: closeMenu,
+  } = useAnchoredMenu();
   const [renameTarget, setRenameTarget] = useState<Media | null>(null);
   const [tagTarget, setTagTarget] = useState<Media | null>(null);
   const [thumbnailTarget, setThumbnailTarget] = useState<Media | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<Media | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Media | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const loadPage = useCallback(
     async (skip: number, append: boolean) => {
@@ -96,31 +96,6 @@ export default function MediaLibrary() {
     loadPage(0, false).catch(() => {});
     refreshMedia();
   }, [loadPage, refreshMedia]);
-
-  // Close row menu on outside click, scroll, or resize (the dropdown is a
-  // fixed-position portal, so it must not stay anchored to a moved row)
-  useEffect(() => {
-    if (!menuOpenId) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        menuRef.current?.contains(target) ||
-        dropdownRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setMenuOpenId(null);
-    };
-    const close = () => setMenuOpenId(null);
-    document.addEventListener("mousedown", handler);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [menuOpenId]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -162,44 +137,15 @@ export default function MediaLibrary() {
   };
 
   const rowMenu = (media: Media) => (
-    <div
-      className="relative"
-      ref={menuOpenId === media.id ? menuRef : undefined}
+    <button
+      {...menuTriggerProps}
+      onClick={(e) => toggleMenu(media.id, e.currentTarget)}
+      className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+      aria-label="Actions"
+      aria-expanded={menuOpenId === media.id}
     >
-      <button
-        onClick={(e) => {
-          if (menuOpenId === media.id) {
-            setMenuOpenId(null);
-            return;
-          }
-          // The dropdown renders as a fixed-position portal so it can't be
-          // clipped by the table's scroll container or painted under the
-          // persistent player bar (theme-card's backdrop-filter traps any
-          // in-card z-index below it). Flip upward when the space between the
-          // trigger and the player bar can't fit the menu.
-          const rect = e.currentTarget.getBoundingClientRect();
-          const playerBarHeight =
-            parseFloat(
-              getComputedStyle(document.documentElement).getPropertyValue(
-                "--mini-player-height",
-              ),
-            ) || 0;
-          const opensUp =
-            window.innerHeight - playerBarHeight - rect.bottom < 256;
-          setMenuPos({
-            right: window.innerWidth - rect.right,
-            ...(opensUp
-              ? { bottom: window.innerHeight - rect.top + 4 }
-              : { top: rect.bottom + 4 }),
-          });
-          setMenuOpenId(media.id);
-        }}
-        className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-        aria-label="Actions"
-      >
-        <MoreVertical className="w-4 h-4 theme-text-muted" />
-      </button>
-    </div>
+      <MoreVertical className="w-4 h-4 theme-text-muted" />
+    </button>
   );
 
   // Rendered once (not per rowMenu call — the desktop table and mobile list
@@ -224,7 +170,7 @@ export default function MediaLibrary() {
             <Link
               to={`/player/${menuMedia.id}`}
               className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full"
-              onClick={() => setMenuOpenId(null)}
+              onClick={() => closeMenu()}
             >
               <ExternalLink className="w-4 h-4" />
               Open player
@@ -233,13 +179,13 @@ export default function MediaLibrary() {
               <DownloadButton
                 media={menuMedia}
                 variant="menu"
-                onDownloaded={() => setMenuOpenId(null)}
+                onDownloaded={() => closeMenu()}
               />
             )}
             <button
               onClick={() => {
                 setRenameTarget(menuMedia);
-                setMenuOpenId(null);
+                closeMenu();
               }}
               className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
             >
@@ -249,7 +195,7 @@ export default function MediaLibrary() {
             <button
               onClick={() => {
                 setTagTarget(menuMedia);
-                setMenuOpenId(null);
+                closeMenu();
               }}
               className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
             >
@@ -259,7 +205,7 @@ export default function MediaLibrary() {
             <button
               onClick={() => {
                 setThumbnailTarget(menuMedia);
-                setMenuOpenId(null);
+                closeMenu();
               }}
               className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
             >
@@ -269,7 +215,7 @@ export default function MediaLibrary() {
             <button
               onClick={() => {
                 setReplaceTarget(menuMedia);
-                setMenuOpenId(null);
+                closeMenu();
               }}
               className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
             >
@@ -279,7 +225,7 @@ export default function MediaLibrary() {
             <button
               onClick={() => {
                 setDeleteTarget(menuMedia);
-                setMenuOpenId(null);
+                closeMenu();
               }}
               className="theme-dropdown-item flex items-center gap-2.5 px-3 py-2 text-sm w-full text-left"
               style={{ color: "var(--status-error)" }}

@@ -22,18 +22,15 @@ export default function GallerySkeleton({ view }: { view: "grid" | "list" }) {
   }
   return (
     <div
-      className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 xs:gap-3 sm:gap-4 md:gap-5"
+      className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-5 sm:gap-x-4 sm:gap-y-7 md:gap-y-8"
       aria-hidden="true"
     >
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div
-          key={i}
-          className="theme-card rounded-lg sm:rounded-xl overflow-hidden animate-pulse"
-        >
-          <div className="aspect-video skeleton-block !rounded-none" />
-          <div className="p-2 xs:p-3 sm:p-4 space-y-2">
-            <div className="h-5 w-3/4 skeleton-block" />
-            <div className="h-3.5 w-1/2 skeleton-block" />
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="animate-pulse">
+          <div className="aspect-video skeleton-block !rounded-lg sm:!rounded-xl" />
+          <div className="mt-2.5 space-y-1.5">
+            <div className="h-4 w-4/5 skeleton-block" />
+            <div className="h-3 w-1/2 skeleton-block" />
           </div>
         </div>
       ))}
