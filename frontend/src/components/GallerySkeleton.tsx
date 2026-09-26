@@ -27,7 +27,7 @@ export default function GallerySkeleton({ view }: { view: "grid" | "list" }) {
     >
       {Array.from({ length: 12 }).map((_, i) => (
         <div key={i} className="animate-pulse">
-          <div className="aspect-video skeleton-block !rounded-lg sm:!rounded-xl" />
+          <div className="aspect-square skeleton-block !rounded-lg sm:!rounded-xl" />
           <div className="mt-2.5 space-y-1.5">
             <div className="h-4 w-4/5 skeleton-block" />
             <div className="h-3 w-1/2 skeleton-block" />

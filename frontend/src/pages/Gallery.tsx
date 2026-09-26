@@ -480,12 +480,8 @@ export default function Gallery() {
               {sortedMedia.map((item, index) => {
                 const isCurrentTrack = currentMedia?.id === item.id;
                 const isMenuOpen = cardMenu.openId === item.id;
-                const meta = [
-                  (item.play_count ?? 0) > 0 ? `${item.play_count} plays` : "",
-                  ...item.tags.map((tag) => tag.name),
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
+                const playCount = item.play_count ?? 0;
+                const tagNames = item.tags.map((tag) => tag.name).join(" · ");
                 return (
                   <div
                     key={item.id}
@@ -504,10 +500,31 @@ export default function Gallery() {
                   >
                     {/* Artwork */}
                     <div
-                      className="relative aspect-video overflow-hidden rounded-lg sm:rounded-xl"
+                      className="relative aspect-square overflow-hidden rounded-lg sm:rounded-xl"
                       style={{ background: "var(--btn-secondary-bg)" }}
                     >
-                      {item.thumbnail_path ? (
+                      {item.thumbnail_path && item.media_type === "video" ? (
+                        // Square tile, widescreen frame: show the whole frame
+                        // over a blurred, dimmed copy of itself instead of
+                        // cropping its sides
+                        <>
+                          <img
+                            src={item.thumbnail_path}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 w-full h-full object-cover scale-150 blur-xl brightness-90 saturate-150"
+                            loading={index < 6 ? "eager" : "lazy"}
+                            decoding="async"
+                          />
+                          <img
+                            src={item.thumbnail_path}
+                            alt=""
+                            className="relative w-full h-full object-contain"
+                            loading={index < 6 ? "eager" : "lazy"}
+                            decoding="async"
+                          />
+                        </>
+                      ) : item.thumbnail_path ? (
                         <img
                           src={item.thumbnail_path}
                           alt=""
@@ -592,9 +609,25 @@ export default function Gallery() {
                         >
                           {item.filename}
                         </h3>
-                        {meta && (
-                          <p className="mt-0.5 text-caption sm:text-sm theme-text-muted truncate">
-                            {meta}
+                        {(playCount > 0 || tagNames) && (
+                          <p className="mt-0.5 flex items-center gap-1 text-caption sm:text-sm theme-text-muted min-w-0">
+                            {playCount > 0 && (
+                              <span className="flex items-center gap-1 flex-shrink-0 tabular-nums">
+                                <Play
+                                  className="w-3 h-3"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                />
+                                {playCount}
+                                <span className="sr-only"> plays</span>
+                              </span>
+                            )}
+                            {playCount > 0 && tagNames && (
+                              <span aria-hidden="true">·</span>
+                            )}
+                            {tagNames && (
+                              <span className="truncate">{tagNames}</span>
+                            )}
                           </p>
                         )}
                       </div>
