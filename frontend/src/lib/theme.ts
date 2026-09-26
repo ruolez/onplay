@@ -78,6 +78,10 @@ export interface ThemeConfig {
   // Chart series (categorical pair, CVD-validated per theme)
   chartSeries1: string;
   chartSeries2: string;
+
+  // Space-separated RGB for theme-aware surface tints (Tailwind `tint/N`)
+  tintRgb: string;
+  dropdownShadow: string;
 }
 
 // Available theme names
@@ -139,170 +143,161 @@ export const themes: Record<ThemeName, ThemeConfig> = {
     iconAll: "#94a3b8",
     chartSeries1: "#3b82f6",
     chartSeries2: "#d97706",
+    tintRgb: "255 255 255",
+    dropdownShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
   },
 
+  // Mirrors Eclipse's roles: slate for the active filter, amber (deepened to
+  // copper for AA on white) for primary actions and progress.
   linen: {
-    // Main background - warm off-white with subtle gradient
-    bgPrimary: "#fafaf8",
-    bgGradient: "linear-gradient(180deg, #fafaf8 0%, #f5f5f3 100%)",
-
-    // Navigation - slightly darker with subtle border and shadow
-    navBg: "rgba(255, 255, 255, 0.95)",
-    navBorder: "rgba(0, 0, 0, 0.12)",
-    navShadow: "0 1px 2px rgba(0, 0, 0, 0.08)",
-    dropdownBg: "rgba(255, 255, 255, 0.95)",
-
-    // Text colors - charcoal instead of pure black for softer readability
-    textPrimary: "#1c1c1c",
+    bgPrimary: "#f7f7f5",
+    bgGradient: "linear-gradient(180deg, #f7f7f5 0%, #f4f4f1 100%)",
+    navBg: "rgba(255, 255, 255, 0.88)",
+    navBorder: "rgba(24, 24, 27, 0.08)",
+    navShadow: "0 1px 2px rgba(24, 24, 27, 0.04)",
+    dropdownBg: "rgba(255, 255, 255, 0.98)",
+    textPrimary: "#18181b",
     textSecondary: "#52525b",
-    textMuted: "#5f5f66",
-
-    // Accent colors - professional calm blue
-    accentPrimary: "#0969da",
-    accentSecondary: "#0550ae",
-    accentHover: "#0550ae",
-
-    // Card styles - white with subtle warm gray borders
+    textMuted: "#6b6b73",
+    accentPrimary: "#475569",
+    accentSecondary: "#334155",
+    accentHover: "#2563eb",
     cardBg: "#ffffff",
-    cardBgHover: "#fafafa",
-    cardBorder: "rgba(0, 0, 0, 0.12)",
-    cardBorderHover: "rgba(9, 105, 218, 0.4)",
-    cardShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-    cardShadowHover: "0 2px 8px rgba(0, 0, 0, 0.08)",
-    cardOverlay: "rgba(255, 255, 255, 0.7)",
-
-    // Primary button - blue with white text
-    btnPrimaryBg: "#0757b8",
+    cardBgHover: "#f4f4f5",
+    cardBorder: "rgba(24, 24, 27, 0.1)",
+    cardBorderHover: "rgba(24, 24, 27, 0.18)",
+    cardShadow: "0 1px 2px rgba(24, 24, 27, 0.04)",
+    cardShadowHover: "0 2px 8px rgba(24, 24, 27, 0.08)",
+    cardOverlay: "rgba(0, 0, 0, 0.4)",
+    btnPrimaryBg: "#a14e0c",
     btnPrimaryText: "#ffffff",
-    btnPrimaryHover: "#054a93",
-
-    // Secondary button - light gray backgrounds
-    btnSecondaryBg: "rgba(0, 0, 0, 0.12)",
-    btnSecondaryText: "#52525b",
-    btnSecondaryHover: "rgba(0, 0, 0, 0.18)",
-
-    // Orange button - warm terracotta
-    btnOrangeBg: "#e76f51",
-    btnOrangeText: "#1c1c1c",
-    btnOrangeHover: "#f28066",
-
-    // Input styles - subtle background with clear borders
+    btnPrimaryHover: "#853f0a",
+    btnSecondaryBg: "rgba(24, 24, 27, 0.06)",
+    btnSecondaryText: "#3f3f46",
+    btnSecondaryHover: "rgba(24, 24, 27, 0.1)",
+    btnOrangeBg: "#475569",
+    btnOrangeText: "#ffffff",
+    btnOrangeHover: "#334155",
     inputBg: "#ffffff",
-    inputBorder: "rgba(0, 0, 0, 0.12)",
-    inputText: "#1c1c1c",
-    inputFocus: "#0969da",
-
-    // Status colors - gentle, not harsh
-    statusSuccess: "#059669",
-    statusWarning: "#d97706",
-    statusError: "#dc2626",
-    statusInfo: "#0284c7",
-
-    // Stat card gradients - subtle backgrounds with visible borders
-    statGradient1: "rgba(9, 105, 218, 0.04)",
-    statGradient2: "rgba(5, 150, 105, 0.04)",
-    statGradient3: "rgba(2, 132, 199, 0.04)",
-    statGradient4: "rgba(217, 119, 6, 0.04)",
-    statBorder1: "rgba(9, 105, 218, 0.3)",
-    statBorder2: "rgba(5, 150, 105, 0.3)",
-    statBorder3: "rgba(2, 132, 199, 0.3)",
-    statBorder4: "rgba(217, 119, 6, 0.3)",
-    // Player bar - light theme values
-    playerBarBg: "rgba(255, 255, 255, 0.95)",
-    playerBarBorder: "rgba(0, 0, 0, 0.1)",
-    playerBarButtonHover: "rgba(0, 0, 0, 0.05)",
-    playerProgressBg: "rgba(0, 0, 0, 0.1)",
-    iconAudio: "#8b5cf6",
-    iconVideo: "#3b82f6",
-    iconTag: "#d97706",
-    iconAll: "#0969da",
-    chartSeries1: "#0969da",
-    chartSeries2: "#e76f51",
+    inputBorder: "rgba(24, 24, 27, 0.2)",
+    inputText: "#18181b",
+    inputFocus: "#2563eb",
+    statusSuccess: "#047857",
+    statusWarning: "#9a5d06",
+    statusError: "#b91c1c",
+    statusInfo: "#0369a1",
+    statGradient1: "rgba(71, 85, 105, 0.05)",
+    statGradient2: "rgba(4, 120, 87, 0.05)",
+    statGradient3: "rgba(3, 105, 161, 0.05)",
+    statGradient4: "rgba(154, 93, 6, 0.05)",
+    statBorder1: "rgba(71, 85, 105, 0.25)",
+    statBorder2: "rgba(4, 120, 87, 0.25)",
+    statBorder3: "rgba(3, 105, 161, 0.25)",
+    statBorder4: "rgba(154, 93, 6, 0.25)",
+    playerBarBg: "rgba(255, 255, 255, 0.88)",
+    playerBarBorder: "rgba(24, 24, 27, 0.08)",
+    playerBarButtonHover: "rgba(24, 24, 27, 0.06)",
+    playerProgressBg: "rgba(24, 24, 27, 0.12)",
+    iconAudio: "#7c3aed",
+    iconVideo: "#2563eb",
+    iconTag: "#a14e0c",
+    iconAll: "#475569",
+    chartSeries1: "#2563eb",
+    chartSeries2: "#a14e0c",
+    tintRgb: "24 24 27",
+    dropdownShadow:
+      "0 8px 24px rgba(24, 24, 27, 0.12), 0 1px 2px rgba(24, 24, 27, 0.06)",
   },
 };
 
+// Accent tint marking an applied filter (mobile bottom nav + desktop tag filter)
+export const activeFilterStyle = {
+  background: "color-mix(in srgb, var(--btn-primary-bg) 22%, transparent)",
+  boxShadow:
+    "inset 0 0 0 1px color-mix(in srgb, var(--btn-primary-bg) 45%, transparent)",
+};
+
+export function themeVars(theme: ThemeConfig): Record<string, string> {
+  return {
+    "--bg-primary": theme.bgPrimary,
+    "--bg-gradient": theme.bgGradient ?? theme.bgPrimary,
+    "--nav-bg": theme.navBg,
+    "--nav-border": theme.navBorder,
+    "--nav-shadow": theme.navShadow,
+    "--dropdown-bg": theme.dropdownBg,
+    "--dropdown-shadow": theme.dropdownShadow,
+    "--text-primary": theme.textPrimary,
+    "--text-secondary": theme.textSecondary,
+    "--text-muted": theme.textMuted,
+    "--accent-primary": theme.accentPrimary,
+    "--accent-secondary": theme.accentSecondary,
+    "--accent-hover": theme.accentHover,
+    "--card-bg": theme.cardBg,
+    "--card-bg-hover": theme.cardBgHover,
+    "--card-border": theme.cardBorder,
+    "--card-border-hover": theme.cardBorderHover,
+    "--card-shadow": theme.cardShadow,
+    "--card-shadow-hover": theme.cardShadowHover,
+    "--card-overlay": theme.cardOverlay,
+    "--btn-primary-bg": theme.btnPrimaryBg,
+    "--btn-primary-text": theme.btnPrimaryText,
+    "--btn-primary-hover": theme.btnPrimaryHover,
+    "--btn-secondary-bg": theme.btnSecondaryBg,
+    "--btn-secondary-text": theme.btnSecondaryText,
+    "--btn-secondary-hover": theme.btnSecondaryHover,
+    "--btn-orange-bg": theme.btnOrangeBg,
+    "--btn-orange-text": theme.btnOrangeText,
+    "--btn-orange-hover": theme.btnOrangeHover,
+    "--input-bg": theme.inputBg,
+    "--input-border": theme.inputBorder,
+    "--input-text": theme.inputText,
+    "--input-focus": theme.inputFocus,
+    "--status-success": theme.statusSuccess,
+    "--status-warning": theme.statusWarning,
+    "--status-error": theme.statusError,
+    "--status-info": theme.statusInfo,
+    "--stat-gradient-1": theme.statGradient1,
+    "--stat-gradient-2": theme.statGradient2,
+    "--stat-gradient-3": theme.statGradient3,
+    "--stat-gradient-4": theme.statGradient4,
+    "--stat-border-1": theme.statBorder1,
+    "--stat-border-2": theme.statBorder2,
+    "--stat-border-3": theme.statBorder3,
+    "--stat-border-4": theme.statBorder4,
+    "--player-bar-bg": theme.playerBarBg,
+    "--player-bar-border": theme.playerBarBorder,
+    "--player-bar-button-hover": theme.playerBarButtonHover,
+    "--player-progress-bg": theme.playerProgressBg,
+    "--icon-audio": theme.iconAudio,
+    "--icon-video": theme.iconVideo,
+    "--icon-tag": theme.iconTag,
+    "--icon-all": theme.iconAll,
+    "--chart-1": theme.chartSeries1,
+    "--chart-2": theme.chartSeries2,
+    "--tint-rgb": theme.tintRgb,
+  };
+}
+
+export function isLightTheme(theme: ThemeConfig) {
+  const r = parseInt(theme.bgPrimary.slice(1, 3), 16);
+  const g = parseInt(theme.bgPrimary.slice(3, 5), 16);
+  const b = parseInt(theme.bgPrimary.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+}
+
 export function applyTheme(theme: ThemeConfig) {
   const root = document.documentElement;
-
-  root.style.setProperty("--bg-primary", theme.bgPrimary);
-  if (theme.bgGradient) {
-    root.style.setProperty("--bg-gradient", theme.bgGradient);
+  for (const [name, value] of Object.entries(themeVars(theme))) {
+    root.style.setProperty(name, value);
   }
 
-  root.style.setProperty("--nav-bg", theme.navBg);
-  root.style.setProperty("--nav-border", theme.navBorder);
-  root.style.setProperty("--nav-shadow", theme.navShadow);
-  root.style.setProperty("--dropdown-bg", theme.dropdownBg);
-
-  root.style.setProperty("--text-primary", theme.textPrimary);
-  root.style.setProperty("--text-secondary", theme.textSecondary);
-  root.style.setProperty("--text-muted", theme.textMuted);
-
-  root.style.setProperty("--accent-primary", theme.accentPrimary);
-  root.style.setProperty("--accent-secondary", theme.accentSecondary);
-  root.style.setProperty("--accent-hover", theme.accentHover);
-
-  root.style.setProperty("--card-bg", theme.cardBg);
-  root.style.setProperty("--card-bg-hover", theme.cardBgHover);
-  root.style.setProperty("--card-border", theme.cardBorder);
-  root.style.setProperty("--card-border-hover", theme.cardBorderHover);
-  root.style.setProperty("--card-shadow", theme.cardShadow);
-  root.style.setProperty("--card-shadow-hover", theme.cardShadowHover);
-  root.style.setProperty("--card-overlay", theme.cardOverlay);
-
-  root.style.setProperty("--btn-primary-bg", theme.btnPrimaryBg);
-  root.style.setProperty("--btn-primary-text", theme.btnPrimaryText);
-  root.style.setProperty("--btn-primary-hover", theme.btnPrimaryHover);
-  root.style.setProperty("--btn-secondary-bg", theme.btnSecondaryBg);
-  root.style.setProperty("--btn-secondary-text", theme.btnSecondaryText);
-  root.style.setProperty("--btn-secondary-hover", theme.btnSecondaryHover);
-  root.style.setProperty("--btn-orange-bg", theme.btnOrangeBg);
-  root.style.setProperty("--btn-orange-text", theme.btnOrangeText);
-  root.style.setProperty("--btn-orange-hover", theme.btnOrangeHover);
-
-  root.style.setProperty("--input-bg", theme.inputBg);
-  root.style.setProperty("--input-border", theme.inputBorder);
-  root.style.setProperty("--input-text", theme.inputText);
-  root.style.setProperty("--input-focus", theme.inputFocus);
-
-  root.style.setProperty("--status-success", theme.statusSuccess);
-  root.style.setProperty("--status-warning", theme.statusWarning);
-  root.style.setProperty("--status-error", theme.statusError);
-  root.style.setProperty("--status-info", theme.statusInfo);
-
-  root.style.setProperty("--stat-gradient-1", theme.statGradient1);
-  root.style.setProperty("--stat-gradient-2", theme.statGradient2);
-  root.style.setProperty("--stat-gradient-3", theme.statGradient3);
-  root.style.setProperty("--stat-gradient-4", theme.statGradient4);
-  root.style.setProperty("--stat-border-1", theme.statBorder1);
-  root.style.setProperty("--stat-border-2", theme.statBorder2);
-  root.style.setProperty("--stat-border-3", theme.statBorder3);
-  root.style.setProperty("--stat-border-4", theme.statBorder4);
-
-  root.style.setProperty("--player-bar-bg", theme.playerBarBg);
-  root.style.setProperty("--player-bar-border", theme.playerBarBorder);
-  root.style.setProperty(
-    "--player-bar-button-hover",
-    theme.playerBarButtonHover,
-  );
-  root.style.setProperty("--player-progress-bg", theme.playerProgressBg);
-
-  root.style.setProperty("--icon-audio", theme.iconAudio);
-  root.style.setProperty("--icon-video", theme.iconVideo);
-  root.style.setProperty("--icon-tag", theme.iconTag);
-  root.style.setProperty("--icon-all", theme.iconAll);
-
-  root.style.setProperty("--chart-1", theme.chartSeries1);
-  root.style.setProperty("--chart-2", theme.chartSeries2);
+  const isLight = isLightTheme(theme);
+  root.style.colorScheme = isLight ? "light" : "dark";
 
   // Keep browser chrome (status/URL bar) in sync with the active theme
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) themeColorMeta.setAttribute("content", theme.bgPrimary);
 
-  const r = parseInt(theme.bgPrimary.slice(1, 3), 16);
-  const g = parseInt(theme.bgPrimary.slice(3, 5), 16);
-  const b = parseInt(theme.bgPrimary.slice(5, 7), 16);
-  const isLight = (r * 299 + g * 587 + b * 114) / 1000 > 128;
   const statusBarMeta = document.querySelector(
     'meta[name="apple-mobile-web-app-status-bar-style"]',
   );

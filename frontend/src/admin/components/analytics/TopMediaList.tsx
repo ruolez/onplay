@@ -17,7 +17,7 @@ export default function TopMediaList({ items }: { items: TopMediaItem[] }) {
             <Link
               key={item.media_id}
               to={`/player/${item.media_id}`}
-              className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-white/[0.04] transition-colors"
+              className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-tint/[0.04] transition-colors"
             >
               <span
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"

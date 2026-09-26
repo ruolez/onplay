@@ -31,8 +31,12 @@ export function useToast(): ToastContextValue {
 const TOAST_DURATION_MS = 4000;
 
 const iconFor: Record<ToastType, ReactNode> = {
-  success: <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-green-500" />,
-  error: <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500" />,
+  success: (
+    <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[color:var(--status-success)]" />
+  ),
+  error: (
+    <AlertCircle className="w-5 h-5 flex-shrink-0 text-[color:var(--status-error)]" />
+  ),
   info: <Info className="w-5 h-5 flex-shrink-0 theme-icon-accent" />,
 };
 
@@ -83,7 +87,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <button
               onClick={() => dismiss(toast.id)}
               aria-label="Dismiss notification"
-              className="theme-text-muted hover:theme-text-primary p-1 -mr-1 rounded"
+              className="theme-text-muted hover:text-[color:var(--text-primary)] p-1 -mr-1 rounded"
             >
               <X className="w-4 h-4" />
             </button>

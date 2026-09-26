@@ -49,7 +49,7 @@ export default function Modal({
           <h3 className="font-semibold theme-text-primary">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-tint/10 transition-colors"
             aria-label="Close"
           >
             <X className="w-4 h-4 theme-text-muted" />

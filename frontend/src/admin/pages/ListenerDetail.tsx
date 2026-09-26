@@ -64,7 +64,7 @@ export default function ListenerDetail() {
       <div className="space-y-4">
         <Link
           to="/admin/analytics?tab=listeners"
-          className="inline-flex items-center gap-2 theme-text-secondary hover:theme-text-primary transition-colors"
+          className="inline-flex items-center gap-2 theme-text-secondary hover:text-[color:var(--text-primary)] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to listeners
@@ -81,7 +81,7 @@ export default function ListenerDetail() {
       <div>
         <Link
           to="/admin/analytics?tab=listeners"
-          className="inline-flex items-center gap-2 theme-text-secondary hover:theme-text-primary transition-colors mb-3"
+          className="inline-flex items-center gap-2 theme-text-secondary hover:text-[color:var(--text-primary)] transition-colors mb-3"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to listeners

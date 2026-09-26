@@ -138,7 +138,7 @@ export default function SeekBar({
               className="absolute inset-y-0 left-0 rounded-[inherit] pointer-events-none"
               style={{
                 width: `${bufferedPercent}%`,
-                background: "rgba(255, 255, 255, 0.12)",
+                background: "rgb(var(--tint-rgb) / 0.12)",
               }}
             />
           )}
@@ -206,7 +206,7 @@ export default function SeekBar({
           className="absolute inset-y-0 left-0 rounded-[inherit] pointer-events-none"
           style={{
             width: `${bufferedPercent}%`,
-            background: "rgba(255, 255, 255, 0.12)",
+            background: "rgb(var(--tint-rgb) / 0.12)",
           }}
         />
       )}

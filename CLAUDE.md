@@ -85,7 +85,7 @@ OnPlay is a professional media streaming platform with HLS video/audio streaming
   - Minimal shadows, subtle borders
   - Theme applied via ~50 CSS custom properties set by `applyTheme()` (lib/theme.ts)
   - Meta theme-color and iOS status-bar style sync with the active theme
-  - All text/background pairs validated ≥ 4.5:1 WCAG AA contrast
+  - All text/background pairs validated ≥ 4.5:1 WCAG AA contrast (Linen checked against page, gradient end, card and hover surfaces)
 - **Theme Persistence**: LocalStorage with React Context
 - **Gallery Filter Persistence**: All filter states preserved across navigation
   - Media type filter (all/video/audio)
@@ -255,11 +255,16 @@ onplay/
 
 - **CSS Variables**: Dynamic theming without page reload
 - **Type Safety**: Union type for all theme names
-- **Color Palette**: Each theme includes three button color systems:
-  - `btnPrimary`: Primary actions (view toggles, important CTAs) - typically blue/teal
-  - `btnSecondary`: Secondary actions (filters, less emphasis) - muted grays
-  - `btnOrange`: Accent actions (segmented controls) - complementary orange tones
-- **Orange Accent Strategy**: Each theme has a carefully chosen orange that complements its primary color
+- **Shared roles across themes** (Linen mirrors Eclipse, Linen values deepened for AA on white):
+  - `btnPrimary`: amber primary actions, progress fills, now-playing highlight (Eclipse `#e8a359`, Linen copper `#a14e0c`)
+  - `btnSecondary`: quiet neutral chips (filters, sort)
+  - `btnOrange`: historical name — the active segmented-control fill, slate in both themes (`#475569`)
+  - `status*`: success/warning/error/info; use `var(--status-*)`, never Tailwind `red-400`/`green-500`/etc.
+- **`themeVars(theme)`** (lib/theme.ts) maps a `ThemeConfig` to its CSS custom properties; `applyTheme()` writes them to `:root`, and a subtree can spread them into `style` to force a palette
+- **Now-playing view is always dark**: the expanded player spreads `themeVars(themes.eclipse)` because it sits over darkened artwork (Spotify/Apple Music pattern)
+- **`tint` color**: `bg-tint/10`, `border-tint/10`, `hover:bg-tint/5` for surface hovers, selected rows, dividers and chips — white in Eclipse, zinc-900 in Linen (`--tint-rgb`). In inline styles use `rgb(var(--tint-rgb) / 0.12)`
+- **First paint**: `main.tsx` applies the saved theme synchronously before React mounts; `applyTheme()` also sets `color-scheme` so native scrollbars/controls match, and `body` sets `accent-color: var(--btn-primary-bg)`
+- **Hover on theme colors**: `.theme-*` classes live outside `@layer`, so `hover:theme-*` does nothing; use `hover:text-[color:var(--text-primary)]`
 
 ### VideoPlayer Ref Pattern
 
@@ -726,6 +731,7 @@ VITE_API_URL=http://localhost:8080/api
 21. **Three-Dots Menu**: Remove `overflow-hidden` from card, apply to thumbnail only
 22. **Z-Index**: Dropdown `z-[100]`, active card `z-[110]`
 23. **Mobile Tap Highlight**: Disable with `WebkitTapHighlightColor: 'transparent'`
+23a. **Surface Tints**: Never `bg-white/N` / `border-white/N` on theme surfaces (invisible in Linen) — use `tint/N`. `bg-black/N` + `text-white` stay correct only as overlays on thumbnails/video and modal scrims
 
 **State Persistence:**
 24. **Player State Restore**: Use `RESTORE_STATE` event in queueMachine, not `LOAD_TRACK` (preserves saved time/volume)

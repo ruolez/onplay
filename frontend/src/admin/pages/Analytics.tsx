@@ -129,7 +129,7 @@ function ListenersTab() {
               {items.map((l) => (
                 <tr
                   key={l.listener_id}
-                  className="border-b last:border-b-0 hover:bg-white/[0.03] transition-colors"
+                  className="border-b last:border-b-0 hover:bg-tint/[0.03] transition-colors"
                   style={{ borderColor: "var(--card-border)" }}
                 >
                   <td className="px-4 py-3">

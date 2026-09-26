@@ -81,8 +81,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             className={({ isActive }) =>
               `flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors min-h-[44px] ${
                 isActive
-                  ? "bg-white/10 theme-text-primary border-l-2"
-                  : "theme-nav-link hover:bg-white/5"
+                  ? "bg-tint/10 theme-text-primary border-l-2"
+                  : "theme-nav-link hover:bg-tint/5"
               }`
             }
             style={({ isActive }) =>
@@ -105,7 +105,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           to="/"
           onClick={onNavigate}
-          className="flex items-center space-x-3 px-3 py-2.5 rounded-lg theme-nav-link hover:bg-white/5 transition-colors min-h-[44px]"
+          className="flex items-center space-x-3 px-3 py-2.5 rounded-lg theme-nav-link hover:bg-tint/5 transition-colors min-h-[44px]"
         >
           <ExternalLink className="w-5 h-5" />
           <span className="text-sm font-medium">View site</span>
@@ -115,7 +115,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             onNavigate?.();
             logout();
           }}
-          className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg theme-nav-link hover:bg-white/5 transition-colors min-h-[44px]"
+          className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg theme-nav-link hover:bg-tint/5 transition-colors min-h-[44px]"
         >
           <LogOut className="w-5 h-5" />
           <span className="text-sm font-medium">Log out</span>

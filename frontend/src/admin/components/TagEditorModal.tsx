@@ -86,7 +86,7 @@ export default function TagEditorModal({
                 <button
                   key={tag.id}
                   onClick={() => removeTag(tag.id)}
-                  className="group theme-button px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5 hover:!bg-red-500/20 hover:!text-red-400 hover:!border-red-500/50 transition-all"
+                  className="group theme-button px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5 hover:!bg-[color:color-mix(in_srgb,var(--status-error)_12%,transparent)] hover:!text-[color:var(--status-error)] hover:!border-[color:var(--status-error)] transition-all"
                   title="Remove tag"
                 >
                   <span>{tag.name}</span>

@@ -119,7 +119,7 @@ export function WakeLockInfoModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg theme-text-muted hover:theme-text-primary transition-colors flex-shrink-0"
+            className="p-1 rounded-lg theme-text-muted hover:text-[color:var(--text-primary)] transition-colors flex-shrink-0"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -140,7 +140,7 @@ export function WakeLockInfoModal({
             <div
               key={index}
               className="flex items-start gap-3 p-3 rounded-lg"
-              style={{ background: "var(--card-hover)" }}
+              style={{ background: "var(--card-bg-hover)" }}
             >
               <div
                 className="p-2 rounded-lg flex-shrink-0"
@@ -178,8 +178,8 @@ export function WakeLockInfoModal({
         {/* Dismiss button */}
         <button
           onClick={onClose}
-          className="w-full mt-5 py-2.5 rounded-lg text-sm font-medium transition-colors theme-text-secondary hover:theme-text-primary"
-          style={{ background: "var(--card-hover)" }}
+          className="w-full mt-5 py-2.5 rounded-lg text-sm font-medium transition-colors theme-text-secondary hover:text-[color:var(--text-primary)]"
+          style={{ background: "var(--card-bg-hover)" }}
         >
           Dismiss
         </button>

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Media } from "../lib/api";
+import { activeFilterStyle } from "../lib/theme";
 import { formatDuration, formatLongDuration } from "../lib/utils";
 import { usePlayer } from "../contexts/PlayerContext";
 import { useGallery } from "../contexts/GalleryContext";
@@ -223,8 +224,8 @@ export default function Gallery() {
           <div className="hidden relative media-type-menu-container flex-shrink-0">
             <button
               onClick={() => setMediaTypeMenuOpen(!mediaTypeMenuOpen)}
-              className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 w-[70px] theme-btn-secondary hover:theme-btn-secondary ${
-                filter !== "all" ? "ring-1 ring-white/30 bg-white/10" : ""
+              className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all min-h-[44px] flex items-center justify-center gap-1 w-[70px] theme-btn-secondary ${
+                filter !== "all" ? "ring-1 ring-tint/30 bg-tint/10" : ""
               }`}
               title="Filter by media type"
             >
@@ -311,11 +312,8 @@ export default function Gallery() {
             <div className="hidden sm:block relative tag-filter-container flex-shrink-0">
               <button
                 onClick={() => setTagFilterOpen(!tagFilterOpen)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 w-auto theme-btn-secondary hover:theme-btn-secondary ${
-                  selectedTags.length > 0
-                    ? "ring-1 ring-white/30 bg-white/10"
-                    : ""
-                }`}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 w-auto theme-btn-secondary"
+                style={selectedTags.length > 0 ? activeFilterStyle : undefined}
                 title="Filter by tags"
               >
                 <TagIcon
@@ -347,7 +345,7 @@ export default function Gallery() {
                     )}
                   </button>
                   {/* Divider */}
-                  <div className="h-px bg-white/10 my-1" />
+                  <div className="h-px bg-tint/10 my-1" />
                   {/* Tag options with checkboxes */}
                   {allTags.map((tag) => {
                     const isSelected = selectedTags.includes(tag.id);
@@ -375,7 +373,7 @@ export default function Gallery() {
             <div className="relative sort-menu-container">
               <button
                 onClick={() => setSortMenuOpen(!sortMenuOpen)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary hover:theme-btn-secondary"
+                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all min-h-[44px] flex items-center gap-1.5 theme-btn-secondary"
                 title="Sort options"
               >
                 <span className="capitalize">{sortBy}</span>
@@ -650,7 +648,7 @@ export default function Gallery() {
                     aria-label={`Play ${item.filename}`}
                     className={`relative transition-colors ${
                       item.status === "ready"
-                        ? "cursor-pointer active:bg-white/5 sm:hover:bg-white/5"
+                        ? "cursor-pointer active:bg-tint/5 sm:hover:bg-tint/5"
                         : "cursor-default"
                     }`}
                     style={{
@@ -751,7 +749,7 @@ export default function Gallery() {
                             {item.tags.slice(0, 2).map((tag) => (
                               <span
                                 key={tag.id}
-                                className="px-1.5 py-[1px] bg-white/10 rounded text-caption sm:text-[11px] sm:leading-4 theme-text-muted whitespace-nowrap"
+                                className="px-1.5 py-[1px] bg-tint/10 rounded text-caption sm:text-[11px] sm:leading-4 theme-text-muted whitespace-nowrap"
                               >
                                 {tag.name}
                               </span>
@@ -783,13 +781,13 @@ export default function Gallery() {
                           media={item}
                           variant="icon"
                           hideWhenUnavailable
-                          className="hidden sm:flex flex-shrink-0 p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] items-center justify-center"
+                          className="hidden sm:flex flex-shrink-0 p-2.5 rounded hover:bg-tint/10 transition-colors min-w-[44px] min-h-[44px] items-center justify-center"
                           iconClassName="w-3.5 h-3.5 theme-text-muted"
                         />
                       )}
                       <button
                         onClick={(e) => handleViewDetails(e, item.id)}
-                        className="flex-shrink-0 p-2.5 rounded hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        className="flex-shrink-0 p-2.5 rounded hover:bg-tint/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title="View details"
                         aria-label={`View details for ${item.filename}`}
                       >

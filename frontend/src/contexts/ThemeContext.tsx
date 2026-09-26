@@ -13,13 +13,20 @@ interface ThemeContextType {
   setTheme: (theme: ThemeType) => void;
 }
 
+export function readSavedTheme(): ThemeType {
+  try {
+    const saved = localStorage.getItem("theme");
+    if (saved === "eclipse" || saved === "linen") return saved;
+  } catch {
+    // storage unavailable (private mode) — fall through to the default
+  }
+  return "eclipse";
+}
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeType>(() => {
-    const saved = localStorage.getItem("theme");
-    return (saved as ThemeType) || "eclipse";
-  });
+  const [theme, setThemeState] = useState<ThemeType>(readSavedTheme);
 
   useEffect(() => {
     localStorage.setItem("theme", theme);

@@ -11,6 +11,7 @@ import QueuePanel from "./QueuePanel";
 import SeekBar from "./SeekBar";
 import { mediaApi } from "../lib/api";
 import { formatDuration } from "../lib/utils";
+import { themes, themeVars } from "../lib/theme";
 import { useHaptics } from "../hooks/useHaptics";
 import { useSwipeGesture } from "../hooks/useSwipeGesture";
 import { useHeightVar } from "../hooks/useHeightVar";
@@ -419,22 +420,31 @@ export default function PersistentPlayer() {
   const errorBanner = errorMessage ? (
     <div
       role="alert"
-      className="flex items-center gap-2 px-3 sm:px-4 py-1.5 mx-2 rounded-lg bg-red-500/10"
+      className="flex items-center gap-2 px-3 sm:px-4 py-1.5 mx-2 rounded-lg"
+      style={{
+        background: "color-mix(in srgb, var(--status-error) 10%, transparent)",
+      }}
     >
-      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-      <p className="text-xs text-red-400 flex-1 min-w-0 truncate">
+      <AlertCircle
+        className="w-4 h-4 flex-shrink-0"
+        style={{ color: "var(--status-error)" }}
+      />
+      <p
+        className="text-xs flex-1 min-w-0 truncate"
+        style={{ color: "var(--status-error)" }}
+      >
         {errorMessage}
       </p>
       <button
         onClick={() => jumpToTrack(currentIndex)}
-        className="text-xs font-medium theme-text-primary px-2.5 py-1.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
+        className="text-xs font-medium theme-text-primary px-2.5 py-1.5 rounded bg-tint/10 hover:bg-tint/20 transition-colors"
       >
         Retry
       </button>
       {hasNext && (
         <button
           onClick={playNext}
-          className="text-xs font-medium theme-text-muted px-2.5 py-1.5 rounded hover:bg-white/10 transition-colors"
+          className="text-xs font-medium theme-text-muted px-2.5 py-1.5 rounded hover:bg-tint/10 transition-colors"
         >
           Skip
         </button>
@@ -489,6 +499,10 @@ export default function PersistentPlayer() {
           isExpanded ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
+          // Now-playing is an immersive surface over darkened artwork:
+          // always render it with the dark palette, whatever the theme
+          ...themeVars(themes.eclipse),
+          colorScheme: "dark",
           top: 0,
           left: 0,
           right: 0,
@@ -547,7 +561,7 @@ export default function PersistentPlayer() {
                 variant="icon"
                 hideWhenUnavailable
                 haptic
-                className="p-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                className="p-2 rounded-full transition-colors theme-text-muted hover:text-[color:var(--text-primary)]"
                 iconClassName="w-5 h-5"
               />
             )}
@@ -568,7 +582,7 @@ export default function PersistentPlayer() {
                     ? "text-orange-400"
                     : wakeLockFailureReason
                       ? "text-orange-400"
-                      : "theme-text-muted hover:theme-text-primary"
+                      : "theme-text-muted hover:text-[color:var(--text-primary)]"
               }`}
               style={
                 isWakeLockEnabled && isWakeLockActive
@@ -890,7 +904,7 @@ export default function PersistentPlayer() {
               {!isAudio && (
                 <button
                   onClick={toggleFullscreen}
-                  className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                  className="p-3 rounded-full transition-colors theme-text-muted hover:text-[color:var(--text-primary)]"
                   aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 >
                   {isFullscreen ? (
@@ -905,7 +919,7 @@ export default function PersistentPlayer() {
               <div className="hidden md:flex items-center gap-2">
                 <button
                   onClick={toggleMute}
-                  className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                  className="p-3 rounded-full transition-colors theme-text-muted hover:text-[color:var(--text-primary)]"
                   aria-label={isMuted ? "Unmute" : "Mute"}
                 >
                   {isMuted || volume === 0 ? (
@@ -1179,7 +1193,7 @@ export default function PersistentPlayer() {
                   className={`p-3 rounded-full transition-colors ${
                     isQueueOpen
                       ? "theme-text-primary"
-                      : "theme-text-muted hover:theme-text-primary"
+                      : "theme-text-muted hover:text-[color:var(--text-primary)]"
                   }`}
                   style={
                     isQueueOpen
@@ -1207,7 +1221,7 @@ export default function PersistentPlayer() {
                   media={currentMedia}
                   variant="icon"
                   hideWhenUnavailable
-                  className="p-3 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                  className="p-3 rounded-full transition-colors theme-text-muted hover:text-[color:var(--text-primary)]"
                   iconClassName="w-6 h-6"
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background =

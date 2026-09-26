@@ -85,7 +85,7 @@ export default function Player() {
       {/* Back button */}
       <button
         onClick={() => navigate("/")}
-        className="mb-4 sm:mb-6 flex items-center space-x-2 theme-text-secondary hover:theme-text-primary transition-colors min-h-[44px] -ml-2 px-2"
+        className="mb-4 sm:mb-6 flex items-center space-x-2 theme-text-secondary hover:text-[color:var(--text-primary)] transition-colors min-h-[44px] -ml-2 px-2"
         aria-label="Go back"
       >
         <ArrowLeft className="w-5 h-5" />

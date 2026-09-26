@@ -140,7 +140,7 @@ export default function MediaLibrary() {
     <button
       {...menuTriggerProps}
       onClick={(e) => toggleMenu(media.id, e.currentTarget)}
-      className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+      className="p-2 rounded-lg hover:bg-tint/10 transition-colors"
       aria-label="Actions"
       aria-expanded={menuOpenId === media.id}
     >
@@ -308,7 +308,7 @@ export default function MediaLibrary() {
                   {filtered.map((media) => (
                     <tr
                       key={media.id}
-                      className="border-b last:border-b-0 hover:bg-white/[0.03] transition-colors"
+                      className="border-b last:border-b-0 hover:bg-tint/[0.03] transition-colors"
                       style={{ borderColor: "var(--card-border)" }}
                     >
                       <td className="px-4 py-3">

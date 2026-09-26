@@ -41,12 +41,12 @@ export default function ThemeSelector({ onSelect }: ThemeSelectorProps) {
               className={`relative flex flex-col items-center justify-center p-3 rounded-xl transition-all min-h-[72px] ${
                 isActive
                   ? "ring-2 ring-offset-2 ring-offset-transparent"
-                  : "hover:bg-white/5"
+                  : "hover:bg-tint/5"
               }`}
               style={{
                 background: themeData.bgPrimary,
                 borderColor: isActive ? themeData.accentPrimary : "transparent",
-                border: `1px solid ${isActive ? themeData.accentPrimary : "rgba(255,255,255,0.1)"}`,
+                border: `1px solid ${isActive ? themeData.accentPrimary : themeData.cardBorder}`,
               }}
               aria-label={`Select ${config.name} theme`}
               aria-pressed={isActive}
@@ -68,7 +68,10 @@ export default function ThemeSelector({ onSelect }: ThemeSelectorProps) {
                   className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
                   style={{ background: themeData.accentPrimary }}
                 >
-                  <Check className="w-3 h-3" style={{ color: themeData.bgPrimary }} />
+                  <Check
+                    className="w-3 h-3"
+                    style={{ color: themeData.bgPrimary }}
+                  />
                 </div>
               )}
             </button>
@@ -83,7 +86,9 @@ export default function ThemeSelector({ onSelect }: ThemeSelectorProps) {
     <button
       onClick={toggleTheme}
       className="flex items-center justify-center p-2.5 rounded-lg transition-all theme-button min-h-[44px] min-w-[44px]"
-      aria-label={theme === "eclipse" ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={
+        theme === "eclipse" ? "Switch to light mode" : "Switch to dark mode"
+      }
     >
       {theme === "eclipse" ? (
         <Sun className="w-5 h-5" />

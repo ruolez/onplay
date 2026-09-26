@@ -33,6 +33,8 @@ export default {
         micro: ["11px", { lineHeight: "14px" }],
       },
       colors: {
+        // Theme-aware surface tint: white in Eclipse, zinc-900 in Linen
+        tint: "rgb(var(--tint-rgb) / <alpha-value>)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -127,7 +127,7 @@ export default function Tags() {
               <button
                 onClick={() => setDeleteTarget(tag)}
                 disabled={tag.media_count > 0}
-                className="p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg hover:bg-tint/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 title={
                   tag.media_count > 0
                     ? "Tag is in use — remove it from media first"

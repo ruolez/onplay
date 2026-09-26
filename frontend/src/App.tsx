@@ -245,7 +245,7 @@ function PublicLayout() {
                   {searchQuery ? (
                     <button
                       onClick={() => handleSearchChange("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-tint/10 rounded transition-colors"
                       aria-label="Clear search"
                     >
                       <X className="w-3.5 h-3.5 theme-text-muted" />
@@ -253,7 +253,7 @@ function PublicLayout() {
                   ) : (
                     <button
                       onClick={() => setIsMobileSearchOpen(false)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-tint/10 rounded transition-colors"
                       aria-label="Close search"
                     >
                       <X className="w-3.5 h-3.5 theme-text-muted" />
@@ -287,7 +287,7 @@ function PublicLayout() {
                       {searchQuery && (
                         <button
                           onClick={() => handleSearchChange("")}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded transition-colors"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-tint/10 rounded transition-colors"
                           aria-label="Clear search"
                         >
                           <X className="w-3.5 h-3.5 theme-text-muted" />
@@ -312,7 +312,7 @@ function PublicLayout() {
 
             {/* Mobile Actions (right side) */}
             <div className="md:hidden flex items-center space-x-2 flex-shrink-0">
-              <div className="w-px h-6 bg-white/10 mr-1" />
+              <div className="w-px h-6 bg-tint/10 mr-1" />
 
               {/* Mobile Menu Button */}
               <button
@@ -332,7 +332,7 @@ function PublicLayout() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 theme-dropdown border-t border-white/10">
+          <div className="md:hidden absolute top-full left-0 right-0 theme-dropdown border-t border-tint/10">
             <div className="container mx-auto px-4 py-4 space-y-2">
               {canInstall && (
                 <button
@@ -340,15 +340,13 @@ function PublicLayout() {
                     promptInstall();
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] theme-nav-link hover:bg-white/5"
+                  className="w-full flex items-center space-x-3 p-3 rounded-lg transition-colors min-h-[44px] theme-nav-link hover:bg-tint/5"
                 >
                   <Download className="w-5 h-5" />
                   <span>Install app</span>
                 </button>
               )}
-              <div
-                className={canInstall ? "pt-2 border-t border-white/10" : ""}
-              >
+              <div className={canInstall ? "pt-2 border-t border-tint/10" : ""}>
                 <ThemeSelector />
               </div>
             </div>
@@ -438,7 +436,7 @@ function App() {
             <Suspense
               fallback={
                 <div className="min-h-dvh theme-bg flex items-center justify-center">
-                  <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-transparent animate-spin" />
+                  <div className="w-8 h-8 rounded-full border-2 border-tint/20 border-t-transparent animate-spin" />
                 </div>
               }
             >

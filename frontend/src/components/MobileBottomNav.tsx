@@ -19,6 +19,7 @@ import {
 import { useGallery } from "../contexts/GalleryContext";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useHeightVar } from "../hooks/useHeightVar";
+import { activeFilterStyle } from "../lib/theme";
 
 type FilterType = "all" | "video" | "audio";
 type SortType = "new" | "name" | "popular" | "duration";
@@ -105,24 +106,20 @@ export default function MobileBottomNav() {
   // Unified button base style - ghost style with subtle hover
   const buttonBase =
     "rounded-xl transition-all min-h-[56px] flex items-center justify-center gap-2 active:scale-95";
-  const buttonInactive = "bg-white/5 hover:bg-white/10";
+  const buttonInactive = "bg-tint/5 hover:bg-tint/10";
   const buttonActive = "";
   // Accent tint makes an applied filter obvious at a glance
-  const activeStyle: React.CSSProperties = {
-    background: "color-mix(in srgb, var(--btn-primary-bg) 22%, transparent)",
-    boxShadow:
-      "inset 0 0 0 1px color-mix(in srgb, var(--btn-primary-bg) 45%, transparent)",
-  };
+  const activeStyle = activeFilterStyle;
 
   return (
     <nav
       ref={navRef}
       className="md:hidden fixed left-0 right-0 bottom-0 z-[95]"
       style={{
-        background: "rgba(0, 0, 0, 0.8)",
+        background: "var(--player-bar-bg)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+        borderTop: "1px solid var(--nav-border)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
@@ -177,12 +174,13 @@ export default function MobileBottomNav() {
 
           {mediaTypeMenuOpen && (
             <div
-              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] overflow-hidden"
+              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl z-[200] overflow-hidden"
               style={{
                 bottom: dropdownBottom,
-                background: "rgba(30, 30, 30, 0.95)",
+                background: "var(--dropdown-bg)",
                 backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                border: "1px solid var(--card-border)",
+                boxShadow: "var(--dropdown-shadow)",
               }}
             >
               {[
@@ -215,7 +213,7 @@ export default function MobileBottomNav() {
                     setMediaTypeMenuOpen(false);
                   }}
                   className={`w-full px-4 py-3.5 transition-colors flex items-center justify-between ${
-                    filter === option.value ? "bg-white/10" : "hover:bg-white/5"
+                    filter === option.value ? "bg-tint/10" : "hover:bg-tint/5"
                   }`}
                 >
                   <span className="flex items-center gap-3">
@@ -265,12 +263,13 @@ export default function MobileBottomNav() {
 
           {tagFilterOpen && (
             <div
-              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] max-h-[50vh] overflow-y-auto"
+              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl z-[200] max-h-[50vh] overflow-y-auto"
               style={{
                 bottom: dropdownBottom,
-                background: "rgba(30, 30, 30, 0.95)",
+                background: "var(--dropdown-bg)",
                 backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                border: "1px solid var(--card-border)",
+                boxShadow: "var(--dropdown-shadow)",
               }}
             >
               {/* All option */}
@@ -280,7 +279,7 @@ export default function MobileBottomNav() {
                   setTagFilterOpen(false);
                 }}
                 className={`w-full px-4 py-3.5 transition-colors flex items-center justify-between ${
-                  selectedTags.length === 0 ? "bg-white/10" : "hover:bg-white/5"
+                  selectedTags.length === 0 ? "bg-tint/10" : "hover:bg-tint/5"
                 }`}
               >
                 <span className="text-sm font-medium theme-text-primary">
@@ -291,7 +290,7 @@ export default function MobileBottomNav() {
                 )}
               </button>
               {/* Divider */}
-              <div className="h-px bg-white/10 mx-3" />
+              <div className="h-px bg-tint/10 mx-3" />
               {/* Tag options */}
               {allTags.map((tag) => {
                 const isSelected = selectedTags.includes(tag.id);
@@ -300,7 +299,7 @@ export default function MobileBottomNav() {
                     key={tag.id}
                     onClick={() => toggleTagFilter(tag.id)}
                     className={`w-full px-4 py-3.5 transition-colors flex items-center justify-between ${
-                      isSelected ? "bg-white/10" : "hover:bg-white/5"
+                      isSelected ? "bg-tint/10" : "hover:bg-tint/5"
                     }`}
                   >
                     <span className="text-sm font-medium theme-text-primary">
@@ -336,12 +335,13 @@ export default function MobileBottomNav() {
 
           {sortMenuOpen && (
             <div
-              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl shadow-2xl z-[200] overflow-hidden"
+              className="fixed left-2 right-2 xs:left-3 xs:right-3 rounded-xl z-[200] overflow-hidden"
               style={{
                 bottom: dropdownBottom,
-                background: "rgba(30, 30, 30, 0.95)",
+                background: "var(--dropdown-bg)",
                 backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                border: "1px solid var(--card-border)",
+                boxShadow: "var(--dropdown-shadow)",
               }}
             >
               {[
@@ -362,7 +362,7 @@ export default function MobileBottomNav() {
                     setSortMenuOpen(false);
                   }}
                   className={`w-full px-4 py-3.5 transition-colors flex items-center justify-between ${
-                    sortBy === option.value ? "bg-white/10" : "hover:bg-white/5"
+                    sortBy === option.value ? "bg-tint/10" : "hover:bg-tint/5"
                   }`}
                 >
                   <span className="text-sm font-medium theme-text-primary">

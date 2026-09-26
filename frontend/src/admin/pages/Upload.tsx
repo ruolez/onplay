@@ -186,11 +186,15 @@ export default function Upload() {
     switch (status) {
       case "uploading":
       case "processing":
-        return <Loader className="w-5 h-5 animate-spin text-yellow-500" />;
+        return (
+          <Loader className="w-5 h-5 animate-spin text-[color:var(--status-warning)]" />
+        );
       case "ready":
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return (
+          <CheckCircle className="w-5 h-5 text-[color:var(--status-success)]" />
+        );
       case "failed":
-        return <XCircle className="w-5 h-5 text-red-500" />;
+        return <XCircle className="w-5 h-5 text-[color:var(--status-error)]" />;
       default:
         return null;
     }
@@ -282,7 +286,7 @@ export default function Upload() {
                     <button
                       onClick={() => dismissUpload(upload.id)}
                       aria-label={`Remove ${upload.file.name} from list`}
-                      className="p-2 rounded-lg theme-text-muted hover:theme-text-primary transition-colors"
+                      className="p-2 rounded-lg theme-text-muted hover:text-[color:var(--text-primary)] transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>

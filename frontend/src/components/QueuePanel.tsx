@@ -103,7 +103,7 @@ export default function QueuePanel({
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-2.5">
-            <div className="w-10 h-1 rounded-full bg-white/25" />
+            <div className="w-10 h-1 rounded-full bg-tint/25" />
           </div>
 
           <div className="flex items-center justify-between px-4 pt-1.5 pb-3">
@@ -119,7 +119,7 @@ export default function QueuePanel({
               {onClosePlayer && (
                 <button
                   onClick={onClosePlayer}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary hover:bg-white/10 text-xs font-medium"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full transition-colors theme-text-muted hover:text-[color:var(--text-primary)] hover:bg-tint/10 text-xs font-medium"
                   title="Stop and close player"
                   aria-label="Stop and close player"
                 >
@@ -129,7 +129,7 @@ export default function QueuePanel({
               )}
               <button
                 onClick={onClose}
-                className="p-2 rounded-full transition-colors theme-text-muted hover:theme-text-primary"
+                className="p-2 rounded-full transition-colors theme-text-muted hover:text-[color:var(--text-primary)]"
                 style={{
                   background: "transparent",
                 }}
@@ -251,7 +251,7 @@ export default function QueuePanel({
                           isCurrent
                             ? ""
                             : hasError
-                              ? "text-red-500"
+                              ? "text-[color:var(--status-error)]"
                               : "theme-text-secondary"
                         }`}
                         style={
@@ -272,7 +272,7 @@ export default function QueuePanel({
                           {formatDuration(track.duration || 0)}
                         </span>
                         {hasError && (
-                          <span className="text-red-500 text-caption sm:text-xs">
+                          <span className="text-[color:var(--status-error)] text-caption sm:text-xs">
                             • Failed to load
                           </span>
                         )}

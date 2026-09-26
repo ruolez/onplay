@@ -141,7 +141,7 @@ export default function Dashboard() {
           <h2 className="font-semibold theme-text-primary">Recent uploads</h2>
           <Link
             to="/admin/media"
-            className="text-sm theme-text-secondary hover:theme-text-primary transition-colors"
+            className="text-sm theme-text-secondary hover:text-[color:var(--text-primary)] transition-colors"
           >
             View all →
           </Link>
@@ -152,7 +152,7 @@ export default function Dashboard() {
               <Link
                 key={media.id}
                 to="/admin/media"
-                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/[0.04] transition-colors"
+                className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-tint/[0.04] transition-colors"
               >
                 {media.thumbnail_path ? (
                   <img
