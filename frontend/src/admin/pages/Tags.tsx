@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Tag as TagIcon, Trash2 } from "lucide-react";
+import { Pencil, Tag as TagIcon, Trash2 } from "lucide-react";
 import ConfirmDialog from "../components/ConfirmDialog";
+import RenameTagModal from "../components/RenameTagModal";
 import { mediaApi, type Tag } from "../../lib/api";
 import { useGallery } from "../../contexts/GalleryContext";
 import { useToast } from "../../contexts/ToastContext";
 
 export default function Tags() {
   const { showToast } = useToast();
-  const { refreshTags } = useGallery();
+  const { refreshTags, refreshMedia } = useGallery();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [renameTarget, setRenameTarget] = useState<Tag | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,6 +32,16 @@ export default function Tags() {
   }, [load]);
 
   const unusedTags = tags.filter((t) => t.media_count === 0);
+
+  const handleRenamed = (renamed: Tag) => {
+    setTags((prev) =>
+      prev
+        .map((t) => (t.id === renamed.id ? renamed : t))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    refreshTags();
+    refreshMedia();
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -86,8 +98,8 @@ export default function Tags() {
       </div>
 
       <p className="theme-text-muted text-sm">
-        Tags are attached to media from the Media page. Tags still in use cannot
-        be deleted here.
+        Tags are attached to media from the Media page. Renaming a tag updates
+        it everywhere it is used. Tags still in use cannot be deleted here.
       </p>
 
       {loading ? (
@@ -124,26 +136,41 @@ export default function Tags() {
                   {tag.media_count} item{tag.media_count === 1 ? "" : "s"}
                 </span>
               </div>
-              <button
-                onClick={() => setDeleteTarget(tag)}
-                disabled={tag.media_count > 0}
-                className="p-2 rounded-lg hover:bg-tint/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title={
-                  tag.media_count > 0
-                    ? "Tag is in use — remove it from media first"
-                    : "Delete tag"
-                }
-              >
-                <Trash2
-                  className="w-4 h-4"
-                  style={{ color: "var(--status-error)" }}
-                />
-              </button>
+              <div className="flex items-center flex-shrink-0">
+                <button
+                  onClick={() => setRenameTarget(tag)}
+                  className="p-2 rounded-lg hover:bg-tint/10 transition-colors"
+                  title="Rename tag"
+                  aria-label={`Rename tag ${tag.name}`}
+                >
+                  <Pencil className="w-4 h-4 theme-text-secondary" />
+                </button>
+                <button
+                  onClick={() => setDeleteTarget(tag)}
+                  disabled={tag.media_count > 0}
+                  className="p-2 rounded-lg hover:bg-tint/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={
+                    tag.media_count > 0
+                      ? "Tag is in use — remove it from media first"
+                      : "Delete tag"
+                  }
+                >
+                  <Trash2
+                    className="w-4 h-4"
+                    style={{ color: "var(--status-error)" }}
+                  />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
+      <RenameTagModal
+        tag={renameTarget}
+        onClose={() => setRenameTarget(null)}
+        onRenamed={handleRenamed}
+      />
       <ConfirmDialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}

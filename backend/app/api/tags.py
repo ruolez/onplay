@@ -34,6 +34,38 @@ async def get_all_tags(db: Session = Depends(get_db)):
     return [{"id": r.id, "name": r.name, "media_count": r.media_count} for r in results]
 
 
+@router.patch("/tags/{tag_id}", response_model=TagResponse, dependencies=[Depends(require_admin)])
+async def rename_tag(
+    tag_id: int,
+    tag_data: TagCreate,
+    db: Session = Depends(get_db)
+):
+    """Rename a tag; names stay unique case-insensitively"""
+    tag = db.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+
+    name = tag_data.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Tag name cannot be empty")
+
+    clash = db.query(Tag).filter(
+        func.lower(Tag.name) == func.lower(name),
+        Tag.id != tag_id
+    ).first()
+    if clash:
+        raise HTTPException(status_code=409, detail=f'A tag named "{clash.name}" already exists')
+
+    tag.name = name
+    db.commit()
+
+    media_count = db.query(func.count(media_tags.c.media_id)).filter(
+        media_tags.c.tag_id == tag_id
+    ).scalar()
+
+    return {"id": tag.id, "name": tag.name, "media_count": media_count}
+
+
 @router.delete("/tags/{tag_id}", dependencies=[Depends(require_admin)])
 async def delete_tag(
     tag_id: int,

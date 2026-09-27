@@ -186,6 +186,10 @@ export const mediaApi = {
     return api.delete(`/media/${mediaId}/tags/${tagId}`);
   },
 
+  async renameTag(tagId: number, name: string) {
+    return api.patch<Tag>(`/tags/${tagId}`, { name });
+  },
+
   async deleteTag(tagId: number) {
     return api.delete(`/tags/${tagId}`);
   },

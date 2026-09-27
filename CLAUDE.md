@@ -141,7 +141,7 @@ All management lives behind admin authentication — the public site is a pure p
 - **Auth**: Single admin account seeded as `admin`/`admin` on first boot (change it in Settings). JWT (HS256) in an HttpOnly `onplay_admin` cookie, 7-day expiry. Password change revokes all outstanding sessions via a `pwd_ts` claim. Backend: `backend/app/auth.py` (deps/utils), `backend/app/api/auth.py` (routes). Frontend: `src/admin/AuthContext.tsx` + `RequireAuth.tsx`.
 - **Lazy chunk**: Everything under `src/admin/` loads via `React.lazy` from `App.tsx` — public visitors never download admin code.
 - **Layout**: Desktop fixed sidebar / mobile top bar + slide-over drawer (`src/admin/AdminLayout.tsx`), themed entirely with `.theme-*` utilities so both themes work.
-- **Pages**: Dashboard (stat cards + recent uploads), Media (paginated table with rename/tags/thumbnail/delete via modals), Upload (moved from public), Analytics (Overview tab = old Stats page; Listeners tab = unique listeners), Tags (delete unused), Settings (change password, logout).
+- **Pages**: Dashboard (stat cards + recent uploads), Media (paginated table with rename/tags/thumbnail/delete via modals), Upload (moved from public), Analytics (Overview tab = old Stats page; Listeners tab = unique listeners), Tags (rename, delete unused), Settings (change password, logout).
 - **Admin is player-free**: entering any `/admin` route closes active playback and the bottom bar never renders there (`PlayerChrome` in `App.tsx`); state restore is also skipped on admin page loads. Row-action dropdowns in Media render as fixed-position portals to `document.body` — in-card absolute positioning gets clipped by the table's scroll container and painted under fixed bars (`theme-card`'s `backdrop-filter` creates a stacking context that traps any in-card z-index).
 - **Cache coherence**: admin mutations call `useGallery().refreshMedia()/refreshTags()` so the public gallery stays fresh.
 
@@ -657,6 +657,7 @@ Admin-only endpoints require the `onplay_admin` HttpOnly session cookie (JWT), o
 - `GET /api/tags` - List all tags (public; gallery filter chips need it)
 - `POST /api/media/{id}/tags` - Add tag to media, creates tag if needed (admin)
 - `DELETE /api/media/{id}/tags/{tag_id}` - Remove tag from media (admin)
+- `PATCH /api/tags/{tag_id}` - Rename tag (`{name}`); 409 if another tag already has that name case-insensitively (admin)
 - `DELETE /api/tags/{tag_id}` - Delete unused tag (admin)
 
 ### Analytics
